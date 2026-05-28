@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum InfluencerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Influencer {
+  id              String           @id @default(uuid())
+  name            String
+  email           String           @unique
+  description     String?
+  profileImage    String?
+  coverImage      String?
+  presentationPdf String?
+  socialNetworks  Json?
+  status          InfluencerStatus @default(PENDING)
+  showOnShowcase  Boolean          @default(false)
+  rejectionReason String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model Article {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  content     String   @db.Text
+  coverImage  String?
+  published   Boolean  @default(false)
+  publishedAt DateTime?
+  authorId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SuccessCase {
+  id          String   @id @default(uuid())
+  title       String
+  clientName  String
+  description String   @db.Text
+  images      String[]
+  results     String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Service {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @db.Text
+  icon        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Brand {
+  id        String   @id @default(uuid())
+  name      String
+  logo      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ContactType {
+  GENERAL
+  BUDGET
+}
+
+model ContactRequest {
+  id        String      @id @default(uuid())
+  name      String
+  email     String
+  phone     String?
+  message   String      @db.Text
+  type      ContactType @default(GENERAL)
+  createdAt DateTime    @default(now())
+}
