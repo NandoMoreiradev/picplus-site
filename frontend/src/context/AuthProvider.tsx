@@ -40,6 +40,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, loading, login, logout }), [user, loading, login, logout]);
+  const value = useMemo(() => {
+    const granted = new Set(user?.permissions ?? []);
+    return {
+      user,
+      loading,
+      login,
+      logout,
+      can: (permission: string) => !!user && (user.isOwner || granted.has(permission)),
+      canAny: (...permissions: string[]) => !!user && (user.isOwner || permissions.some((p) => granted.has(p))),
+    };
+  }, [user, loading, login, logout]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

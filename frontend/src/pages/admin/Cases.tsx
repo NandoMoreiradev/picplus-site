@@ -20,6 +20,7 @@ import { Button } from '../../components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
 import { FormGrid, Switch, TextArea, TextField } from '../../components/ui/Form';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
+import { useAuth } from '../../context/auth-context';
 import { useCrud } from '../../hooks/useCrud';
 import { formatShortDate } from '../../lib/format';
 import type { CaseMetric, SuccessCase } from '../../lib/types';
@@ -263,6 +264,7 @@ function CaseForm({
 }
 
 export function Cases() {
+  const { can } = useAuth();
   const [params, setParams] = useSearchParams();
   const { list, saving, save, remove } = useCrud<SuccessCase>('/admin/cases', {
     saved: 'Case salvo.',
@@ -300,11 +302,9 @@ export function Cases() {
       <PageHeader
         title="Cases de sucesso"
         description="Campanhas e resultados exibidos no site."
-        actions={
-          <Button onClick={() => setEditing('new')}>
+        actions={can('cases.create') && (<Button onClick={() => setEditing('new')}>
             <Plus size={18} aria-hidden /> Novo case
-          </Button>
-        }
+          </Button>)}
       />
 
       {list.error ? (
@@ -315,7 +315,7 @@ export function Cases() {
         <EmptyState
           title="Nenhum case cadastrado"
           description="Conte as histórias de sucesso da agência."
-          action={<Button onClick={() => setEditing('new')}>Novo case</Button>}
+          action={can('cases.create') ? <Button onClick={() => setEditing('new')}>Novo case</Button> : undefined}
         />
       ) : (
         <TableWrap>
@@ -350,12 +350,12 @@ export function Cases() {
                   <td className="muted">{formatShortDate(item.createdAt)}</td>
                   <td className="right">
                     <RowActions>
-                      <IconButton label={`Editar ${item.title}`} onClick={() => setEditing(item)}>
+                      {can('cases.edit') && <IconButton label={`Editar ${item.title}`} onClick={() => setEditing(item)}>
                         <Pencil size={17} />
-                      </IconButton>
-                      <IconButton label={`Excluir ${item.title}`} danger onClick={() => setDeleting(item)}>
+                      </IconButton>}
+                      {can('cases.delete') && <IconButton label={`Excluir ${item.title}`} danger onClick={() => setDeleting(item)}>
                         <Trash2 size={17} />
-                      </IconButton>
+                      </IconButton>}
                     </RowActions>
                   </td>
                 </tr>

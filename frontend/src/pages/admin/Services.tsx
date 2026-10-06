@@ -20,6 +20,7 @@ import { FormGrid, SelectField, Switch, TextArea, TextField } from '../../compon
 import { SERVICE_ICONS, ServiceIcon } from '../../components/ui/icons';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { PILLAR_OPTIONS, pillarName } from '../../content/positioning';
+import { useAuth } from '../../context/auth-context';
 import { useCrud } from '../../hooks/useCrud';
 import type { Service } from '../../lib/types';
 
@@ -166,6 +167,7 @@ function ServiceForm({
 }
 
 export function Services() {
+  const { can } = useAuth();
   const [params, setParams] = useSearchParams();
   const { list, saving, save, remove } = useCrud<Service>('/admin/services', {
     saved: 'Serviço salvo.',
@@ -200,11 +202,9 @@ export function Services() {
       <PageHeader
         title="Serviços"
         description="Serviços exibidos na página inicial e em Serviços."
-        actions={
-          <Button onClick={() => setEditing('new')}>
+        actions={can('services.create') && (<Button onClick={() => setEditing('new')}>
             <Plus size={18} aria-hidden /> Novo serviço
-          </Button>
-        }
+          </Button>)}
       />
 
       {list.error ? (
@@ -215,7 +215,7 @@ export function Services() {
         <EmptyState
           title="Nenhum serviço cadastrado"
           description="Cadastre o primeiro serviço da agência."
-          action={<Button onClick={() => setEditing('new')}>Novo serviço</Button>}
+          action={can('services.create') ? <Button onClick={() => setEditing('new')}>Novo serviço</Button> : undefined}
         />
       ) : (
         <TableWrap>
@@ -252,12 +252,12 @@ export function Services() {
                   </td>
                   <td className="right">
                     <RowActions>
-                      <IconButton label={`Editar ${service.name}`} onClick={() => setEditing(service)}>
+                      {can('services.edit') && <IconButton label={`Editar ${service.name}`} onClick={() => setEditing(service)}>
                         <Pencil size={17} />
-                      </IconButton>
-                      <IconButton label={`Excluir ${service.name}`} danger onClick={() => setDeleting(service)}>
+                      </IconButton>}
+                      {can('services.delete') && <IconButton label={`Excluir ${service.name}`} danger onClick={() => setDeleting(service)}>
                         <Trash2 size={17} />
-                      </IconButton>
+                      </IconButton>}
                     </RowActions>
                   </td>
                 </tr>

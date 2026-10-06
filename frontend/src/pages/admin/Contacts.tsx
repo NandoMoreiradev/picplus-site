@@ -22,6 +22,7 @@ import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { Pagination } from '../../components/ui/Pagination';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { useToast } from '../../components/ui/Toast';
+import { useAuth } from '../../context/auth-context';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useFetch } from '../../hooks/useFetch';
 import { usePage } from '../../hooks/usePage';
@@ -111,6 +112,7 @@ function ContactDrawer({
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const { can } = useAuth();
   const [confirming, setConfirming] = useState(false);
 
   const setStatus = async (status: ContactStatus) => {
@@ -219,7 +221,7 @@ function ContactDrawer({
                   type="button"
                   $active={contact.status === status}
                   aria-pressed={contact.status === status}
-                  disabled={busy}
+                  disabled={busy || !can('contacts.edit')}
                   onClick={() => setStatus(status)}
                 >
                   {STATUS[status].label}
@@ -228,11 +230,11 @@ function ContactDrawer({
             </div>
           </div>
 
-          <div>
+          {can('contacts.delete') && (<div>
             <Button variant="ghost" onClick={() => setConfirming(true)}>
               <Trash2 size={16} aria-hidden /> Excluir contato
             </Button>
-          </div>
+          </div>)}
         </Stack>
       </Modal>
 

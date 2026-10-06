@@ -10,6 +10,7 @@ import { FormGrid, SelectField, Switch, TextField } from '../../components/ui/Fo
 import { Card, Grid } from '../../components/ui/Layout';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
+import { useAuth } from '../../context/auth-context';
 import { useCrud } from '../../hooks/useCrud';
 import { assetUrl } from '../../lib/api';
 import type { Brand } from '../../lib/types';
@@ -153,6 +154,7 @@ function BrandForm({
 }
 
 export function Brands() {
+  const { can } = useAuth();
   const { list, saving, save, remove } = useCrud<Brand>('/admin/brands', {
     saved: 'Marca salva.',
     removed: 'Marca excluída.',
@@ -179,11 +181,9 @@ export function Brands() {
       <PageHeader
         title="Marcas parceiras"
         description="Logos das marcas com as quais a PicPlus trabalha ou já trabalhou."
-        actions={
-          <Button onClick={() => setEditing('new')}>
+        actions={can('brands.create') && (<Button onClick={() => setEditing('new')}>
             <Plus size={18} aria-hidden /> Nova marca
-          </Button>
-        }
+          </Button>)}
       />
 
       {list.error ? (
@@ -198,7 +198,7 @@ export function Brands() {
         <EmptyState
           title="Nenhuma marca cadastrada"
           description="Adicione os logos das marcas parceiras para exibi-los no site."
-          action={<Button onClick={() => setEditing('new')}>Nova marca</Button>}
+          action={can('brands.create') ? <Button onClick={() => setEditing('new')}>Nova marca</Button> : undefined}
         />
       ) : (
         <Grid $min="210px" $gap="1rem">
@@ -220,12 +220,12 @@ export function Brands() {
                   <span />
                 )}
                 <div>
-                  <IconButton label={`Editar ${brand.name}`} onClick={() => setEditing(brand)}>
+                  {can('brands.edit') && <IconButton label={`Editar ${brand.name}`} onClick={() => setEditing(brand)}>
                     <Pencil size={16} />
-                  </IconButton>
-                  <IconButton label={`Excluir ${brand.name}`} danger onClick={() => setDeleting(brand)}>
+                  </IconButton>}
+                  {can('brands.delete') && <IconButton label={`Excluir ${brand.name}`} danger onClick={() => setDeleting(brand)}>
                     <Trash2 size={16} />
-                  </IconButton>
+                  </IconButton>}
                 </div>
               </div>
             </BrandCard>

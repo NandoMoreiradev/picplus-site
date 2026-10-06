@@ -9,10 +9,27 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { RequireAnyPermission } from '../common/decorators/permissions.decorator';
 import { StorageService } from './storage.service';
 import type { UploadKind } from './storage.service';
 
-/** Upload usado pelo painel administrativo (rota protegida pelo guard global). */
+/**
+ * Upload usado pelo painel. Exige permissão de criar ou editar em algum módulo
+ * que aceite arquivos (a regra por módulo é aplicada ao salvar o registro).
+ */
+@RequireAnyPermission(
+  'articles.create',
+  'articles.edit',
+  'cases.create',
+  'cases.edit',
+  'services.create',
+  'services.edit',
+  'brands.create',
+  'brands.edit',
+  'team.create',
+  'team.edit',
+  'influencers.edit',
+)
 @Controller('admin/uploads')
 export class UploadsController {
   constructor(private readonly storage: StorageService) {}

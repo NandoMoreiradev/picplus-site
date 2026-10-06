@@ -17,6 +17,7 @@ import { Button } from '../../components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
 import { FormGrid, Switch, TextArea, TextField } from '../../components/ui/Form';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
+import { useAuth } from '../../context/auth-context';
 import { useCrud } from '../../hooks/useCrud';
 import type { TeamMember } from '../../lib/types';
 
@@ -115,6 +116,7 @@ function MemberForm({
 }
 
 export function Team() {
+  const { can } = useAuth();
   const { list, saving, save, remove } = useCrud<TeamMember>('/admin/team', {
     saved: 'Integrante salvo.',
     removed: 'Integrante excluído.',
@@ -142,11 +144,9 @@ export function Team() {
       <PageHeader
         title="Equipe"
         description="Pessoas exibidas na página Sobre a Agência."
-        actions={
-          <Button onClick={() => setEditing('new')}>
+        actions={can('team.create') && (<Button onClick={() => setEditing('new')}>
             <Plus size={18} aria-hidden /> Novo integrante
-          </Button>
-        }
+          </Button>)}
       />
 
       {list.error ? (
@@ -157,7 +157,7 @@ export function Team() {
         <EmptyState
           title="Nenhum integrante cadastrado"
           description="Apresente o time da PicPlus no site."
-          action={<Button onClick={() => setEditing('new')}>Novo integrante</Button>}
+          action={can('team.create') ? <Button onClick={() => setEditing('new')}>Novo integrante</Button> : undefined}
         />
       ) : (
         <TableWrap>
@@ -188,12 +188,12 @@ export function Team() {
                   </td>
                   <td className="right">
                     <RowActions>
-                      <IconButton label={`Editar ${member.name}`} onClick={() => setEditing(member)}>
+                      {can('team.edit') && <IconButton label={`Editar ${member.name}`} onClick={() => setEditing(member)}>
                         <Pencil size={17} />
-                      </IconButton>
-                      <IconButton label={`Excluir ${member.name}`} danger onClick={() => setDeleting(member)}>
+                      </IconButton>}
+                      {can('team.delete') && <IconButton label={`Excluir ${member.name}`} danger onClick={() => setDeleting(member)}>
                         <Trash2 size={17} />
-                      </IconButton>
+                      </IconButton>}
                     </RowActions>
                   </td>
                 </tr>

@@ -81,3 +81,20 @@ definidos no painel de cada serviço (Settings):
 4. Volte ao backend e defina `FRONTEND_URL=https://<domínio-do-frontend>` (libera o CORS e gera os links dos e-mails).
 5. Ao subir, o backend roda `prisma migrate deploy` e cria o administrador com `ADMIN_EMAIL`/`ADMIN_PASSWORD`
    (apenas se ainda não existir nenhum usuário). Acesse `/admin`, troque a senha em "Minha conta" e remova `ADMIN_PASSWORD`.
+
+## Usuários, cargos e permissões
+
+O painel tem controle de acesso por **cargo**. Um cargo é um conjunto de permissões no formato `recurso.acao`
+(ex.: `articles.publish`); cada usuário recebe um cargo. Em `/admin/cargos` o administrador cria e edita cargos
+numa matriz de permissões, e em `/admin/usuarios` cadastra a equipe e atribui os cargos.
+
+- **Proprietário:** acesso total, independente de cargo. O administrador criado no primeiro boot (e os usuários que
+  já existiam antes deste recurso) são proprietários. Nunca pode faltar um proprietário ativo.
+- **Cargos padrão** (Administrador, Comercial, Conteúdo, Somente leitura) são criados na primeira inicialização
+  e podem ser editados ou excluídos.
+- **O servidor decide.** O backend carrega o usuário do banco a cada requisição: mudar o cargo ou desativar alguém
+  vale na hora, sem esperar o login expirar. O painel apenas esconde o que a pessoa não pode usar.
+- **Negado por padrão:** toda rota protegida precisa declarar a permissão exigida; um teste falha se alguma ficar sem regra.
+- **Anti-escalada:** ninguém concede permissões que não possui, nem gerencia usuários ou cargos acima do seu.
+- **Novas permissões** (ex.: uma integração com Asaas ou Gemini): acrescente a chave em `backend/src/access/permissions.ts`
+  e proteja o endpoint com `@RequirePermissions('integrations.manage')`. Ela aparece sozinha na matriz de cargos.

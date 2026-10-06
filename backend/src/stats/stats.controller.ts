@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { InfluencerStatus } from '@prisma/client';
+import { Authenticated } from '../common/decorators/permissions.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -22,6 +23,7 @@ export class StatsController {
   }
 
   /** Resumo do painel administrativo. */
+  @Authenticated()
   @Get('admin/stats')
   async adminStats() {
     const [

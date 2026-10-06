@@ -10,6 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { Resource } from '../common/decorators/permissions.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { ContactsService } from './contacts.service';
 import {
@@ -32,6 +33,7 @@ export class ContactsController {
   }
 }
 
+@Resource('contacts')
 @Controller('admin/contacts')
 export class AdminContactsController {
   constructor(private readonly contacts: ContactsService) {}

@@ -17,9 +17,28 @@ model User {
   email     String    @unique
   password  String
   name      String
+  // Proprietário: tem todas as permissões, independentemente do cargo, e não pode ficar sem ninguém.
+  isOwner   Boolean   @default(false)
+  // Usuário desativado não consegue entrar e tem a sessão invalidada.
+  active    Boolean   @default(true)
+  role      Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  roleId    String?
   articles  Article[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+
+  @@index([roleId])
+}
+
+// Cargo = conjunto de permissões no formato "recurso.acao" (ver src/access/permissions.ts).
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  permissions String[]
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────────────────────────

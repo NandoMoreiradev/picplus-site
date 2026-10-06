@@ -8,6 +8,7 @@ import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { DEFAULT_ROLES } from '../src/access/default-roles';
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -162,10 +163,26 @@ async function main() {
     throw new Error('ADMIN_PASSWORD deve ter ao menos 8 caracteres.');
   }
 
+  // Cargos padrão (só se ainda não houver nenhum) e administrador como proprietário.
+  if ((await prisma.role.count()) === 0) {
+    await prisma.role.createMany({ data: DEFAULT_ROLES });
+    console.log(`✔ ${DEFAULT_ROLES.length} cargos padrão criados`);
+  }
+  const adminRole = await prisma.role.findUnique({
+    where: { name: 'Administrador' },
+    select: { id: true },
+  });
+  const hash = await bcrypt.hash(password, 12);
   await prisma.user.upsert({
     where: { email },
-    update: { name, password: await bcrypt.hash(password, 12) },
-    create: { email, name, password: await bcrypt.hash(password, 12) },
+    update: { name, password: hash, isOwner: true, active: true },
+    create: {
+      email,
+      name,
+      password: hash,
+      isOwner: true,
+      roleId: adminRole?.id ?? null,
+    },
   });
   console.log(`✔ Administrador pronto: ${email}`);
 

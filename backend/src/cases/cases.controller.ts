@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { Resource } from '../common/decorators/permissions.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CasesService } from './cases.service';
 import { CreateCaseDto, UpdateCaseDto } from './dto/case.dto';
@@ -27,6 +28,7 @@ export class CasesController {
   }
 }
 
+@Resource('cases')
 @Controller('admin/cases')
 export class AdminCasesController {
   constructor(private readonly cases: CasesService) {}

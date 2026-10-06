@@ -1,16 +1,18 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import { DEFAULT_ROLES } from '../access/default-roles';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
- * Garante o acesso ao painel em hospedagens sem terminal (ex.: Railway), a partir de
- * ADMIN_EMAIL / ADMIN_PASSWORD:
+ * Prepara o acesso ao painel em hospedagens sem terminal (ex.: Railway):
  *
- * - Sem usuários no banco: cria o administrador inicial.
- * - Com usuários: não mexe em nada (a senha trocada em "Minha conta" é preservada).
- * - Com ADMIN_FORCE_RESET=true: cria ou REDEFINE a senha do administrador informado.
- *   Serve para recuperar o acesso. Remova a variável logo depois, senão a senha volta
- *   ao valor de ADMIN_PASSWORD a cada reinício.
+ * 1. Sem nenhum cargo no banco: cria os cargos padrão (editáveis depois no painel).
+ * 2. A partir de ADMIN_EMAIL / ADMIN_PASSWORD:
+ *    - sem usuários: cria o administrador inicial, como PROPRIETÁRIO;
+ *    - com usuários: não mexe em nada (senha trocada no painel é preservada);
+ *    - com ADMIN_FORCE_RESET=true: cria ou REDEFINE o proprietário informado
+ *      (também o reativa). Serve para recuperar o acesso. Remova a variável logo
+ *      depois, senão a senha volta ao valor de ADMIN_PASSWORD a cada reinício.
  */
 @Injectable()
 export class AdminBootstrapService implements OnApplicationBootstrap {
@@ -19,6 +21,25 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
   constructor(private readonly prisma: PrismaService) {}
 
   async onApplicationBootstrap() {
+    await this.ensureDefaultRoles();
+    await this.ensureOwner();
+  }
+
+  private async ensureDefaultRoles() {
+    try {
+      if ((await this.prisma.role.count()) > 0) return;
+      await this.prisma.role.createMany({ data: DEFAULT_ROLES });
+      this.logger.log(
+        `Cargos padrão criados: ${DEFAULT_ROLES.map((role) => role.name).join(', ')}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Falha ao criar os cargos padrão: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  private async ensureOwner() {
     const email = process.env.ADMIN_EMAIL?.toLowerCase().trim();
     const password = process.env.ADMIN_PASSWORD;
     if (!email || !password) return;
@@ -43,15 +64,25 @@ export class AdminBootstrapService implements OnApplicationBootstrap {
 
       const name = process.env.ADMIN_NAME ?? 'Administrador';
       const hash = await bcrypt.hash(password, 12);
+      const adminRole = await this.prisma.role.findUnique({
+        where: { name: 'Administrador' },
+        select: { id: true },
+      });
       await this.prisma.user.upsert({
         where: { email },
-        update: { name, password: hash },
-        create: { email, name, password: hash },
+        update: { name, password: hash, isOwner: true, active: true },
+        create: {
+          email,
+          name,
+          password: hash,
+          isOwner: true,
+          roleId: adminRole?.id ?? null,
+        },
       });
 
       if (forceReset) {
         this.logger.warn(
-          `Acesso do administrador REDEFINIDO: ${email}. ` +
+          `Acesso do proprietário REDEFINIDO: ${email}. ` +
             'Remova ADMIN_FORCE_RESET agora, ou a senha será sobrescrita a cada reinício.',
         );
       } else {

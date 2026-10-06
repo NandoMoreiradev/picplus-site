@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { Resource } from '../common/decorators/permissions.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { CreateTeamMemberDto, UpdateTeamMemberDto } from './dto/team.dto';
 import { TeamService } from './team.service';
@@ -22,6 +23,7 @@ export class TeamController {
   }
 }
 
+@Resource('team')
 @Controller('admin/team')
 export class AdminTeamController {
   constructor(private readonly team: TeamService) {}

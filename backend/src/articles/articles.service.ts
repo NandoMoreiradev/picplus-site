@@ -1,5 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { can } from '../common/decorators/current-user.decorator';
+import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { paginated, pageArgs } from '../common/utils/paginate';
 import { uniqueSlug } from '../common/utils/slug';
 import { PrismaService } from '../prisma/prisma.service';
@@ -113,7 +119,8 @@ export class ArticlesService {
     return article;
   }
 
-  async create(dto: CreateArticleDto, authorId: string) {
+  async create(dto: CreateArticleDto, actor: AuthUser) {
+    if (dto.published) this.assertCanPublish(actor);
     const slug = await uniqueSlug(
       dto.title,
       async (s) =>
@@ -123,14 +130,18 @@ export class ArticlesService {
       data: {
         ...dto,
         slug,
-        authorId,
+        authorId: actor.sub,
         publishedAt: dto.published ? new Date() : null,
       },
     });
   }
 
-  async update(id: string, dto: UpdateArticleDto) {
+  async update(id: string, dto: UpdateArticleDto, actor: AuthUser) {
     const current = await this.findOne(id);
+    // Publicar/despublicar é uma permissão à parte: editar o texto não basta.
+    if (dto.published !== undefined && dto.published !== current.published) {
+      this.assertCanPublish(actor);
+    }
     const data: Prisma.ArticleUpdateInput = { ...dto };
 
     if (dto.title && dto.title !== current.title && !current.published) {
@@ -151,6 +162,14 @@ export class ArticlesService {
       await this.storage.remove(current.coverImage);
     }
     return updated;
+  }
+
+  private assertCanPublish(actor: AuthUser) {
+    if (!can(actor, 'articles.publish')) {
+      throw new ForbiddenException(
+        'Você não tem permissão para publicar ou despublicar artigos.',
+      );
+    }
   }
 
   async remove(id: string) {

@@ -14,6 +14,10 @@ import {
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { memoryStorage } from 'multer';
+import {
+  RequirePermissions,
+  Resource,
+} from '../common/decorators/permissions.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import {
   ApproveInfluencerDto,
@@ -72,6 +76,7 @@ export class InfluencersController {
   }
 }
 
+@Resource('influencers')
 @Controller('admin/influencers')
 export class AdminInfluencersController {
   constructor(private readonly influencers: InfluencersService) {}
@@ -92,12 +97,14 @@ export class AdminInfluencersController {
   }
 
   @HttpCode(200)
+  @RequirePermissions('influencers.review')
   @Post(':id/approve')
   approve(@Param('id') id: string, @Body() dto: ApproveInfluencerDto) {
     return this.influencers.approve(id, dto);
   }
 
   @HttpCode(200)
+  @RequirePermissions('influencers.review')
   @Post(':id/reject')
   reject(@Param('id') id: string, @Body() dto: RejectInfluencerDto) {
     return this.influencers.reject(id, dto);

@@ -29,6 +29,7 @@ import { SearchInput } from '../../components/ui/SearchInput';
 import { useToast } from '../../components/ui/Toast';
 import { CoverImage } from '../../components/public/cards';
 import { NICHES } from '../../config/site';
+import { useAuth } from '../../context/auth-context';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useFetch } from '../../hooks/useFetch';
 import { usePage } from '../../hooks/usePage';
@@ -422,6 +423,7 @@ function InfluencerDrawer({
   onDeleted: () => void;
 }) {
   const toast = useToast();
+  const { can } = useAuth();
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [dialog, setDialog] = useState<'approve' | 'reject' | 'delete' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -498,29 +500,29 @@ function InfluencerDrawer({
               </div>
 
               <div className="actions">
-                {influencer.status !== 'APPROVED' && (
+                {can('influencers.review') && influencer.status !== 'APPROVED' && (
                   <Button onClick={() => setDialog('approve')}>
                     <Check size={18} aria-hidden /> Aprovar
                   </Button>
                 )}
-                {influencer.status !== 'REJECTED' && (
+                {can('influencers.review') && influencer.status !== 'REJECTED' && (
                   <Button variant="danger" onClick={() => setDialog('reject')}>
                     <X size={18} aria-hidden /> Recusar
                   </Button>
                 )}
-                <Button variant="secondary" onClick={() => setMode('edit')}>
+                {can('influencers.edit') && <Button variant="secondary" onClick={() => setMode('edit')}>
                   <Pencil size={16} aria-hidden /> Editar
-                </Button>
-                <Button variant="ghost" onClick={() => setDialog('delete')}>
+                </Button>}
+                {can('influencers.delete') && <Button variant="ghost" onClick={() => setDialog('delete')}>
                   <Trash2 size={16} aria-hidden /> Excluir
-                </Button>
+                </Button>}
               </div>
 
               {influencer.status === 'APPROVED' && (
                 <Switch
                   checked={influencer.showOnShowcase}
                   onChange={toggleShowcase}
-                  disabled={busy}
+                  disabled={busy || !can('influencers.edit')}
                   label="Exibir na vitrine pública"
                   description="Controla se o perfil aparece em Nossos Parceiros."
                 />

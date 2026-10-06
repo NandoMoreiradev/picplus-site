@@ -11,10 +11,12 @@ import { ContactsModule } from './contacts/contacts.module';
 import { InfluencersModule } from './influencers/influencers.module';
 import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { RolesModule } from './roles/roles.module';
 import { ServicesModule } from './services/services.module';
 import { StatsModule } from './stats/stats.module';
 import { StorageModule } from './storage/storage.module';
 import { TeamModule } from './team/team.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { TeamModule } from './team/team.module';
     TeamModule,
     ContactsModule,
     StatsModule,
+    RolesModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

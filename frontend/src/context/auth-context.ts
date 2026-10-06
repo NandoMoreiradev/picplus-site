@@ -7,6 +7,10 @@ export interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  /** O usuário logado possui esta permissão? (o servidor sempre revalida) */
+  can: (permission: string) => boolean;
+  /** Possui ao menos uma das permissões? */
+  canAny: (...permissions: string[]) => boolean;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

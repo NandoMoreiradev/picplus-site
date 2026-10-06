@@ -149,4 +149,39 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  /** Proprietário: tem todas as permissões. */
+  isOwner: boolean;
+  role: { id: string; name: string } | null;
+  /** Permissões efetivas, no formato "recurso.acao". */
+  permissions: string[];
+}
+
+export interface PermissionDef {
+  key: string;
+  label: string;
+}
+
+export interface PermissionGroup {
+  key: string;
+  label: string;
+  permissions: PermissionDef[];
+}
+
+export interface RoleItem {
+  id: string;
+  name: string;
+  description: string | null;
+  permissions: string[];
+  createdAt: string;
+  _count?: { users: number };
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  isOwner: boolean;
+  active: boolean;
+  createdAt: string;
+  role: { id: string; name: string } | null;
 }

@@ -19,6 +19,7 @@ describe('API (e2e, Prisma mockado)', () => {
 
   const prisma: any = {
     user: { findUnique: jest.fn(), count: jest.fn().mockResolvedValue(1) },
+    role: { count: jest.fn().mockResolvedValue(1) },
     contactRequest: { create: jest.fn() },
     service: { findMany: jest.fn() },
     influencer: {
@@ -86,6 +87,9 @@ describe('API (e2e, Prisma mockado)', () => {
         email: 'admin@picplus.com.br',
         name: 'Admin',
         password: adminHash,
+        active: true,
+        isOwner: true,
+        role: null,
       });
       const login = await request(server())
         .post('/api/auth/login')

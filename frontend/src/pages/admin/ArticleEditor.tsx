@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Alert, ErrorState, PageLoader } from '../../components/ui/Feedback';
 import { FormGrid, Switch, TextArea, TextField } from '../../components/ui/Form';
 import { useToast } from '../../components/ui/Toast';
+import { useAuth } from '../../context/auth-context';
 import { useFetch } from '../../hooks/useFetch';
 import { api } from '../../lib/api';
 import type { Article } from '../../lib/types';
@@ -175,6 +176,9 @@ function ArticleForm({
 }) {
   const navigate = useNavigate();
   const toast = useToast();
+  const { can } = useAuth();
+  const canSave = isNew ? can('articles.create') : can('articles.edit');
+  const canPublish = can('articles.publish');
   const [form, setForm] = useState<FormState>(() => (data ? toForm(data) : EMPTY));
   const [tab, setTab] = useState<'write' | 'preview'>('write');
   const [saving, setSaving] = useState(false);
@@ -341,9 +345,16 @@ function ArticleForm({
                 checked={form.published}
                 onChange={(value) => set('published', value)}
                 label={form.published ? 'Publicado' : 'Rascunho'}
-                description={form.published ? 'Visível no site.' : 'Não aparece no site.'}
+                disabled={!canPublish}
+                description={
+                  canPublish
+                    ? form.published
+                      ? 'Visível no site.'
+                      : 'Não aparece no site.'
+                    : 'Publicar exige a permissão "Publicar e despublicar artigos".'
+                }
               />
-              <Button type="submit" block loading={saving}>
+              <Button type="submit" block loading={saving} disabled={!canSave}>
                 {!saving && <Save size={18} aria-hidden />}
                 {form.published ? 'Salvar e publicar' : 'Salvar rascunho'}
               </Button>

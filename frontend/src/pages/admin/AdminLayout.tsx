@@ -10,8 +10,10 @@ import {
   LogOut,
   Menu,
   Newspaper,
+  ShieldCheck,
   Sparkles,
   Trophy,
+  UserCog,
   UserSquare2,
   Users,
   X,
@@ -208,23 +210,52 @@ const Scrim = styled.div`
   background: ${({ theme }) => theme.colors.overlay};
 `;
 
-const NAV = [
+interface NavItemDef {
+  to: string;
+  label: string;
+  icon: typeof Users;
+  /** Permissão necessária para ver o item (sem ela, o item some do menu). */
+  perm?: string;
+  end?: boolean;
+  badge?: 'pendingInfluencers' | 'inbox';
+}
+type NavEntry = NavItemDef | { group: string };
+
+const NAV: NavEntry[] = [
   { to: '/admin', label: 'Visão geral', icon: LayoutDashboard, end: true },
   { group: 'Relacionamento' },
-  { to: '/admin/influenciadores', label: 'Influenciadores', icon: Users, badge: 'pendingInfluencers' },
-  { to: '/admin/contatos', label: 'Contatos e orçamentos', icon: Inbox, badge: 'inbox' },
+  { to: '/admin/influenciadores', label: 'Influenciadores', icon: Users, perm: 'influencers.view', badge: 'pendingInfluencers' },
+  { to: '/admin/contatos', label: 'Contatos e orçamentos', icon: Inbox, perm: 'contacts.view', badge: 'inbox' },
   { group: 'Conteúdo do site' },
-  { to: '/admin/blog', label: 'Blog', icon: Newspaper },
-  { to: '/admin/cases', label: 'Cases de sucesso', icon: Trophy },
-  { to: '/admin/servicos', label: 'Serviços', icon: Sparkles },
-  { to: '/admin/marcas', label: 'Marcas parceiras', icon: Building2 },
-  { to: '/admin/equipe', label: 'Equipe', icon: UserSquare2 },
+  { to: '/admin/blog', label: 'Blog', icon: Newspaper, perm: 'articles.view' },
+  { to: '/admin/cases', label: 'Cases de sucesso', icon: Trophy, perm: 'cases.view' },
+  { to: '/admin/servicos', label: 'Serviços', icon: Sparkles, perm: 'services.view' },
+  { to: '/admin/marcas', label: 'Marcas parceiras', icon: Building2, perm: 'brands.view' },
+  { to: '/admin/equipe', label: 'Equipe do site', icon: UserSquare2, perm: 'team.view' },
+  { group: 'Acesso' },
+  { to: '/admin/usuarios', label: 'Usuários', icon: UserCog, perm: 'users.view' },
+  { to: '/admin/cargos', label: 'Cargos e permissões', icon: ShieldCheck, perm: 'roles.view' },
   { group: 'Configurações' },
   { to: '/admin/conta', label: 'Minha conta', icon: KeyRound },
-] as const;
+];
+
+/** Itens do menu que o usuário pode ver, sem cabeçalhos de grupo que ficariam vazios. */
+function visibleNav(entries: NavEntry[], can: (permission: string) => boolean): NavEntry[] {
+  const isItem = (entry: NavEntry): entry is NavItemDef => !('group' in entry);
+  const allowed = (entry: NavItemDef) => !entry.perm || can(entry.perm);
+
+  return entries.filter((entry, index) => {
+    if (isItem(entry)) return allowed(entry);
+    // cabeçalho: mantém só se houver item visível antes do próximo cabeçalho
+    const rest = entries.slice(index + 1);
+    const nextGroup = rest.findIndex((e) => !isItem(e));
+    const section = nextGroup === -1 ? rest : rest.slice(0, nextGroup);
+    return section.some((e) => isItem(e) && allowed(e));
+  });
+}
 
 export function AdminLayout() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, can } = useAuth();
   const location = useLocation();
   // O menu mobile pertence à rota em que foi aberto: ao navegar, fecha sozinho.
   const [openOn, setOpenOn] = useState<string | null>(null);
@@ -266,7 +297,7 @@ export function AdminLayout() {
           </Brand>
 
           <Nav>
-            {NAV.map((entry, index) => {
+            {visibleNav(NAV, can).map((entry, index) => {
               if ('group' in entry) {
                 return (
                   <div className="group" key={`g-${index}`}>
@@ -275,9 +306,9 @@ export function AdminLayout() {
                 );
               }
               const Icon = entry.icon;
-              const badge = badgeFor('badge' in entry ? entry.badge : undefined);
+              const badge = badgeFor(entry.badge);
               return (
-                <Item key={entry.to} to={entry.to} end={'end' in entry ? entry.end : false}>
+                <Item key={entry.to} to={entry.to} end={entry.end ?? false}>
                   <Icon size={19} aria-hidden />
                   {entry.label}
                   {badge > 0 && <span className="badge">{badge}</span>}
@@ -289,7 +320,7 @@ export function AdminLayout() {
           <Footer>
             <div className="user">
               <strong>{user.name}</strong>
-              {user.email}
+              {user.isOwner ? 'Proprietário' : (user.role?.name ?? 'Sem cargo')} · {user.email}
             </div>
             <a className="ext" href="/" target="_blank" rel="noopener noreferrer">
               <ExternalLink size={18} aria-hidden /> Ver o site

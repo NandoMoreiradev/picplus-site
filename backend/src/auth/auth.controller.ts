@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Patch, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
+import { Authenticated } from '../common/decorators/permissions.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
 import { ChangePasswordDto, LoginDto } from './dto/login.dto';
@@ -19,11 +20,13 @@ export class AuthController {
     return this.auth.login(dto);
   }
 
+  @Authenticated()
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user.sub);
   }
 
+  @Authenticated()
   @Patch('password')
   changePassword(
     @CurrentUser() user: AuthUser,

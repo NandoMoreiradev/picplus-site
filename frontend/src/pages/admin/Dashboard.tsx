@@ -113,13 +113,17 @@ const Actions = styled.div`
 `;
 
 export function Dashboard() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const stats = useFetch<AdminStats>('/admin/stats');
-  const pending = useFetch<InfluencerList>('/admin/influencers', { status: 'PENDING', limit: 5 });
+  const pending = useFetch<InfluencerList>(can('influencers.view') ? '/admin/influencers' : null, {
+    status: 'PENDING',
+    limit: 5,
+  });
 
   const s = stats.data;
-  const cards: { to: string; label: string; value?: number; hint: string; icon: LucideIcon; highlight?: boolean }[] = [
+  const cards: { perm: string; to: string; label: string; value?: number; hint: string; icon: LucideIcon; highlight?: boolean }[] = [
     {
+      perm: 'influencers.view',
       to: '/admin/influenciadores',
       label: 'Aguardando aprovação',
       value: s?.pendingInfluencers,
@@ -128,6 +132,7 @@ export function Dashboard() {
       highlight: (s?.pendingInfluencers ?? 0) > 0,
     },
     {
+      perm: 'contacts.view',
       to: '/admin/contatos',
       label: 'Pedidos de orçamento',
       value: s?.newBudgets,
@@ -135,8 +140,8 @@ export function Dashboard() {
       icon: FileText,
       highlight: (s?.newBudgets ?? 0) > 0,
     },
-    { to: '/admin/contatos', label: 'Mensagens de contato', value: s?.newContacts, hint: 'novas, sem resposta', icon: Inbox },
-    { to: '/admin/blog', label: 'Rascunhos de artigos', value: s?.draftArticles, hint: 'aguardando publicação', icon: Newspaper },
+    { perm: 'contacts.view', to: '/admin/contatos', label: 'Mensagens de contato', value: s?.newContacts, hint: 'novas, sem resposta', icon: Inbox },
+    { perm: 'articles.view', to: '/admin/blog', label: 'Rascunhos de artigos', value: s?.draftArticles, hint: 'aguardando publicação', icon: Newspaper },
   ];
   const secondary = [
     { label: 'Na vitrine', value: s?.onShowcase, icon: Star },
@@ -157,7 +162,7 @@ export function Dashboard() {
       ) : (
         <>
           <StatGrid>
-            {cards.map(({ to, label, value, hint, icon: Icon, highlight }) => (
+            {cards.filter((card) => can(card.perm)).map(({ to, label, value, hint, icon: Icon, highlight }) => (
               <StatCard key={label} to={to} $highlight={highlight}>
                 <span className="top">
                   {label} <Icon size={20} aria-hidden />
@@ -182,6 +187,7 @@ export function Dashboard() {
       )}
 
       <Columns>
+        {can('influencers.view') && (
         <Panel>
           <PanelHead>
             <h2>Cadastros pendentes</h2>
@@ -216,21 +222,28 @@ export function Dashboard() {
             </div>
           )}
         </Panel>
+        )}
 
         <Panel>
           <PanelHead>
             <h2>Ações rápidas</h2>
           </PanelHead>
           <Actions>
-            <ButtonLink to="/admin/blog/novo" $variant="secondary" $block>
-              <Plus size={18} aria-hidden /> Novo artigo
-            </ButtonLink>
-            <ButtonLink to="/admin/cases?novo=1" $variant="secondary" $block>
-              <Plus size={18} aria-hidden /> Novo case de sucesso
-            </ButtonLink>
-            <ButtonLink to="/admin/servicos?novo=1" $variant="secondary" $block>
-              <Plus size={18} aria-hidden /> Novo serviço
-            </ButtonLink>
+            {can('articles.create') && (
+              <ButtonLink to="/admin/blog/novo" $variant="secondary" $block>
+                <Plus size={18} aria-hidden /> Novo artigo
+              </ButtonLink>
+            )}
+            {can('cases.create') && (
+              <ButtonLink to="/admin/cases?novo=1" $variant="secondary" $block>
+                <Plus size={18} aria-hidden /> Novo case de sucesso
+              </ButtonLink>
+            )}
+            {can('services.create') && (
+              <ButtonLink to="/admin/servicos?novo=1" $variant="secondary" $block>
+                <Plus size={18} aria-hidden /> Novo serviço
+              </ButtonLink>
+            )}
             <Button variant="ghost" block onClick={() => window.open('/', '_blank', 'noopener')}>
               Ver o site público
             </Button>

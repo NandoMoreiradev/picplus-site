@@ -18,6 +18,7 @@ import { ConfirmDialog } from '../../components/ui/Modal';
 import { Pagination } from '../../components/ui/Pagination';
 import { SearchInput } from '../../components/ui/SearchInput';
 import { useToast } from '../../components/ui/Toast';
+import { useAuth } from '../../context/auth-context';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useFetch } from '../../hooks/useFetch';
 import { usePage } from '../../hooks/usePage';
@@ -27,6 +28,7 @@ import type { ArticleSummary, Paginated } from '../../lib/types';
 import { errorMessage } from '../../lib/validation';
 
 export function Articles() {
+  const { can } = useAuth();
   const toast = useToast();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -59,11 +61,9 @@ export function Articles() {
       <PageHeader
         title="Blog"
         description="Crie, edite e publique os artigos do blog."
-        actions={
-          <ButtonLink to="/admin/blog/novo">
+        actions={can('articles.create') && (<ButtonLink to="/admin/blog/novo">
             <Plus size={18} aria-hidden /> Novo artigo
-          </ButtonLink>
-        }
+          </ButtonLink>)}
       />
 
       <Toolbar>
@@ -81,7 +81,7 @@ export function Articles() {
           title={debounced ? 'Nenhum artigo encontrado' : 'Nenhum artigo ainda'}
           description={debounced ? 'Tente outro termo.' : 'Escreva o primeiro artigo do blog.'}
           action={
-            !debounced ? (
+            !debounced && can('articles.create') ? (
               <ButtonLink to="/admin/blog/novo">Novo artigo</ButtonLink>
             ) : undefined
           }
@@ -127,14 +127,14 @@ export function Articles() {
                             <ExternalLink size={17} />
                           </IconButton>
                         )}
-                        <Link to={`/admin/blog/${article.id}`} aria-label={`Editar ${article.title}`}>
+                        {can('articles.edit') && <Link to={`/admin/blog/${article.id}`} aria-label={`Editar ${article.title}`}>
                           <IconButton label="Editar" tabIndex={-1}>
                             <Pencil size={17} />
                           </IconButton>
-                        </Link>
-                        <IconButton label="Excluir" danger onClick={() => setDeleting(article)}>
+                        </Link>}
+                        {can('articles.delete') && <IconButton label="Excluir" danger onClick={() => setDeleting(article)}>
                           <Trash2 size={17} />
-                        </IconButton>
+                        </IconButton>}
                       </RowActions>
                     </td>
                   </tr>

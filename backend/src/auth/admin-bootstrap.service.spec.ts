@@ -14,7 +14,14 @@ describe('AdminBootstrapService', () => {
     count: jest.fn<Promise<number>, []>(),
     upsert: jest.fn<Promise<unknown>, [UpsertArgs]>(),
   };
-  const service = () => new AdminBootstrapService({ user } as never);
+  const role = {
+    count: jest.fn<Promise<number>, []>().mockResolvedValue(1),
+    createMany: jest.fn<Promise<unknown>, [unknown]>(),
+    findUnique: jest
+      .fn<Promise<unknown>, [unknown]>()
+      .mockResolvedValue({ id: 'r-adm' }),
+  };
+  const service = () => new AdminBootstrapService({ user, role } as never);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -54,6 +61,32 @@ describe('AdminBootstrapService', () => {
     expect(await bcrypt.compare('SenhaForte123', call.update.password)).toBe(
       true,
     );
+  });
+
+  it('cria o admin como proprietário, com o cargo Administrador', async () => {
+    user.count.mockResolvedValue(0);
+    await service().onApplicationBootstrap();
+    const call = user.upsert.mock.calls[0][0] as unknown as {
+      create: Record<string, unknown>;
+      update: Record<string, unknown>;
+    };
+    expect(call.create.isOwner).toBe(true);
+    expect(call.create.roleId).toBe('r-adm');
+    expect(call.update.isOwner).toBe(true);
+    expect(call.update.active).toBe(true);
+  });
+
+  it('cria os cargos padrão quando não existe nenhum', async () => {
+    role.count.mockResolvedValueOnce(0);
+    user.count.mockResolvedValue(1);
+    await service().onApplicationBootstrap();
+    expect(role.createMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('não recria cargos que já existem', async () => {
+    user.count.mockResolvedValue(1);
+    await service().onApplicationBootstrap();
+    expect(role.createMany).not.toHaveBeenCalled();
   });
 
   it('recusa senha curta', async () => {

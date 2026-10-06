@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
+import { Resource } from '../common/decorators/permissions.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { BrandsService } from './brands.service';
 import { CreateBrandDto, UpdateBrandDto } from './dto/brand.dto';
@@ -22,6 +23,7 @@ export class BrandsController {
   }
 }
 
+@Resource('brands')
 @Controller('admin/brands')
 export class AdminBrandsController {
   constructor(private readonly brands: BrandsService) {}

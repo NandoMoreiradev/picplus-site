@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
+import { Resource } from '../common/decorators/permissions.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { ArticlesService } from './articles.service';
 import {
@@ -45,6 +46,7 @@ export class ArticlesController {
   }
 }
 
+@Resource('articles')
 @Controller('admin/articles')
 export class AdminArticlesController {
   constructor(private readonly articles: ArticlesService) {}
@@ -61,12 +63,16 @@ export class AdminArticlesController {
 
   @Post()
   create(@Body() dto: CreateArticleDto, @CurrentUser() user: AuthUser) {
-    return this.articles.create(dto, user.sub);
+    return this.articles.create(dto, user);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateArticleDto) {
-    return this.articles.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateArticleDto,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.articles.update(id, dto, user);
   }
 
   @Delete(':id')
