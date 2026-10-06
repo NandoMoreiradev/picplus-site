@@ -19,4 +19,10 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // A biblioteca de componentes (styled-components) exporta primitivos estilizados
+    // junto com componentes React; o Fast Refresh continua funcionando para eles.
+    files: ['src/components/**/*.tsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])
