@@ -33,9 +33,9 @@ const Track = styled.ul<{ $animate: boolean }>`
  */
 const Tile = styled.li<{ $dark: boolean }>`
   flex-shrink: 0;
-  width: 176px;
-  height: 88px;
-  padding: 0.9rem 1.25rem;
+  width: 224px;
+  height: 116px;
+  padding: 0.7rem 1rem;
   border-radius: ${({ theme }) => theme.radii.md};
   background: ${({ $dark }) => ($dark ? '#0f0f0f' : '#f5f5f5')};
   border: 1px solid ${({ $dark, theme }) => ($dark ? theme.colors.borderStrong : 'transparent')};
@@ -55,13 +55,18 @@ const Tile = styled.li<{ $dark: boolean }>`
     width: 100%;
     height: 100%;
   }
+  /* width/height 100% + contain: o logo preenche a área útil (amplia os pequenos), sem distorcer. */
   .logo img {
-    max-width: 100%;
-    max-height: 100%;
-    width: auto;
-    height: auto;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
     object-position: center;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    width: 168px;
+    height: 88px;
+    padding: 0.6rem 0.85rem;
   }
 `;
 
