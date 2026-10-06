@@ -152,7 +152,8 @@ function Hero({ stats }: { stats: PublicStats | null }) {
     ? [
         { value: stats.influencers, label: 'Criadores na vitrine' },
         { value: stats.cases, label: 'Cases publicados' },
-        { value: stats.brands, label: 'Marcas parceiras' },
+        // Marcas ficam de fora de propósito: o número seria só a contagem de logos
+        // cadastrados no painel, e não o total de marcas atendidas.
       ].filter((item) => item.value > 0)
     : [];
 
