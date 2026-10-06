@@ -115,10 +115,10 @@ export const api = {
   delete: <T>(path: string) => request<T>('DELETE', path),
   postForm: <T>(path: string, form: FormData) => request<T>('POST', path, { form }),
   /** Upload administrativo; devolve a URL relativa do arquivo salvo. */
-  upload: async (file: File, kind: 'image' | 'pdf' = 'image') => {
+  upload: async (file: File, kind: 'image' | 'pdf' = 'image', options: { trim?: boolean } = {}) => {
     const form = new FormData();
     form.append('file', file);
-    const { url } = await request<{ url: string }>('POST', `/admin/uploads?kind=${kind}`, { form });
+    const { url } = await request<{ url: string }>('POST', `/admin/uploads?kind=${kind}${options.trim ? '&trim=1' : ''}`, { form });
     return url;
   },
 };

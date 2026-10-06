@@ -5,6 +5,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { config, isR2Enabled } from '../config/configuration';
@@ -82,7 +83,11 @@ export class StorageService {
     );
   }
 
-  async save(file: Express.Multer.File, expected: UploadKind): Promise<string> {
+  async save(
+    file: Express.Multer.File,
+    expected: UploadKind,
+    options: { trim?: boolean } = {},
+  ): Promise<string> {
     const detected = sniff(file.buffer);
     if (!detected || detected.kind !== expected) {
       throw new BadRequestException(
@@ -97,6 +102,11 @@ export class StorageService {
       );
     }
 
+    // Logos: remove margens vazias para que o desenho (e não o arquivo) fique centralizado.
+    const body =
+      options.trim && expected === 'image'
+        ? await this.trimMargins(file.buffer)
+        : file.buffer;
     const filename = `${randomUUID()}.${detected.ext}`;
 
     if (this.s3) {
@@ -105,7 +115,7 @@ export class StorageService {
         new PutObjectCommand({
           Bucket: config.r2.bucket,
           Key: key,
-          Body: file.buffer,
+          Body: body,
           // Tipo definido pelo servidor (nunca o do cliente) e nome aleatório: o arquivo é imutável.
           ContentType: detected.mime,
           CacheControl: 'public, max-age=31536000, immutable',
@@ -115,8 +125,21 @@ export class StorageService {
     }
 
     await mkdir(config.uploads.dir, { recursive: true });
-    await writeFile(join(config.uploads.dir, filename), file.buffer);
+    await writeFile(join(config.uploads.dir, filename), body);
     return `${config.uploads.publicPath}/${filename}`;
+  }
+
+  /**
+   * Recorta bordas transparentes ou de cor uniforme. Mantém o formato original.
+   * Se a imagem for toda uniforme (nada a recortar) devolve o arquivo sem alteração.
+   */
+  private async trimMargins(buffer: Buffer): Promise<Buffer> {
+    try {
+      return await sharp(buffer).trim({ threshold: 12 }).toBuffer();
+    } catch (error) {
+      this.logger.warn(`Recorte ignorado: ${(error as Error).message}`);
+      return buffer;
+    }
   }
 
   /** Remove um arquivo previamente salvo. Silencioso se não existir ou for de outra origem. */

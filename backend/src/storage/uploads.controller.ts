@@ -27,12 +27,14 @@ export class UploadsController {
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Query('kind') kind: UploadKind = 'image',
+    // trim=1: recorta margens vazias da imagem (usado nos logos para centralizar o desenho)
+    @Query('trim') trim?: string,
   ) {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado.');
     if (kind !== 'image' && kind !== 'pdf') {
       throw new BadRequestException('Parâmetro "kind" deve ser image ou pdf.');
     }
-    return { url: await this.storage.save(file, kind) };
+    return { url: await this.storage.save(file, kind, { trim: trim === '1' }) };
   }
 
   @Delete()

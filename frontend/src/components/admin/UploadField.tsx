@@ -27,7 +27,7 @@ const Wrap = styled.div`
   }
 `;
 
-const Box = styled.div<{ $shape: 'square' | 'wide' | 'logo' | 'file' }>`
+const Box = styled.div<{ $shape: 'square' | 'wide' | 'logo' | 'file'; $dark?: boolean }>`
   position: relative;
   display: flex;
   align-items: center;
@@ -37,7 +37,8 @@ const Box = styled.div<{ $shape: 'square' | 'wide' | 'logo' | 'file' }>`
   min-height: ${({ $shape }) => ($shape === 'file' ? '64px' : $shape === 'wide' ? '150px' : '160px')};
   border: 2px dashed ${({ theme }) => theme.colors.borderStrong};
   border-radius: ${({ theme }) => theme.radii.lg};
-  background: ${({ $shape, theme }) => ($shape === 'logo' ? '#f5f5f5' : theme.colors.background)};
+  background: ${({ $shape, $dark, theme }) =>
+    $shape === 'logo' ? ($dark ? '#0f0f0f' : '#f5f5f5') : theme.colors.background};
   color: ${({ theme }) => theme.colors.textSecondary};
   overflow: hidden;
   transition: border-color ${({ theme }) => theme.transitions.fast};
@@ -115,6 +116,10 @@ interface UploadFieldProps {
   shape?: 'square' | 'wide' | 'logo';
   required?: boolean;
   hint?: string;
+  /** Recorta margens vazias no servidor (logos). */
+  trim?: boolean;
+  /** Pré-visualiza sobre fundo escuro (logos brancos). */
+  dark?: boolean;
 }
 
 /**
@@ -129,6 +134,8 @@ export function UploadField({
   shape = 'wide',
   required,
   hint,
+  trim,
+  dark,
 }: UploadFieldProps) {
   const id = useId();
   const toast = useToast();
@@ -146,7 +153,7 @@ export function UploadField({
     if (!file) return;
     setBusy(true);
     try {
-      const url = await api.upload(file, kind);
+      const url = await api.upload(file, kind, { trim });
       sessionUploads.current.add(url);
       discard(value);
       onChange(url);
@@ -166,7 +173,7 @@ export function UploadField({
         {label}
         {!required && <span className="optional">(opcional)</span>}
       </label>
-      <Box $shape={kind === 'pdf' ? 'file' : shape}>
+      <Box $shape={kind === 'pdf' ? 'file' : shape} $dark={dark}>
         <input
           id={id}
           type="file"

@@ -26,31 +26,42 @@ const Track = styled.ul<{ $animate: boolean }>`
   }
 `;
 
-const Tile = styled.li`
+/**
+ * Cartão de tamanho fixo. O fundo é escolhido por marca (claro ou escuro) para que
+ * logos brancos continuem legíveis. O logo ocupa uma caixa flex centralizada, então
+ * qualquer proporção fica no meio do cartão.
+ */
+const Tile = styled.li<{ $dark: boolean }>`
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 168px;
-  height: 84px;
-  padding: 1rem 1.25rem;
+  width: 176px;
+  height: 88px;
+  padding: 0.9rem 1.25rem;
   border-radius: ${({ theme }) => theme.radii.md};
-  background: rgba(255, 255, 255, 0.94);
-  opacity: 0.8;
-  transition: opacity ${({ theme }) => theme.transitions.fast};
+  background: ${({ $dark }) => ($dark ? '#0f0f0f' : '#f5f5f5')};
+  border: 1px solid ${({ $dark, theme }) => ($dark ? theme.colors.borderStrong : 'transparent')};
+  transition:
+    transform ${({ theme }) => theme.transitions.fast},
+    border-color ${({ theme }) => theme.transitions.fast};
 
   &:hover {
-    opacity: 1;
+    transform: translateY(-2px);
+    border-color: ${({ theme }) => theme.colors.primaryBorder};
   }
-  img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-  }
-  a {
-    display: grid;
-    place-items: center;
+
+  .logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     height: 100%;
+  }
+  .logo img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    object-position: center;
   }
 `;
 
@@ -64,13 +75,29 @@ export function BrandStrip({ brands }: { brands: Brand[] }) {
     <Viewport>
       <Track $animate={animate} aria-label="Marcas parceiras">
         {items.map((brand, index) => {
-          const image = <img src={assetUrl(brand.logo)} alt={brand.name} loading="lazy" />;
+          const isClone = animate && index >= brands.length;
+          const image = (
+            <span className="logo">
+              <img src={assetUrl(brand.logo)} alt={brand.name} loading="lazy" />
+            </span>
+          );
           return (
             // Segunda metade é decorativa (loop infinito): oculta de leitores de tela.
-            <Tile key={`${brand.id}-${index}`} aria-hidden={animate && index >= brands.length ? true : undefined}>
+            <Tile
+              key={`${brand.id}-${index}`}
+              $dark={brand.background === 'dark'}
+              aria-hidden={isClone ? true : undefined}
+            >
               {brand.website ? (
-                <a href={brand.website} target="_blank" rel="noopener noreferrer" tabIndex={index >= brands.length ? -1 : 0}>
-                  {image}
+                <a
+                  className="logo"
+                  href={brand.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  tabIndex={isClone ? -1 : 0}
+                  aria-label={brand.name}
+                >
+                  <img src={assetUrl(brand.logo)} alt="" loading="lazy" />
                 </a>
               ) : (
                 image

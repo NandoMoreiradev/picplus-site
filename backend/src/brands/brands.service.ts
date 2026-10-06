@@ -16,7 +16,13 @@ export class BrandsService {
     return this.prisma.brand.findMany({
       where: { active: true },
       orderBy: ORDER,
-      select: { id: true, name: true, logo: true, website: true },
+      select: {
+        id: true,
+        name: true,
+        logo: true,
+        background: true,
+        website: true,
+      },
     });
   }
 

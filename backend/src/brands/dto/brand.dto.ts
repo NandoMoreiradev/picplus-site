@@ -2,6 +2,7 @@ import { PartialType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -22,6 +23,11 @@ export class CreateBrandDto {
   @MinLength(1, { message: 'Envie o logo da marca.' })
   @MaxLength(500)
   logo: string;
+
+  /** Fundo do cartão no site: "dark" para logos brancos. */
+  @IsOptional()
+  @IsIn(['light', 'dark'])
+  background?: string;
 
   @IsOptional()
   @IsUrl(

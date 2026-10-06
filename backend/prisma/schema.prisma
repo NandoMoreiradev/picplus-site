@@ -116,6 +116,8 @@ model Brand {
   id        String   @id @default(uuid())
   name      String
   logo      String
+  // Fundo do cartão do logo no site: light | dark (use dark para logos brancos)
+  background String  @default("light")
   website   String?
   order     Int      @default(0)
   active    Boolean  @default(true)

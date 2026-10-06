@@ -92,6 +92,8 @@ export interface Brand {
   id: string;
   name: string;
   logo: string;
+  /** Fundo do cartão do logo: "dark" para logos brancos. */
+  background: 'light' | 'dark';
   website: string | null;
   order: number;
   active: boolean;

@@ -6,7 +6,7 @@ import { FormStack, IconButton, PageHeader, StatusPill } from '../../components/
 import { UploadField } from '../../components/admin/UploadField';
 import { Button } from '../../components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
-import { FormGrid, Switch, TextField } from '../../components/ui/Form';
+import { FormGrid, SelectField, Switch, TextField } from '../../components/ui/Form';
 import { Card, Grid } from '../../components/ui/Layout';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
@@ -14,7 +14,7 @@ import { useCrud } from '../../hooks/useCrud';
 import { assetUrl } from '../../lib/api';
 import type { Brand } from '../../lib/types';
 
-const BrandCard = styled(Card)<{ $muted?: boolean }>`
+const BrandCard = styled(Card)<{ $muted?: boolean; $dark?: boolean }>`
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -25,7 +25,7 @@ const BrandCard = styled(Card)<{ $muted?: boolean }>`
     place-items: center;
     height: 110px;
     padding: 1rem;
-    background: #f5f5f5;
+    background: ${({ $dark }) => ($dark ? '#0f0f0f' : '#f5f5f5')};
   }
   .logo img {
     max-width: 100%;
@@ -62,12 +62,13 @@ const BrandCard = styled(Card)<{ $muted?: boolean }>`
 interface FormState {
   name: string;
   logo: string | null;
+  background: 'light' | 'dark';
   website: string;
   order: string;
   active: boolean;
 }
 
-const EMPTY: FormState = { name: '', logo: null, website: '', order: '0', active: true };
+const EMPTY: FormState = { name: '', logo: null, background: 'light', website: '', order: '0', active: true };
 
 function BrandForm({
   initial,
@@ -115,13 +116,25 @@ function BrandForm({
     >
       <FormStack id="brand-form" onSubmit={submit}>
         <TextField label="Nome da marca" required value={form.name} onChange={(e) => set('name', e.target.value)} />
+        <SelectField
+          label="Fundo do logo no site"
+          required
+          options={[
+            { value: 'light', label: 'Claro (para logos coloridos ou escuros)' },
+            { value: 'dark', label: 'Escuro (para logos brancos)' },
+          ]}
+          value={form.background}
+          onChange={(e) => set('background', e.target.value as FormState['background'])}
+        />
         <UploadField
           label="Logo"
           required
           shape="logo"
+          trim
+          dark={form.background === 'dark'}
           value={form.logo}
           onChange={(url) => set('logo', url)}
-          hint="PNG com fundo transparente funciona melhor."
+          hint="As margens vazias são recortadas automaticamente para centralizar o logo. PNG com fundo transparente funciona melhor."
         />
         <TextField
           label="Site"
@@ -153,6 +166,7 @@ export function Brands() {
     const ok = await save(editing === 'new' || !editing ? null : editing.id, {
       name: form.name.trim(),
       logo: form.logo,
+      background: form.background,
       website: form.website.trim() || null,
       order: Number(form.order) || 0,
       active: form.active,
@@ -189,7 +203,7 @@ export function Brands() {
       ) : (
         <Grid $min="210px" $gap="1rem">
           {items.map((brand) => (
-            <BrandCard key={brand.id} $muted={!brand.active}>
+            <BrandCard key={brand.id} $muted={!brand.active} $dark={brand.background === 'dark'}>
               <div className="logo">
                 <img src={assetUrl(brand.logo)} alt={brand.name} />
               </div>
@@ -229,6 +243,7 @@ export function Brands() {
               : {
                   name: editing.name,
                   logo: editing.logo,
+                  background: editing.background ?? 'light',
                   website: editing.website ?? '',
                   order: String(editing.order),
                   active: editing.active,
