@@ -29,7 +29,7 @@ const Filters = styled.div`
 `;
 
 export function Blog() {
-  usePageMeta('Blog', 'Artigos sobre marketing de influência, tendências e boas práticas, direto da equipe PicPlus.');
+  usePageMeta('Blog', 'Artigos sobre posicionamento, funil de vendas, produção audiovisual e influência, direto da equipe PicPlus.');
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);
@@ -58,10 +58,10 @@ export function Blog() {
         eyebrow="Blog"
         title={
           <>
-            Ideias e <Highlight>tendências</Highlight> do marketing de influência
+            Marketing com foco em <Highlight>resultado de negócio</Highlight>
           </>
         }
-        description="Conteúdo produzido pela equipe PicPlus para quem quer fazer mais com criadores e marcas."
+        description="Posicionamento, funil, produção e influência: conteúdo da equipe PicPlus para quem decide sobre marketing."
       />
 
       <Section $tight>

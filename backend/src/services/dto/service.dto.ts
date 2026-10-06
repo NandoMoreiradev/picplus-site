@@ -4,6 +4,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -27,6 +28,11 @@ export class CreateServiceDto {
   @MinLength(10, { message: 'A descrição deve ter ao menos 10 caracteres.' })
   @MaxLength(5000)
   description: string;
+
+  /** Pilar do hub ao qual a entrega pertence. */
+  @IsOptional()
+  @IsIn(['assessoria', 'producao', 'influencia'])
+  pillar?: string;
 
   /** Nome do ícone exibido no site (ex.: "megaphone", "camera"). */
   @IsOptional()

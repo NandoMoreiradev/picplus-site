@@ -3,10 +3,10 @@ import type { FormEvent } from 'react';
 import styled from 'styled-components';
 import { CheckCircle2, Send } from 'lucide-react';
 import { BUDGET_RANGES } from '../../config/site';
-import { useFetch } from '../../hooks/useFetch';
+import { positioning } from '../../content/positioning';
 import { api, ApiError } from '../../lib/api';
 import { maskPhone } from '../../lib/format';
-import type { ContactType, Service } from '../../lib/types';
+import type { ContactType } from '../../lib/types';
 import type { Errors } from '../../lib/validation';
 import { errorMessage, hasErrors, isEmail, isPhone } from '../../lib/validation';
 import { Button } from '../ui/Button';
@@ -70,7 +70,6 @@ export function ContactForm({ type }: { type: ContactType }) {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
   const [done, setDone] = useState(false);
-  const services = useFetch<Service[]>(isBudget ? '/services' : null);
 
   const set = <K extends keyof Values>(key: K, value: Values[K]) => {
     setValues((previous) => ({ ...previous, [key]: value }));
@@ -182,7 +181,11 @@ export function ContactForm({ type }: { type: ContactType }) {
           <SelectField
             label="Serviço de interesse"
             placeholder="Selecione…"
-            options={[...(services.data ?? []).map((s) => s.name), 'Outro / ainda não sei']}
+            options={[
+              'Hub completo (os 3 pilares)',
+              ...positioning.pillars.map((pillar) => pillar.name),
+              'Outro / ainda não sei',
+            ]}
             value={values.serviceInterest}
             onChange={(e) => set('serviceInterest', e.target.value)}
           />
@@ -203,7 +206,7 @@ export function ContactForm({ type }: { type: ContactType }) {
         rows={6}
         placeholder={
           isBudget
-            ? 'Qual é o objetivo da campanha, o público, o prazo e qualquer detalhe importante?'
+            ? 'Qual é o momento do negócio, a meta de faturamento, o público e o prazo?'
             : 'Como podemos ajudar?'
         }
         value={values.message}

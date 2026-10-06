@@ -92,6 +92,7 @@ CREATE TABLE "Service" (
     "shortDescription" TEXT,
     "description" TEXT NOT NULL,
     "icon" TEXT,
+    "pillar" TEXT,
     "features" TEXT[],
     "order" INTEGER NOT NULL DEFAULT 0,
     "active" BOOLEAN NOT NULL DEFAULT true,

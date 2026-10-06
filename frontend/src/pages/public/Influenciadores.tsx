@@ -38,7 +38,7 @@ const ResultInfo = styled.p`
 export function Influenciadores() {
   usePageMeta(
     'Nossos Parceiros',
-    'Conheça os influenciadores parceiros da PicPlus: perfis, nichos, redes sociais e materiais de apresentação.',
+    'Conheça os influenciadores parceiros da PicPlus, selecionados para transferir autoridade e gerar demanda.',
   );
 
   const [search, setSearch] = useState('');
@@ -67,13 +67,13 @@ export function Influenciadores() {
   return (
     <>
       <PageHero
-        eyebrow="Vitrine de parceiros"
+        eyebrow="O Megafone · Vitrine de parceiros"
         title={
           <>
-            Criadores que <Highlight>conectam</Highlight> marcas e pessoas
+            As vozes certas para <Highlight>distribuir</Highlight> a sua mensagem
           </>
         }
-        description="Perfis selecionados pela nossa equipe, com audiência engajada e conteúdo autêntico."
+        description="Criadores selecionados pela nossa equipe, com audiência engajada, para transferir autoridade e gerar demanda real."
       >
         <div>
           <ButtonLink to="/cadastro-influenciador" $variant="secondary">

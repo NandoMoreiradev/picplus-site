@@ -3,6 +3,8 @@ import {
   BarChart3,
   Briefcase,
   Camera,
+  Clapperboard,
+  Compass,
   Handshake,
   Heart,
   Layers,
@@ -103,6 +105,8 @@ export const SOCIAL_META: Record<
 /** Ícones disponíveis para os serviços (campo `icon` no CMS). */
 export const SERVICE_ICONS: Record<string, ComponentType<LucideProps>> = {
   megaphone: Megaphone,
+  compass: Compass,
+  clapperboard: Clapperboard,
   users: Users,
   camera: Camera,
   target: Target,

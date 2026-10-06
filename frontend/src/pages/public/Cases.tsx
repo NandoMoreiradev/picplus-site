@@ -16,7 +16,7 @@ const FilterBar = styled.div`
 `;
 
 export function Cases() {
-  usePageMeta('Cases de Sucesso', 'Conheça campanhas de marketing de influência desenvolvidas pela PicPlus e seus resultados.');
+  usePageMeta('Cases de Sucesso', 'Conheça projetos desenvolvidos pela PicPlus, unindo estratégia, produção e influência, e os seus resultados.');
   const { data, loading, error, reload } = useFetch<SuccessCase[]>('/cases');
   const [segment, setSegment] = useState<string | null>(null);
 
@@ -35,7 +35,7 @@ export function Cases() {
             Campanhas que geram <Highlight>resultado</Highlight>
           </>
         }
-        description="Veja como unimos estratégia, criadores e dados para entregar resultados reais para as marcas."
+        description="Veja como unimos estratégia, produção e influência para entregar resultado para as marcas."
       />
 
       <Section>

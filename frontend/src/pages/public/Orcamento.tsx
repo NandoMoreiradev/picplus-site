@@ -7,7 +7,7 @@ import { usePageMeta } from '../../hooks/usePageMeta';
 const NEXT_STEPS = [
   {
     title: 'Análise do pedido',
-    text: 'Nossa equipe lê o seu briefing e entende o objetivo da campanha.',
+    text: 'Nossa equipe lê o seu briefing e entende o momento do negócio e a meta de faturamento.',
   },
   {
     title: 'Contato da equipe',
@@ -15,7 +15,7 @@ const NEXT_STEPS = [
   },
   {
     title: 'Proposta sob medida',
-    text: 'Você recebe uma proposta com criadores, entregas e investimento.',
+    text: 'Você recebe um plano que conecta estratégia, produção e distribuição, com o investimento previsto.',
   },
 ];
 
@@ -92,7 +92,7 @@ const FormCard = styled(Card)`
 `;
 
 export function Orcamento() {
-  usePageMeta('Solicitar Orçamento', 'Peça um orçamento para a sua campanha de marketing de influência com a PicPlus.');
+  usePageMeta('Solicitar Orçamento', 'Peça um orçamento para integrar estratégia, produção audiovisual e influenciadores com a PicPlus.');
 
   return (
     <>
@@ -100,10 +100,10 @@ export function Orcamento() {
         eyebrow="Orçamento"
         title={
           <>
-            Vamos montar a <Highlight>sua campanha</Highlight>
+            Vamos desenhar o seu <Highlight>plano de crescimento</Highlight>
           </>
         }
-        description="Conte sobre o seu objetivo e retornamos com uma proposta personalizada."
+        description="Conte o seu momento e o seu objetivo de faturamento. Retornamos com uma proposta personalizada."
       />
 
       <Section $tight>
@@ -128,7 +128,7 @@ export function Orcamento() {
                   <Check size={18} aria-hidden /> Orçamento sem compromisso
                 </li>
                 <li>
-                  <Check size={18} aria-hidden /> Criadores selecionados para o seu público
+                  <Check size={18} aria-hidden /> Estratégia, produção e influência em um único plano
                 </li>
                 <li>
                   <Check size={18} aria-hidden /> Acompanhamento do início ao fim

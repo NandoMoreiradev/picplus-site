@@ -45,8 +45,9 @@ Blog (editor Markdown com pré-visualização) · Cases · Serviços · Marcas �
   também `MAIL_FROM` com um domínio verificado no Resend e `ADMIN_NOTIFY_EMAIL`.
 - **WhatsApp:** a recusa por WhatsApp abre uma conversa `wa.me` com a mensagem pronta; o envio é
   confirmado pela pessoa no próprio WhatsApp (não há API oficial integrada).
-- **Uploads:** gravados em disco (`backend/uploads` ou `UPLOADS_DIR`). Em hospedagens com disco efêmero
-  use um volume persistente ou troque `StorageService` por S3/Cloudinary (mesma interface: `save`/`remove`).
+- **Uploads:** com as variáveis `R2_*` preenchidas, imagens e PDFs vão para o **Cloudflare R2** e o banco
+  guarda a URL pública completa. Sem elas (desenvolvimento) são gravados em disco, em `backend/uploads`.
+  Preencher só parte das variáveis `R2_*` faz o backend recusar a inicialização, para não gravar em disco por engano.
 - **Texto institucional:** `frontend/src/content/about.ts` é um texto-base genérico (sem datas, números ou
   clientes). Substitua pela história real da agência.
 - **Dados de contato/redes** do site vêm das variáveis `VITE_*` (campos vazios são ocultados).
@@ -61,15 +62,20 @@ cd frontend && npm run lint && npm run build
 ## Deploy no Railway
 
 Projeto com **3 serviços**: `Postgres`, `backend` (root dir `backend`) e `frontend` (root dir `frontend`).
-Cada pasta tem um `railway.json` (build, start e healthcheck). Em Settings de cada serviço defina o
-**Config-as-code path** como `/backend/railway.json` e `/frontend/railway.json` (o caminho é a partir da raiz do repositório).
+O Railway descontinuou o Config as Code (`railway.json`) para serviços novos, então os comandos são
+definidos no painel de cada serviço (Settings):
+
+| Serviço | Custom Build Command | Custom Start Command | Healthcheck Path |
+|---|---|---|---|
+| backend | `npm run build` | `npm run start:railway` | `/api/health` |
+| frontend | `npm run build` | `npm run start` | `/` |
 
 1. **Postgres:** `+ New` → Database → PostgreSQL.
 2. **backend:** `+ New` → GitHub Repo → Root Directory `backend`. Variáveis:
    `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `NODE_ENV=production`, `JWT_SECRET` (≥ 32 caracteres),
-   `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, `UPLOADS_DIR=/data/uploads`,
-   `RESEND_API_KEY`, `MAIL_FROM`, `ADMIN_NOTIFY_EMAIL`. Adicione um **Volume** montado em `/data`
-   e gere o domínio público (Settings → Networking).
+   `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`, `RESEND_API_KEY`, `MAIL_FROM`, `ADMIN_NOTIFY_EMAIL` e as
+   variáveis do R2 (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL`).
+   Não é preciso Volume. Gere o domínio público (Settings → Networking).
 3. **frontend:** `+ New` → GitHub Repo → Root Directory `frontend`. Variáveis (lidas no *build*):
    `VITE_API_URL=https://<domínio-do-backend>` e os `VITE_*` de contato/redes. Gere o domínio público.
 4. Volte ao backend e defina `FRONTEND_URL=https://<domínio-do-frontend>` (libera o CORS e gera os links dos e-mails).

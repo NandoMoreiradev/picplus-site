@@ -95,7 +95,7 @@ const VALUE_ICONS = [Quote, Lightbulb, Target, Handshake];
 export function Sobre() {
   usePageMeta(
     'Sobre a Agência',
-    'Conheça a história, a missão e os valores da PicPlus, agência que conecta marcas e influenciadores.',
+    'Conheça a história, a missão e os valores da PicPlus: estratégia, produção e influência sob o mesmo teto.',
   );
   const brands = useFetch<Brand[]>('/brands');
   const team = useFetch<TeamMember[]>('/team');
@@ -109,7 +109,7 @@ export function Sobre() {
             Nossa <Highlight>história</Highlight>
           </>
         }
-        description="Conectamos pessoas, criadores e marcas com estratégia, proximidade e foco em resultado."
+        description="Estratégia, produção e influência sob o mesmo teto, para eliminar o desperdício da comunicação desconectada."
       />
 
       <Section>

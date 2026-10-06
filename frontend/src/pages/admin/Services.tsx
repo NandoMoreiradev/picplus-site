@@ -19,6 +19,7 @@ import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
 import { FormGrid, SelectField, Switch, TextArea, TextField } from '../../components/ui/Form';
 import { SERVICE_ICONS, ServiceIcon } from '../../components/ui/icons';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
+import { PILLAR_OPTIONS, pillarName } from '../../content/positioning';
 import { useCrud } from '../../hooks/useCrud';
 import type { Service } from '../../lib/types';
 
@@ -38,6 +39,7 @@ interface FormState {
   shortDescription: string;
   description: string;
   icon: string;
+  pillar: string;
   features: string[];
   order: string;
   active: boolean;
@@ -48,6 +50,7 @@ const EMPTY: FormState = {
   shortDescription: '',
   description: '',
   icon: 'sparkles',
+  pillar: '',
   features: [],
   order: '0',
   active: true,
@@ -58,6 +61,7 @@ const toForm = (service: Service): FormState => ({
   shortDescription: service.shortDescription ?? '',
   description: service.description,
   icon: service.icon ?? 'sparkles',
+  pillar: service.pillar ?? '',
   features: service.features,
   order: String(service.order),
   active: service.active,
@@ -120,6 +124,13 @@ function ServiceForm({
           value={form.description}
           onChange={(e) => set('description', e.target.value)}
         />
+        <SelectField
+          label="Pilar do hub"
+          options={PILLAR_OPTIONS}
+          value={form.pillar}
+          onChange={(e) => set('pillar', e.target.value)}
+          hint="Agrupa a entrega sob um dos três pilares na página Serviços."
+        />
         <FormGrid>
           <SelectField
             label="Ícone"
@@ -174,6 +185,7 @@ export function Services() {
       shortDescription: form.shortDescription.trim() || null,
       description: form.description.trim(),
       icon: form.icon,
+      pillar: form.pillar || null,
       features: form.features,
       order: Number(form.order) || 0,
       active: form.active,
@@ -211,6 +223,7 @@ export function Services() {
             <thead>
               <tr>
                 <th>Serviço</th>
+                <th>Pilar</th>
                 <th>Entregas</th>
                 <th>Ordem</th>
                 <th>Status</th>
@@ -231,6 +244,7 @@ export function Services() {
                       </div>
                     </CellMain>
                   </td>
+                  <td className="muted">{pillarName(service.pillar) ?? '—'}</td>
                   <td className="muted">{service.features.length}</td>
                   <td className="muted">{service.order}</td>
                   <td>

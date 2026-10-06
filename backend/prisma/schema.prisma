@@ -103,6 +103,8 @@ model Service {
   shortDescription String?
   description      String   @db.Text
   icon             String?
+  // Pilar do hub: assessoria | producao | influencia (agrupa as entregas no site)
+  pillar           String?
   features         String[]
   order            Int      @default(0)
   active           Boolean  @default(true)

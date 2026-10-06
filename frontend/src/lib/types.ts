@@ -43,6 +43,7 @@ export interface Service {
   shortDescription: string | null;
   description: string;
   icon: string | null;
+  pillar: string | null;
   features: string[];
   order: number;
   active: boolean;

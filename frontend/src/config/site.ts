@@ -2,13 +2,15 @@
  * Informações institucionais configuráveis por variáveis de ambiente (ver .env.example).
  * Campos vazios simplesmente não são exibidos no site.
  */
+import { positioning } from '../content/positioning';
+
 const env = import.meta.env;
 
 const whatsappDigits = (env.VITE_WHATSAPP ?? '').replace(/\D/g, '');
 
 export const site = {
   name: 'PicPlus',
-  tagline: 'Conectando marcas aos melhores influenciadores do mercado com resultados reais.',
+  tagline: positioning.tagline,
   email: (env.VITE_CONTACT_EMAIL as string | undefined) || '',
   phone: (env.VITE_CONTACT_PHONE as string | undefined) || '',
   address: (env.VITE_ADDRESS as string | undefined) || '',

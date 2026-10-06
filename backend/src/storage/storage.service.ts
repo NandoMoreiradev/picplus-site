@@ -1,8 +1,13 @@
+import {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
-import { config } from '../config/configuration';
+import { config, isR2Enabled } from '../config/configuration';
 
 export type UploadKind = 'image' | 'pdf';
 
@@ -11,38 +16,71 @@ const MAX_SIZE: Record<UploadKind, number> = {
   pdf: 10 * 1024 * 1024,
 };
 
+interface Detected {
+  kind: UploadKind;
+  ext: string;
+  mime: string;
+}
+
 /** Detecta o tipo real pelos primeiros bytes — o mimetype enviado pelo cliente não é confiável. */
-function sniff(buffer: Buffer): { kind: UploadKind; ext: string } | null {
+function sniff(buffer: Buffer): Detected | null {
   if (buffer.length < 12) return null;
   if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
-    return { kind: 'image', ext: 'jpg' };
+    return { kind: 'image', ext: 'jpg', mime: 'image/jpeg' };
   }
   if (
     buffer
       .subarray(0, 8)
       .equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
   ) {
-    return { kind: 'image', ext: 'png' };
+    return { kind: 'image', ext: 'png', mime: 'image/png' };
   }
   if (
     buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
     buffer.subarray(8, 12).toString('ascii') === 'WEBP'
   ) {
-    return { kind: 'image', ext: 'webp' };
+    return { kind: 'image', ext: 'webp', mime: 'image/webp' };
   }
   if (buffer.subarray(0, 5).toString('ascii') === '%PDF-') {
-    return { kind: 'pdf', ext: 'pdf' };
+    return { kind: 'pdf', ext: 'pdf', mime: 'application/pdf' };
   }
   return null;
 }
 
 /**
- * Armazenamento em disco local. Para migrar para S3/Cloudinary basta
- * reimplementar `save` e `remove` mantendo a mesma assinatura.
+ * Armazenamento de arquivos enviados.
+ *
+ * - Com as variáveis R2_* completas: Cloudflare R2 (persistente, servido por CDN).
+ *   A URL pública completa é gravada no banco.
+ * - Sem elas: disco local (desenvolvimento). Grava o caminho relativo /uploads/x.ext.
+ *
+ * `save` e `remove` mantêm a mesma assinatura nos dois modos.
  */
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
+  private readonly useR2 = isR2Enabled();
+  private readonly s3 = this.useR2
+    ? new S3Client({
+        region: 'auto',
+        endpoint: `https://${config.r2.accountId}.r2.cloudflarestorage.com`,
+        credentials: {
+          accessKeyId: config.r2.accessKeyId,
+          secretAccessKey: config.r2.secretAccessKey,
+        },
+        // O R2 não aceita os checksums adicionais que o SDK envia por padrão.
+        requestChecksumCalculation: 'WHEN_REQUIRED',
+        responseChecksumValidation: 'WHEN_REQUIRED',
+      })
+    : null;
+
+  constructor() {
+    this.logger.log(
+      this.useR2
+        ? `Uploads no Cloudflare R2 (bucket ${config.r2.bucket})`
+        : `Uploads em disco local (${config.uploads.dir}). Em produção configure o R2.`,
+    );
+  }
 
   async save(file: Express.Multer.File, expected: UploadKind): Promise<string> {
     const detected = sniff(file.buffer);
@@ -59,15 +97,49 @@ export class StorageService {
       );
     }
 
-    await mkdir(config.uploads.dir, { recursive: true });
     const filename = `${randomUUID()}.${detected.ext}`;
+
+    if (this.s3) {
+      const key = `uploads/${filename}`;
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: config.r2.bucket,
+          Key: key,
+          Body: file.buffer,
+          // Tipo definido pelo servidor (nunca o do cliente) e nome aleatório: o arquivo é imutável.
+          ContentType: detected.mime,
+          CacheControl: 'public, max-age=31536000, immutable',
+        }),
+      );
+      return `${config.r2.publicUrl}/${key}`;
+    }
+
+    await mkdir(config.uploads.dir, { recursive: true });
     await writeFile(join(config.uploads.dir, filename), file.buffer);
     return `${config.uploads.publicPath}/${filename}`;
   }
 
-  /** Remove um arquivo previamente salvo. Silencioso se não existir. */
+  /** Remove um arquivo previamente salvo. Silencioso se não existir ou for de outra origem. */
   async remove(url?: string | null): Promise<void> {
-    if (!url || !url.startsWith(`${config.uploads.publicPath}/`)) return;
+    if (!url) return;
+
+    // Arquivo no R2: a chave é o que vem depois da URL pública.
+    if (this.s3 && url.startsWith(`${config.r2.publicUrl}/uploads/`)) {
+      const key = url.slice(config.r2.publicUrl.length + 1);
+      try {
+        await this.s3.send(
+          new DeleteObjectCommand({ Bucket: config.r2.bucket, Key: key }),
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Falha ao remover ${key}: ${(error as Error).message}`,
+        );
+      }
+      return;
+    }
+
+    // Arquivo em disco local.
+    if (!url.startsWith(`${config.uploads.publicPath}/`)) return;
     // basename impede path traversal (../)
     const filename = basename(url);
     try {

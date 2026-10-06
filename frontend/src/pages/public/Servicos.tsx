@@ -1,68 +1,127 @@
+import styled from 'styled-components';
 import { CtaBand } from '../../components/public/CtaBand';
+import { PillarCard } from '../../components/public/PillarCard';
 import { ServiceCard } from '../../components/public/cards';
 import { ButtonLink } from '../../components/ui/Button';
-import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
-import { Container, Grid, Highlight, PageHero, Section } from '../../components/ui/Layout';
+import { ErrorState, Skeleton } from '../../components/ui/Feedback';
+import { Container, Grid, Highlight, PageHero, Section, SectionHeader } from '../../components/ui/Layout';
 import { Reveal } from '../../components/ui/Reveal';
+import { positioning, uvp } from '../../content/positioning';
 import { useFetch } from '../../hooks/useFetch';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import type { Service } from '../../lib/types';
 
+const Group = styled.div`
+  & + & {
+    margin-top: 3.5rem;
+  }
+`;
+
+const GroupTitle = styled.div`
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 800;
+  }
+  span {
+    color: ${({ theme }) => theme.colors.primary};
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+`;
+
 export function Servicos() {
   usePageMeta(
     'Serviços',
-    'Marketing de influência, gestão de criadores, produção de conteúdo, estratégia e performance: conheça os serviços da PicPlus.',
+    'Assessoria de marketing, produtora audiovisual e agenciamento de influenciadores integrados em um único hub de performance.',
   );
   const { data, loading, error, reload } = useFetch<Service[]>('/services');
+  const services = data ?? [];
+
+  // Entregas agrupadas por pilar; as sem pilar vão para o final.
+  const groups = [
+    ...positioning.pillars.map((pillar) => ({
+      key: pillar.key as string,
+      title: pillar.name,
+      nickname: pillar.nickname,
+      items: services.filter((service) => service.pillar === pillar.key),
+    })),
+    {
+      key: 'outras',
+      title: 'Outras entregas',
+      nickname: '',
+      items: services.filter((service) => !positioning.pillars.some((pillar) => pillar.key === service.pillar)),
+    },
+  ].filter((group) => group.items.length > 0);
 
   return (
     <>
       <PageHero
-        eyebrow="Serviços"
+        eyebrow={positioning.category}
         title={
           <>
-            Soluções para <Highlight>cada etapa</Highlight> da sua campanha
+            Estratégia, produção e influência: <Highlight>um único hub</Highlight>
           </>
         }
-        description="Atuamos de ponta a ponta no marketing de influência, com uma equipe dedicada ao seu objetivo."
+        description={uvp.support}
       />
 
       <Section>
         <Container>
-          {error ? (
-            <ErrorState message={error.message} onRetry={reload} />
-          ) : loading && !data ? (
-            <Grid $min="340px">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} $h="300px" $radius="16px" />
-              ))}
-            </Grid>
-          ) : data && data.length > 0 ? (
-            <Grid $min="340px">
-              {data.map((service, index) => (
-                <Reveal key={service.id} delay={(index % 3) * 80}>
-                  <ServiceCard service={service} detailed />
-                </Reveal>
-              ))}
-            </Grid>
-          ) : (
-            <EmptyState
-              title="Em breve por aqui"
-              description="Estamos preparando a apresentação dos nossos serviços."
-              action={
-                <ButtonLink to="/contato" $variant="secondary">
-                  Falar com a equipe
-                </ButtonLink>
-              }
-            />
-          )}
+          <Grid $min="300px" $gap="1.5rem">
+            {positioning.pillars.map((pillar, index) => (
+              <Reveal key={pillar.key} delay={index * 90}>
+                <PillarCard pillar={pillar} index={index} />
+              </Reveal>
+            ))}
+          </Grid>
         </Container>
       </Section>
 
-      <CtaBand
-        title="Não encontrou o que procurava?"
-        description="Cada marca é única. Conte o seu desafio e desenhamos uma solução sob medida."
-      >
+      {(loading || groups.length > 0 || error) && (
+        <Section $surface>
+          <Container>
+            <SectionHeader
+              eyebrow="O que entregamos"
+              title="Entregas de cada pilar"
+              description="O detalhamento do que está incluído em cada frente do hub."
+            />
+            {error ? (
+              <ErrorState message={error.message} onRetry={reload} />
+            ) : loading && !data ? (
+              <Grid $min="340px">
+                {[0, 1, 2].map((i) => (
+                  <Skeleton key={i} $h="280px" $radius="16px" />
+                ))}
+              </Grid>
+            ) : (
+              groups.map((group) => (
+                <Group key={group.key}>
+                  <GroupTitle>
+                    <h3>{group.title}</h3>
+                    {group.nickname && <span>{group.nickname}</span>}
+                  </GroupTitle>
+                  <Grid $min="320px">
+                    {group.items.map((service, index) => (
+                      <Reveal key={service.id} delay={(index % 3) * 80}>
+                        <ServiceCard service={service} detailed />
+                      </Reveal>
+                    ))}
+                  </Grid>
+                </Group>
+              ))
+            )}
+          </Container>
+        </Section>
+      )}
+
+      <CtaBand title={positioning.cta.title} description={positioning.cta.description}>
         <ButtonLink to="/orcamento" $variant="dark" $size="lg">
           Solicitar orçamento
         </ButtonLink>

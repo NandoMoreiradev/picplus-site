@@ -1,23 +1,23 @@
 import { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { ArrowRight, ClipboardList, LineChart, Rocket, UserCheck } from 'lucide-react';
-import { ArticleCard, CaseCard, InfluencerCard, ServiceCard } from '../../components/public/cards';
+import { ArrowRight, Check, X } from 'lucide-react';
+import { ArticleCard, CaseCard, InfluencerCard } from '../../components/public/cards';
 import { BrandStrip } from '../../components/public/BrandStrip';
 import { CtaBand } from '../../components/public/CtaBand';
 import { InfluencerModal } from '../../components/public/InfluencerModal';
+import { PillarCard } from '../../components/public/PillarCard';
 import { ButtonLink } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Feedback';
-import { Container, Eyebrow, Grid, Highlight, Section, SectionHeader } from '../../components/ui/Layout';
+import { Card, Container, Eyebrow, Grid, Highlight, Section, SectionHeader } from '../../components/ui/Layout';
 import { Reveal } from '../../components/ui/Reveal';
+import { positioning, uvp } from '../../content/positioning';
 import { useFetch } from '../../hooks/useFetch';
 import { usePageMeta } from '../../hooks/usePageMeta';
-import { site } from '../../config/site';
 import type {
   ArticleSummary,
   Brand,
   Paginated,
   PublicStats,
-  Service,
   ShowcaseInfluencer,
   SuccessCase,
 } from '../../lib/types';
@@ -75,21 +75,43 @@ const HeroContent = styled.div`
   gap: 1.75rem;
 
   h1 {
-    font-size: clamp(2.6rem, 7vw, 5.2rem);
+    font-size: clamp(2.4rem, 6.2vw, 4.6rem);
     font-weight: 900;
-    max-width: 960px;
+    max-width: 980px;
     letter-spacing: -0.035em;
   }
   .lead {
-    font-size: clamp(1.1rem, 2vw, 1.4rem);
+    font-size: clamp(1.1rem, 2vw, 1.35rem);
     color: ${({ theme }) => theme.colors.textSecondary};
-    max-width: 680px;
+    max-width: 720px;
   }
   .actions {
     display: flex;
     flex-wrap: wrap;
     gap: 1rem;
     justify-content: center;
+  }
+`;
+
+const Chain = styled.ul`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem 0.9rem;
+  margin-top: 0.5rem;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.9rem;
+    color: ${({ theme }) => theme.colors.textSecondary};
+    font-weight: 800;
+    font-size: 0.95rem;
+  }
+  li:not(:last-child)::after {
+    content: '→';
+    color: ${({ theme }) => theme.colors.primary};
   }
 `;
 
@@ -105,6 +127,9 @@ const StatsRow = styled.dl`
   max-width: 760px;
 
   div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
     text-align: center;
   }
   dt {
@@ -119,11 +144,6 @@ const StatsRow = styled.dl`
     font-weight: 900;
     line-height: 1;
     color: ${({ theme }) => theme.colors.primary};
-  }
-  div {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
   }
 `;
 
@@ -143,15 +163,15 @@ function Hero({ stats }: { stats: PublicStats | null }) {
       <Container>
         <HeroContent>
           <Reveal>
-            <Eyebrow>Agência de marketing de influência</Eyebrow>
+            <Eyebrow>{positioning.category}</Eyebrow>
           </Reveal>
           <Reveal delay={80}>
             <h1>
-              Conectamos marcas aos <Highlight>melhores criadores</Highlight> do mercado
+              Deixe de gerenciar fornecedores e comece a gerenciar <Highlight>resultados</Highlight>.
             </h1>
           </Reveal>
           <Reveal delay={160}>
-            <p className="lead">{site.tagline}</p>
+            <p className="lead">{uvp.support}</p>
           </Reveal>
           <Reveal delay={240}>
             <div className="actions">
@@ -159,12 +179,19 @@ function Hero({ stats }: { stats: PublicStats | null }) {
                 Solicitar orçamento <ArrowRight size={20} aria-hidden />
               </ButtonLink>
               <ButtonLink to="/servicos" $variant="secondary" $size="lg">
-                Conheça nossos serviços
+                Conheça o hub
               </ButtonLink>
             </div>
           </Reveal>
+          <Reveal delay={300}>
+            <Chain aria-label="Cadeia de entrega">
+              {['Estratégia', 'Produção', 'Influência', 'Resultado'].map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </Chain>
+          </Reveal>
           {items.length > 0 && (
-            <Reveal delay={320}>
+            <Reveal delay={360}>
               <StatsRow>
                 {items.map((item) => (
                   <div key={item.label}>
@@ -181,30 +208,53 @@ function Hero({ stats }: { stats: PublicStats | null }) {
   );
 }
 
-/* ── Como trabalhamos ────────────────────────────────── */
+/* ── O custo da fragmentação ─────────────────────────── */
 
-const STEPS = [
-  {
-    icon: ClipboardList,
-    title: 'Briefing',
-    text: 'Entendemos o seu negócio, o público e os objetivos da campanha.',
-  },
-  {
-    icon: UserCheck,
-    title: 'Curadoria',
-    text: 'Selecionamos os criadores com o perfil, a audiência e os valores certos para a sua marca.',
-  },
-  {
-    icon: Rocket,
-    title: 'Execução',
-    text: 'Gerenciamos roteiros, aprovações e entregas para que tudo saia no prazo e com qualidade.',
-  },
-  {
-    icon: LineChart,
-    title: 'Resultados',
-    text: 'Medimos o desempenho e entregamos aprendizados claros para as próximas ações.',
-  },
-];
+const Versus = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const VersusCard = styled(Card)<{ $good?: boolean }>`
+  padding: 2rem;
+  height: 100%;
+  border-color: ${({ $good, theme }) => ($good ? theme.colors.primaryBorder : theme.colors.border)};
+  background: ${({ $good, theme }) =>
+    $good
+      ? `radial-gradient(circle at 100% 0%, rgba(182, 232, 41, 0.14), transparent 55%), ${theme.colors.surface}`
+      : theme.colors.surface};
+
+  h3 {
+    font-size: 1.3rem;
+    font-weight: 800;
+    margin-bottom: 1.25rem;
+    color: ${({ $good, theme }) => ($good ? theme.colors.primary : theme.colors.textSecondary)};
+  }
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.95rem;
+  }
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    color: ${({ $good, theme }) => ($good ? theme.colors.text : theme.colors.textSecondary)};
+    line-height: 1.55;
+  }
+  li svg {
+    flex-shrink: 0;
+    margin-top: 3px;
+    color: ${({ $good, theme }) => ($good ? theme.colors.primary : theme.colors.danger)};
+  }
+`;
+
+/* ── Processo ────────────────────────────────────────── */
 
 const Steps = styled.ol`
   display: grid;
@@ -230,16 +280,12 @@ const Steps = styled.ol`
   li::before {
     counter-increment: step;
     content: '0' counter(step);
-    position: absolute;
-    top: 1.25rem;
-    right: 1.5rem;
+    display: block;
+    margin-bottom: 1rem;
     font-size: 2.2rem;
     font-weight: 900;
-    color: ${({ theme }) => theme.colors.surfaceHover};
-  }
-  svg {
+    line-height: 1;
     color: ${({ theme }) => theme.colors.primary};
-    margin-bottom: 1rem;
   }
   h3 {
     font-size: 1.2rem;
@@ -249,6 +295,30 @@ const Steps = styled.ol`
   p {
     color: ${({ theme }) => theme.colors.textSecondary};
     font-size: 0.95rem;
+  }
+`;
+
+/* ── Público-alvo ────────────────────────────────────── */
+
+const AudienceGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1.25rem;
+
+  div.item {
+    padding: 1.5rem;
+    border-left: 3px solid ${({ theme }) => theme.colors.primary};
+    background: ${({ theme }) => theme.colors.surface};
+    border-radius: 0 ${({ theme }) => theme.radii.md} ${({ theme }) => theme.radii.md} 0;
+  }
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    margin-bottom: 0.35rem;
+  }
+  p {
+    color: ${({ theme }) => theme.colors.textSecondary};
+    font-size: 0.93rem;
   }
 `;
 
@@ -278,7 +348,6 @@ export function Home() {
 
   const stats = useFetch<PublicStats>('/stats');
   const brands = useFetch<Brand[]>('/brands');
-  const services = useFetch<Service[]>('/services');
   const cases = useFetch<SuccessCase[]>('/cases');
   const influencers = useFetch<Paginated<ShowcaseInfluencer>>('/influencers/showcase', { limit: 4 });
   const articles = useFetch<Paginated<ArticleSummary>>('/articles', { limit: 3 });
@@ -286,6 +355,7 @@ export function Home() {
   const featuredCases = (cases.data ?? []).slice(0, 3);
   const showcase = influencers.data?.items ?? [];
   const posts = articles.data?.items ?? [];
+  const { problem, pillars, process, audience, cta } = positioning;
 
   return (
     <>
@@ -300,48 +370,75 @@ export function Home() {
         </Section>
       )}
 
-      <Section id="servicos">
+      <Section>
+        <Container>
+          <SectionHeader eyebrow={problem.eyebrow} title={problem.title} description={problem.description} />
+          <Versus>
+            <Reveal>
+              <VersusCard>
+                <h3>{problem.fragmented.title}</h3>
+                <ul>
+                  {problem.fragmented.items.map((item) => (
+                    <li key={item}>
+                      <X size={18} aria-hidden /> {item}
+                    </li>
+                  ))}
+                </ul>
+              </VersusCard>
+            </Reveal>
+            <Reveal delay={120}>
+              <VersusCard $good>
+                <h3>{problem.integrated.title}</h3>
+                <ul>
+                  {problem.integrated.items.map((item) => (
+                    <li key={item}>
+                      <Check size={18} aria-hidden /> {item}
+                    </li>
+                  ))}
+                </ul>
+              </VersusCard>
+            </Reveal>
+          </Versus>
+        </Container>
+      </Section>
+
+      <Section $surface id="pilares">
         <Container>
           <SectionHeader
-            eyebrow="O que fazemos"
+            eyebrow="Os três pilares"
             title={
               <>
-                Estratégia, criadores e <Highlight>resultado</Highlight>
+                Um hub, três frentes, <Highlight>um único responsável</Highlight>
               </>
             }
-            description="Do planejamento à análise de performance, cuidamos de cada etapa para que a sua marca converse com a audiência certa."
+            description="Estratégia, produção e distribuição desenhadas juntas desde o primeiro dia."
           />
-          {services.loading && !services.data ? (
-            <GridSkeleton count={3} height="260px" />
-          ) : (
-            <Grid $min="320px">
-              {(services.data ?? []).slice(0, 6).map((service, index) => (
-                <Reveal key={service.id} delay={index * 70}>
-                  <ServiceCard service={service} />
-                </Reveal>
-              ))}
-            </Grid>
-          )}
+          <Grid $min="300px" $gap="1.5rem">
+            {pillars.map((pillar, index) => (
+              <Reveal key={pillar.key} delay={index * 90}>
+                <PillarCard pillar={pillar} index={index} />
+              </Reveal>
+            ))}
+          </Grid>
           <MoreLink>
             <ButtonLink to="/servicos" $variant="secondary">
-              Ver todos os serviços <ArrowRight size={18} aria-hidden />
+              Ver o que entregamos em cada pilar <ArrowRight size={18} aria-hidden />
             </ButtonLink>
           </MoreLink>
         </Container>
       </Section>
 
-      <Section $surface>
+      <Section>
         <Container>
           <SectionHeader
             eyebrow="Como trabalhamos"
-            title="Um processo simples, do briefing ao relatório"
-            description="Transparência em cada fase para você acompanhar tudo de perto."
+            title="Da estratégia ao resultado, em uma única cadeia"
+            description="Cada etapa nasce da anterior, e todas respondem à mesma meta de negócio."
           />
           <Steps>
-            {STEPS.map(({ icon: Icon, title, text }, index) => (
+            {process.map(({ title, text }, index) => (
               <Reveal key={title} delay={index * 90}>
                 <li>
-                  <Icon size={30} aria-hidden />
                   <h3>{title}</h3>
                   <p>{text}</p>
                 </li>
@@ -351,13 +448,29 @@ export function Home() {
         </Container>
       </Section>
 
+      <Section $surface $tight>
+        <Container>
+          <SectionHeader eyebrow={audience.eyebrow} title={audience.title} />
+          <AudienceGrid>
+            {audience.items.map((item, index) => (
+              <Reveal key={item.title} delay={index * 70}>
+                <div className="item">
+                  <h3>{item.title}</h3>
+                  <p>{item.text}</p>
+                </div>
+              </Reveal>
+            ))}
+          </AudienceGrid>
+        </Container>
+      </Section>
+
       {(cases.loading || featuredCases.length > 0) && (
         <Section>
           <Container>
             <SectionHeader
               eyebrow="Cases de sucesso"
               title="Resultados que falam por si"
-              description="Campanhas em que unimos criatividade, criadores e dados."
+              description="Campanhas em que estratégia, produção e influência trabalharam juntas."
             />
             {cases.loading && !cases.data ? (
               <GridSkeleton />
@@ -383,9 +496,9 @@ export function Home() {
         <Section $surface>
           <Container>
             <SectionHeader
-              eyebrow="Nossos parceiros"
-              title="Criadores que fazem a diferença"
-              description="Conheça alguns dos influenciadores que fazem parte da rede PicPlus."
+              eyebrow="O Megafone"
+              title="As vozes certas para distribuir a sua mensagem"
+              description="Criadores selecionados pela nossa equipe para transferir autoridade e gerar demanda."
             />
             {influencers.loading && !influencers.data ? (
               <GridSkeleton count={4} height="300px" />
@@ -412,8 +525,8 @@ export function Home() {
           <Container>
             <SectionHeader
               eyebrow="Blog"
-              title="Conteúdo para quem vive de marketing"
-              description="Tendências, boas práticas e bastidores do marketing de influência."
+              title="Conteúdo para quem decide sobre marketing"
+              description="Posicionamento, funil, produção e influência, com foco em resultado de negócio."
             />
             <Grid $min="320px">
               {posts.map((post, index) => (
@@ -431,10 +544,7 @@ export function Home() {
         </Section>
       )}
 
-      <CtaBand
-        title="Pronto para o próximo nível da sua marca?"
-        description="Conte o seu objetivo e montamos uma proposta sob medida, com os criadores certos para o seu público."
-      >
+      <CtaBand title={cta.title} description={cta.description}>
         <ButtonLink to="/orcamento" $variant="dark" $size="lg">
           Solicitar orçamento
         </ButtonLink>
