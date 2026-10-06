@@ -1,7 +1,5 @@
-export const API_URL: string = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(
-  /\/$/,
-  '',
-);
+// `||` (e não `??`): uma variável definida porém vazia também cai no padrão de desenvolvimento.
+export const API_URL: string = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/+$/, '');
 const API_BASE = `${API_URL}/api`;
 
 const TOKEN_KEY = 'picplus_token';
@@ -84,6 +82,15 @@ async function request<T>(
   if (response.status === 204) return undefined as T;
 
   const data: unknown = await response.json().catch(() => null);
+
+  // Sucesso sem corpo JSON: o pedido não chegou à API (ex.: VITE_API_URL aponta para o próprio site,
+  // que responde com o HTML da página). Falhar aqui evita erros confusos mais adiante.
+  if (response.ok && data === null) {
+    throw new ApiError(
+      'Resposta inválida do servidor. Verifique se a variável VITE_API_URL aponta para o endereço da API.',
+      response.status,
+    );
+  }
 
   if (!response.ok) {
     const raw = (data as { message?: string | string[] } | null)?.message;
