@@ -1,7 +1,7 @@
 import { createGlobalStyle } from 'styled-components';
 
 export const GlobalStyles = createGlobalStyle`
-  /* Fontes carregadas via <link> no index.html (evita bloqueio de renderização do @import). */
+  /* Fontes carregadas via <link> no index.html, para não bloquear a renderização. */
 
   *, *::before, *::after {
     margin: 0;

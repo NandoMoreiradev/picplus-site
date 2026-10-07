@@ -8,7 +8,7 @@ import { api, ApiError } from '../../lib/api';
 import { maskPhone } from '../../lib/format';
 import type { ContactType } from '../../lib/types';
 import type { Errors } from '../../lib/validation';
-import { errorMessage, hasErrors, isEmail, isPhone } from '../../lib/validation';
+import { errorMessage, hasErrors, isEmail, isName, isPhone } from '../../lib/validation';
 import { Button } from '../ui/Button';
 import { Alert } from '../ui/Feedback';
 import { FormGrid, Honeypot, SelectField, TextArea, TextField } from '../ui/Form';
@@ -78,7 +78,7 @@ export function ContactForm({ type }: { type: ContactType }) {
 
   const validate = (): Errors<Values> => {
     const next: Errors<Values> = {};
-    if (values.name.trim().length < 2) next.name = 'Informe o seu nome.';
+    if (values.name.trim().length < 2 || !isName(values.name)) next.name = 'Informe o seu nome.';
     if (!isEmail(values.email)) next.email = 'Informe um e-mail válido.';
     if (values.phone && !isPhone(values.phone)) next.phone = 'Informe um telefone válido, com DDD.';
     if (values.message.trim().length < 10) next.message = 'Conte um pouco mais (mínimo de 10 caracteres).';

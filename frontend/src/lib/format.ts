@@ -38,7 +38,10 @@ export function initials(name: string): string {
 
 /** Máscara de telefone brasileiro: (11) 98888-7777 */
 export function maskPhone(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
+  let digits = value.replace(/\D/g, '');
+  // Número colado com DDI (+55 11 98888-7777): remove o 55 para mascarar só o número nacional.
+  if (digits.length > 11 && digits.startsWith('55')) digits = digits.slice(2);
+  digits = digits.slice(0, 11);
   if (digits.length <= 2) return digits ? `(${digits}` : '';
   if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
   if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;

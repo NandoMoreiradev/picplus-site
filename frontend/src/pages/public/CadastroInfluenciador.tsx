@@ -21,7 +21,7 @@ import { usePageMeta } from '../../hooks/usePageMeta';
 import { api, ApiError } from '../../lib/api';
 import { maskPhone } from '../../lib/format';
 import type { Errors } from '../../lib/validation';
-import { errorMessage, hasErrors, isEmail, isPhone } from '../../lib/validation';
+import { errorMessage, hasErrors, isEmail, isName, isPhone, socialError } from '../../lib/validation';
 
 interface FormValues {
   name: string;
@@ -178,12 +178,17 @@ export function CadastroInfluenciador() {
 
   const validate = () => {
     const next: typeof errors = {};
-    if (values.name.trim().length < 2) next.name = 'Informe o seu nome completo.';
+    if (values.name.trim().length < 2 || !isName(values.name)) next.name = 'Informe o seu nome completo.';
     if (!isEmail(values.email)) next.email = 'Informe um e-mail válido.';
     if (!isPhone(values.whatsapp)) next.whatsapp = 'Informe um WhatsApp válido, com DDD.';
     if (!values.niche) next.niche = 'Escolha o seu nicho principal.';
     if (!SOCIAL_FIELDS.some(({ key }) => values[key].trim())) {
       next.social = 'Informe ao menos uma rede social.';
+    }
+    // Cada rede preenchida precisa ser um @usuário ou um link da própria rede.
+    for (const { key } of SOCIAL_FIELDS) {
+      const message = socialError(key, values[key]);
+      if (message) next[key] = message;
     }
     if (!profileImage) next.profileImage = 'Envie uma foto de perfil.';
     if (!values.acceptTerms) next.acceptTerms = 'Você precisa aceitar para continuar.';
@@ -352,6 +357,7 @@ export function CadastroInfluenciador() {
                         autoCapitalize="none"
                         value={values[key]}
                         onChange={(e) => set(key, e.target.value)}
+                        error={errors[key]}
                       />
                     ))}
                   </FormGrid>

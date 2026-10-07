@@ -26,9 +26,26 @@ const LABEL: Record<SocialNetwork, string> = {
   twitch: 'Twitch',
 };
 
+/** Domínios aceitos em cada rede (subdomínios como www. e m. também valem). */
+const ALLOWED_HOSTS: Record<SocialNetwork, string[]> = {
+  instagram: ['instagram.com'],
+  tiktok: ['tiktok.com'],
+  youtube: ['youtube.com', 'youtu.be'],
+  twitter: ['x.com', 'twitter.com'],
+  twitch: ['twitch.tv'],
+};
+
+const hostMatches = (hostname: string, allowed: string[]) => {
+  const host = hostname.toLowerCase();
+  return allowed.some(
+    (domain) => host === domain || host.endsWith(`.${domain}`),
+  );
+};
+
 /**
- * Aceita "@usuario", "usuario" ou uma URL completa e devolve sempre uma URL https válida.
- * Rejeita qualquer outro esquema (javascript:, data:...) para evitar links maliciosos na vitrine.
+ * Aceita "@usuario", "usuario" ou o link do perfil e devolve sempre uma URL https
+ * da própria rede. Esses links aparecem na vitrine pública, então rejeitamos
+ * qualquer outro domínio (phishing) e qualquer outro esquema (javascript:, data:...).
  */
 export function normalizeSocial(network: SocialNetwork, raw: string): string {
   const value = raw.trim();
@@ -43,6 +60,12 @@ export function normalizeSocial(network: SocialNetwork, raw: string): string {
     if (url.protocol !== 'https:' && url.protocol !== 'http:') {
       throw new BadRequestException(`Link de ${LABEL[network]} inválido.`);
     }
+    if (!hostMatches(url.hostname, ALLOWED_HOSTS[network])) {
+      throw new BadRequestException(
+        `O link informado não é do ${LABEL[network]}. Use o endereço do seu perfil ou apenas o @usuário.`,
+      );
+    }
+    url.protocol = 'https:';
     return url.toString();
   }
 

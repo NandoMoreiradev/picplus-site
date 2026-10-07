@@ -17,6 +17,7 @@ import {
 } from 'class-validator';
 import { InfluencerStatus } from '@prisma/client';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { IsBrPhone, NAME_PATTERN } from '../../common/validators/is-br-phone';
 
 const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
@@ -29,6 +30,7 @@ export class RegisterInfluencerDto {
   @IsString()
   @MinLength(2, { message: 'Informe o seu nome.' })
   @MaxLength(120)
+  @Matches(NAME_PATTERN, { message: 'Informe um nome válido.' })
   name: string;
 
   @Transform(({ value }) =>
@@ -39,9 +41,7 @@ export class RegisterInfluencerDto {
   email: string;
 
   @Transform(trim)
-  @Matches(/^[\d\s()+-]{10,20}$/, {
-    message: 'Informe um WhatsApp válido, com DDD.',
-  })
+  @IsBrPhone({ message: 'Informe um WhatsApp válido, com DDD.' })
   whatsapp: string;
 
   @Transform(trim)
