@@ -169,7 +169,7 @@ function Hero({ stats }: { stats: PublicStats | null }) {
           </Reveal>
           <Reveal delay={80}>
             <h1>
-              Deixe de gerenciar fornecedores e comece a gerenciar <Highlight>resultados</Highlight>.
+              <Highlight>Estratégia</Highlight> que converte. Produção que <Highlight>impressiona</Highlight>. Influência que <Highlight>vende</Highlight>.
             </h1>
           </Reveal>
           <Reveal delay={160}>

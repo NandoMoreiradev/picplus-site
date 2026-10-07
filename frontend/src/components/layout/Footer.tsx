@@ -119,6 +119,22 @@ const Copyright = styled.div`
   font-size: 0.875rem;
 `;
 
+const FooterMeta = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+
+  a {
+    text-decoration: underline;
+    text-decoration-color: ${({ theme }) => theme.colors.borderStrong};
+    text-underline-offset: 3px;
+  }
+  a:hover {
+    text-decoration-color: ${({ theme }) => theme.colors.primary};
+  }
+`;
+
 export function Footer() {
   const socials = [
     { href: site.social.instagram, label: 'Instagram', Icon: InstagramIcon },
@@ -183,7 +199,20 @@ export function Footer() {
 
       <Copyright>
         <span>© {new Date().getFullYear()} PicPlus Company. Todos os direitos reservados.</span>
-        <Link to="/admin">Área restrita</Link>
+        <FooterMeta>
+          <span>
+            Desenvolvido por{' '}
+            <a
+              href="https://instagram.com/eu_nando_moreira"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Fernando Moreira, desenvolvedor do site (Instagram, abre em nova aba)"
+            >
+              Fernando Moreira
+            </a>
+          </span>
+          <Link to="/admin">Área restrita</Link>
+        </FooterMeta>
       </Copyright>
     </FooterContainer>
   );
