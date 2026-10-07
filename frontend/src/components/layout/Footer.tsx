@@ -198,7 +198,9 @@ export function Footer() {
       </FooterContent>
 
       <Copyright>
-        <span>© {new Date().getFullYear()} PicPlus Company. Todos os direitos reservados.</span>
+        <span>
+          © {new Date().getFullYear()} PicPlus Company · CNPJ {site.cnpj}. Todos os direitos reservados.
+        </span>
         <FooterMeta>
           <span>
             Desenvolvido por{' '}

@@ -12,6 +12,7 @@ const whatsappDigits = ((env.VITE_WHATSAPP as string | undefined) || DEFAULT_WHA
 
 export const site = {
   name: 'PicPlus',
+  cnpj: '52.603.183/0001-33',
   tagline: positioning.tagline,
   email: (env.VITE_CONTACT_EMAIL as string | undefined) || '',
   phone: (env.VITE_CONTACT_PHONE as string | undefined) || '',
