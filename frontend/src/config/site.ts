@@ -6,7 +6,9 @@ import { positioning } from '../content/positioning';
 
 const env = import.meta.env;
 
-const whatsappDigits = (env.VITE_WHATSAPP ?? '').replace(/\D/g, '');
+// Número padrão da agência: (79) 98839-0389. A variável VITE_WHATSAPP, se definida, sobrescreve.
+const DEFAULT_WHATSAPP = '5579988390389';
+const whatsappDigits = ((env.VITE_WHATSAPP as string | undefined) || DEFAULT_WHATSAPP).replace(/\D/g, '');
 
 export const site = {
   name: 'PicPlus',
@@ -15,10 +17,11 @@ export const site = {
   phone: (env.VITE_CONTACT_PHONE as string | undefined) || '',
   address: (env.VITE_ADDRESS as string | undefined) || '',
   whatsapp: whatsappDigits
-    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent('Olá! Vim pelo site da PicPlus.')}`
+    ? `https://wa.me/${whatsappDigits}?text=${encodeURIComponent('Olá! Vim pelo site da PicPlus e gostaria de falar com a equipe.')}`
     : '',
   social: {
-    instagram: (env.VITE_INSTAGRAM as string | undefined) || '',
+    // Instagram da agência como padrão; VITE_INSTAGRAM, se definida, sobrescreve.
+    instagram: (env.VITE_INSTAGRAM as string | undefined) || 'https://www.instagram.com/picpluscompany/',
     tiktok: (env.VITE_TIKTOK as string | undefined) || '',
     youtube: (env.VITE_YOUTUBE as string | undefined) || '',
     linkedin: (env.VITE_LINKEDIN as string | undefined) || '',

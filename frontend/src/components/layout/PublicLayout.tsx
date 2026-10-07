@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { Footer } from './Footer';
 import { Header } from './Header';
+import { WhatsAppButton } from './WhatsAppButton';
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -36,6 +37,7 @@ export function PublicLayout() {
         <Outlet />
       </MainContent>
       <Footer />
+      <WhatsAppButton />
     </LayoutContainer>
   );
 }

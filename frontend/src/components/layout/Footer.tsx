@@ -8,7 +8,7 @@ import { Logo } from './Logo';
 const FooterContainer = styled.footer`
   background-color: ${({ theme }) => theme.colors.surface};
   border-top: 1px solid ${({ theme }) => theme.colors.border};
-  padding: 4rem 1.5rem 2rem;
+  padding: 4rem 1.5rem 5.5rem; /* folga inferior: o botão flutuante de WhatsApp não cobre a última linha */
   margin-top: auto;
 `;
 
