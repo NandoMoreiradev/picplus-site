@@ -45,10 +45,23 @@ export class CreateTestimonialDto {
   @MaxLength(280, { message: 'A frase deve ter no máximo 280 caracteres.' })
   quote: string;
 
-  /** Link do vídeo no YouTube (qualquer formato) ou o ID de 11 caracteres. */
-  @Transform(trim)
+  /**
+   * Fonte A — link do vídeo no YouTube (qualquer formato) ou o ID de 11 caracteres.
+   * Informe esta OU o videoFile; o serviço garante que exista exatamente uma.
+   */
+  @IsOptional()
+  // Campo vazio equivale a "não informado" (o formulário pode mandar "" ao trocar de fonte).
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() || undefined : (value as unknown),
+  )
   @IsYoutubeUrl()
-  videoUrl: string;
+  videoUrl?: string | null;
+
+  /** Fonte B — URL de um vídeo enviado pelo painel (endpoint de upload, kind=video). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  videoFile?: string | null;
 
   @IsOptional()
   @IsString()

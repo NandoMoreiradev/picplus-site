@@ -136,8 +136,10 @@ export interface Testimonial {
   company: string;
   /** Frase de destaque exibida no cartão. */
   quote: string;
-  /** ID do vídeo no YouTube (o link é montado no site). */
-  youtubeId: string;
+  /** Fonte A: ID do vídeo no YouTube (o link é montado no site). */
+  youtubeId: string | null;
+  /** Fonte B: vídeo enviado pelo painel (URL do arquivo). Só uma das duas vem preenchida. */
+  videoFile: string | null;
   photo: string | null;
   orientation: 'vertical' | 'horizontal';
   order: number;

@@ -75,6 +75,19 @@ describe('StorageService (R2)', () => {
     expect(input.CacheControl).toContain('immutable');
   });
 
+  it('envia vídeo ao R2 com o tipo de conteúdo correto e cache longo', async () => {
+    const mp4 = Buffer.concat([
+      Buffer.from([0, 0, 0, 0x20]),
+      Buffer.from('ftypisom', 'ascii'),
+      Buffer.alloc(32),
+    ]);
+    const url = await newService().save(file(mp4), 'video');
+
+    expect(url).toMatch(/^https:\/\/cdn\.exemplo\.com\.br\/uploads\/.+\.mp4$/);
+    expect(sentInput().ContentType).toBe('video/mp4');
+    expect(sentInput().CacheControl).toContain('immutable');
+  });
+
   it('rejeita arquivo que não é imagem sem tocar no R2', async () => {
     await expect(
       newService().save(

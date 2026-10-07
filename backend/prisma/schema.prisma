@@ -199,8 +199,9 @@ model Testimonial {
   company     String
   // Frase de destaque exibida no cartão
   quote       String   @db.Text
-  // Só o ID do vídeo; o link é montado no site (youtube-nocookie)
-  youtubeId   String
+  // Fonte do vídeo: UMA das duas. YouTube (só o ID; o link é montado no site) ou arquivo enviado.
+  youtubeId   String?
+  videoFile   String?
   photo       String?
   // vertical (9:16, Shorts) | horizontal (16:9)
   orientation String   @default("vertical")

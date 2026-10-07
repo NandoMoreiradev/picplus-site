@@ -10,11 +10,36 @@ import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { config, isR2Enabled } from '../config/configuration';
 
-export type UploadKind = 'image' | 'pdf';
+export type UploadKind = 'image' | 'pdf' | 'video';
 
 const MAX_SIZE: Record<UploadKind, number> = {
   image: 5 * 1024 * 1024,
   pdf: 10 * 1024 * 1024,
+  video: 50 * 1024 * 1024,
+};
+
+/**
+ * Marcas ("brands") da caixa ftyp que identificam vídeo MP4/MOV. HEIC, AVIF e similares
+ * também começam com ftyp, mas são imagens — por isso a lista é explícita.
+ */
+const VIDEO_BRANDS = new Set([
+  'isom',
+  'iso2',
+  'iso4',
+  'iso5',
+  'iso6',
+  'mp41',
+  'mp42',
+  'avc1',
+  'dash',
+  'M4V ',
+  'qt  ',
+]);
+
+const INVALID_FILE_MESSAGE: Record<UploadKind, string> = {
+  image: 'Envie uma imagem válida (JPG, PNG ou WebP).',
+  pdf: 'Envie um arquivo PDF válido.',
+  video: 'Envie um vídeo válido (MP4, WebM ou MOV).',
 };
 
 interface Detected {
@@ -44,6 +69,23 @@ function sniff(buffer: Buffer): Detected | null {
   }
   if (buffer.subarray(0, 5).toString('ascii') === '%PDF-') {
     return { kind: 'pdf', ext: 'pdf', mime: 'application/pdf' };
+  }
+  // MP4 / MOV: caixa "ftyp" nos bytes 4–8 e a marca nos bytes 8–12.
+  if (buffer.subarray(4, 8).toString('ascii') === 'ftyp') {
+    const brand = buffer.subarray(8, 12).toString('ascii');
+    if (!VIDEO_BRANDS.has(brand)) return null;
+    return brand === 'qt  '
+      ? { kind: 'video', ext: 'mov', mime: 'video/quicktime' }
+      : { kind: 'video', ext: 'mp4', mime: 'video/mp4' };
+  }
+  // WebM / Matroska: cabeçalho EBML (1A 45 DF A3).
+  if (
+    buffer[0] === 0x1a &&
+    buffer[1] === 0x45 &&
+    buffer[2] === 0xdf &&
+    buffer[3] === 0xa3
+  ) {
+    return { kind: 'video', ext: 'webm', mime: 'video/webm' };
   }
   return null;
 }
@@ -90,11 +132,7 @@ export class StorageService {
   ): Promise<string> {
     const detected = sniff(file.buffer);
     if (!detected || detected.kind !== expected) {
-      throw new BadRequestException(
-        expected === 'image'
-          ? 'Envie uma imagem válida (JPG, PNG ou WebP).'
-          : 'Envie um arquivo PDF válido.',
-      );
+      throw new BadRequestException(INVALID_FILE_MESSAGE[expected]);
     }
     if (file.size > MAX_SIZE[expected]) {
       throw new BadRequestException(
@@ -140,6 +178,14 @@ export class StorageService {
       this.logger.warn(`Recorte ignorado: ${(error as Error).message}`);
       return buffer;
     }
+  }
+
+  /** A URL aponta para um arquivo que NÓS armazenamos (e não para um site qualquer)? */
+  isOwnUrl(url: string): boolean {
+    const prefix = this.s3
+      ? `${config.r2.publicUrl}/uploads/`
+      : `${config.uploads.publicPath}/`;
+    return url.startsWith(prefix);
   }
 
   /** Remove um arquivo previamente salvo. Silencioso se não existir ou for de outra origem. */

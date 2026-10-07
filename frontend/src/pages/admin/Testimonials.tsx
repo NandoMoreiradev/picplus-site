@@ -13,14 +13,20 @@ import {
   TableWrap,
 } from '../../components/admin/AdminUI';
 import { UploadField } from '../../components/admin/UploadField';
+import { VideoUploadField } from '../../components/admin/VideoUploadField';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
-import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
+import { Chip, Chips } from '../../components/ui/Chips';
+import { Alert, EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
 import { FormGrid, SelectField, Switch, TextArea, TextField } from '../../components/ui/Form';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
+import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../context/auth-context';
 import { useCrud } from '../../hooks/useCrud';
+import { api } from '../../lib/api';
 import type { Testimonial } from '../../lib/types';
+import { errorMessage } from '../../lib/validation';
+import type { VideoProbe } from '../../lib/video';
 import { parseYoutubeId, youtubeThumbnail } from '../../lib/youtube';
 
 const Preview = styled.div<{ $ok: boolean }>`
@@ -49,12 +55,29 @@ const Preview = styled.div<{ $ok: boolean }>`
   }
 `;
 
+const SourceBox = styled.fieldset`
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  border: none;
+
+  legend {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+  }
+`;
+
+type Source = 'youtube' | 'file';
+
 interface FormState {
+  source: Source;
+  videoUrl: string;
+  videoFile: string | null;
   clientName: string;
   role: string;
   company: string;
   quote: string;
-  videoUrl: string;
   photo: string | null;
   orientation: 'vertical' | 'horizontal';
   order: string;
@@ -62,11 +85,13 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
+  source: 'youtube',
+  videoUrl: '',
+  videoFile: null,
   clientName: '',
   role: '',
   company: '',
   quote: '',
-  videoUrl: '',
   photo: null,
   orientation: 'vertical',
   order: '0',
@@ -74,11 +99,13 @@ const EMPTY: FormState = {
 };
 
 const toForm = (item: Testimonial): FormState => ({
+  source: item.videoFile ? 'file' : 'youtube',
+  videoUrl: item.youtubeId ? `https://youtu.be/${item.youtubeId}` : '',
+  videoFile: item.videoFile,
   clientName: item.clientName,
   role: item.role ?? '',
   company: item.company,
   quote: item.quote,
-  videoUrl: `https://youtu.be/${item.youtubeId}`,
   photo: item.photo,
   orientation: item.orientation,
   order: String(item.order),
@@ -98,11 +125,31 @@ function TestimonialForm({
   onSubmit: (form: FormState) => void;
   onClose: () => void;
 }) {
+  const toast = useToast();
   const [form, setForm] = useState(initial);
+  const [autoCover, setAutoCover] = useState(false);
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const videoId = form.videoUrl.trim() ? parseYoutubeId(form.videoUrl) : null;
-  const videoError = form.videoUrl.trim() && !videoId ? 'Cole o link de um vídeo do YouTube (ex.: https://youtu.be/…).' : undefined;
+  const videoError =
+    form.source === 'youtube' && form.videoUrl.trim() && !videoId
+      ? 'Cole o link de um vídeo do YouTube (ex.: https://youtu.be/…).'
+      : undefined;
+  const hasSource = form.source === 'youtube' ? !!videoId : !!form.videoFile;
+
+  // Ao escolher o arquivo: ajusta o formato e, sem foto, usa um quadro do vídeo como capa.
+  const handleProbe = async (probe: VideoProbe) => {
+    if (!probe.readable) return;
+    set('orientation', probe.vertical ? 'vertical' : 'horizontal');
+    if (form.photo || !probe.poster) return;
+    try {
+      const url = await api.upload(new File([probe.poster], 'capa.jpg', { type: 'image/jpeg' }), 'image');
+      setForm((f) => ({ ...f, photo: f.photo ?? url }));
+      setAutoCover(true);
+    } catch (error) {
+      toast.error(errorMessage(error, 'Não foi possível gerar a capa do vídeo.'));
+    }
+  };
 
   return (
     <Modal
@@ -116,7 +163,7 @@ function TestimonialForm({
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button type="submit" form="testimonial-form" loading={saving} disabled={!videoId}>
+          <Button type="submit" form="testimonial-form" loading={saving} disabled={!hasSource}>
             Salvar
           </Button>
         </>
@@ -126,29 +173,54 @@ function TestimonialForm({
         id="testimonial-form"
         onSubmit={(event: FormEvent) => {
           event.preventDefault();
-          if (videoId) onSubmit(form);
+          if (hasSource) onSubmit(form);
         }}
       >
-        <TextField
-          label="Link do vídeo no YouTube"
-          required
-          placeholder="https://youtube.com/shorts/…"
-          value={form.videoUrl}
-          onChange={(e) => set('videoUrl', e.target.value)}
-          error={videoError}
-          hint="Aceita link normal, curto (youtu.be) ou de Shorts. O vídeo pode estar como Não listado."
-        />
-        {videoId && (
-          <Preview $ok>
-            <img src={youtubeThumbnail(videoId)} alt="" />
-            <div>
-              <strong>
-                <CheckCircle2 size={16} aria-hidden /> Vídeo reconhecido
-              </strong>
-              ID: {videoId}
-            </div>
-          </Preview>
-        )}
+        <SourceBox>
+          <legend>Fonte do vídeo</legend>
+          <Chips role="group" aria-label="Fonte do vídeo">
+            <Chip type="button" $active={form.source === 'youtube'} onClick={() => set('source', 'youtube')}>
+              Link do YouTube
+            </Chip>
+            <Chip type="button" $active={form.source === 'file'} onClick={() => set('source', 'file')}>
+              Enviar vídeo
+            </Chip>
+          </Chips>
+
+          {form.source === 'youtube' ? (
+            <>
+              <TextField
+                label="Link do vídeo no YouTube"
+                required
+                placeholder="https://youtube.com/shorts/…"
+                value={form.videoUrl}
+                onChange={(e) => set('videoUrl', e.target.value)}
+                error={videoError}
+                hint="Aceita link normal, curto (youtu.be) ou de Shorts. O vídeo pode estar como Não listado."
+              />
+              {videoId && (
+                <Preview $ok>
+                  <img src={youtubeThumbnail(videoId)} alt="" />
+                  <div>
+                    <strong>
+                      <CheckCircle2 size={16} aria-hidden /> Vídeo reconhecido
+                    </strong>
+                    ID: {videoId}
+                  </div>
+                </Preview>
+              )}
+            </>
+          ) : (
+            <VideoUploadField
+              label="Arquivo de vídeo"
+              required
+              value={form.videoFile}
+              onChange={(url) => set('videoFile', url)}
+              onProbe={(probe) => void handleProbe(probe)}
+              hint="Dica: 30 a 60 segundos, em MP4 (H.264), com legenda no próprio vídeo. Vídeos pesados demoram para abrir em conexão fraca."
+            />
+          )}
+        </SourceBox>
 
         <FormGrid>
           <TextField label="Nome de quem dá o depoimento" required value={form.clientName} onChange={(e) => set('clientName', e.target.value)} />
@@ -171,9 +243,17 @@ function TestimonialForm({
           label="Foto do cliente"
           shape="square"
           value={form.photo}
-          onChange={(url) => set('photo', url)}
-          hint="Se não enviar, o cartão usa um quadro do próprio vídeo."
+          onChange={(url) => {
+            set('photo', url);
+            setAutoCover(false);
+          }}
+          hint={
+            form.source === 'file'
+              ? 'Aparece no cartão e como capa do player. Se não enviar, usamos um quadro do vídeo.'
+              : 'Se não enviar, o cartão usa um quadro do próprio vídeo.'
+          }
         />
+        {autoCover && <Alert tone="info">Capa gerada a partir de um quadro do vídeo. Você pode trocá-la enviando uma foto.</Alert>}
 
         <FormGrid>
           <SelectField
@@ -185,6 +265,7 @@ function TestimonialForm({
             ]}
             value={form.orientation}
             onChange={(e) => set('orientation', e.target.value as FormState['orientation'])}
+            hint={form.source === 'file' ? 'Detectado automaticamente ao enviar o arquivo.' : undefined}
           />
           <TextField
             label="Ordem de exibição"
@@ -218,12 +299,14 @@ export function Testimonials() {
   const items = list.data ?? [];
 
   const submit = async (form: FormState) => {
+    // Só a fonte escolhida é enviada; a outra vai como null para o servidor limpá-la.
     const ok = await save(editing === 'new' || !editing ? null : editing.id, {
       clientName: form.clientName.trim(),
       role: form.role.trim() || null,
       company: form.company.trim(),
       quote: form.quote.trim(),
-      videoUrl: form.videoUrl.trim(),
+      videoUrl: form.source === 'youtube' ? form.videoUrl.trim() : null,
+      videoFile: form.source === 'file' ? form.videoFile : null,
       photo: form.photo,
       orientation: form.orientation,
       order: Number(form.order) || 0,
@@ -236,7 +319,7 @@ export function Testimonials() {
     <>
       <PageHeader
         title="Depoimentos em vídeo"
-        description="Vídeos de clientes exibidos na página inicial. Até 3 ficam lado a lado; acima disso, vira carrossel."
+        description="Vídeos de clientes exibidos na página inicial, do YouTube ou enviados por aqui. Até 3 ficam lado a lado; acima disso, vira carrossel."
         actions={
           can('testimonials.create') && (
             <Button onClick={() => setEditing('new')}>
@@ -263,7 +346,7 @@ export function Testimonials() {
               <tr>
                 <th>Cliente</th>
                 <th>Frase</th>
-                <th>Formato</th>
+                <th>Vídeo</th>
                 <th>Status</th>
                 <th className="right">Ações</th>
               </tr>
@@ -280,10 +363,15 @@ export function Testimonials() {
                       </div>
                     </CellMain>
                   </td>
-                  <td className="muted" style={{ maxWidth: 320 }}>
+                  <td className="muted" style={{ maxWidth: 300 }}>
                     <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.quote}</div>
                   </td>
-                  <td className="muted">{item.orientation === 'vertical' ? 'Vertical' : 'Horizontal'}</td>
+                  <td>
+                    <StatusPill tone={item.videoFile ? 'info' : 'neutral'}>{item.videoFile ? 'Arquivo' : 'YouTube'}</StatusPill>{' '}
+                    <span className="muted" style={{ fontSize: '0.85rem' }}>
+                      {item.orientation === 'vertical' ? 'vertical' : 'horizontal'}
+                    </span>
+                  </td>
                   <td>
                     <StatusPill tone={item.active ? 'success' : 'neutral'}>{item.active ? 'Visível' : 'Oculto'}</StatusPill>
                   </td>
@@ -324,8 +412,11 @@ export function Testimonials() {
         title="Excluir depoimento"
         message={
           <>
-            Excluir o depoimento de <strong>{deleting?.clientName}</strong>? O vídeo no YouTube não é afetado. Para apenas
-            ocultar do site, use "Exibir no site".
+            Excluir o depoimento de <strong>{deleting?.clientName}</strong>?{' '}
+            {deleting?.videoFile
+              ? 'O arquivo de vídeo enviado também será apagado.'
+              : 'O vídeo no YouTube não é afetado.'}{' '}
+            Para apenas ocultar do site, use "Exibir no site".
           </>
         }
         loading={saving}

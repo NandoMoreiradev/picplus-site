@@ -1,5 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { extractYoutubeId } from '../common/utils/youtube';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
@@ -9,6 +12,23 @@ import {
 } from './dto/testimonial.dto';
 
 const ORDER = [{ order: 'asc' as const }, { createdAt: 'asc' as const }];
+
+/** Fonte do vídeo: exatamente uma das duas fica preenchida. */
+interface VideoSource {
+  youtubeId: string | null;
+  videoFile: string | null;
+}
+
+/**
+ * videoUrl/videoFile são só entrada do formulário: no banco ficam youtubeId/videoFile,
+ * já resolvidos por resolveSource.
+ */
+function withoutVideoInput<T extends UpdateTestimonialDto>(dto: T): T {
+  const copy = { ...dto };
+  delete copy.videoUrl;
+  delete copy.videoFile;
+  return copy;
+}
 
 @Injectable()
 export class TestimonialsService {
@@ -35,26 +55,28 @@ export class TestimonialsService {
   }
 
   create(dto: CreateTestimonialDto) {
-    const { videoUrl, ...rest } = dto;
     return this.prisma.testimonial.create({
-      // O DTO já garantiu que o link é do YouTube, então o ID existe.
-      data: { ...rest, youtubeId: extractYoutubeId(videoUrl) as string },
+      data: { ...withoutVideoInput(dto), ...this.resolveSource(dto, null) },
     });
   }
 
   async update(id: string, dto: UpdateTestimonialDto) {
     const current = await this.findOne(id);
-    const { videoUrl, ...rest } = dto;
-    const data: Prisma.TestimonialUpdateInput = { ...rest };
-    if (videoUrl !== undefined)
-      data.youtubeId = extractYoutubeId(videoUrl) as string;
+    const touchesSource =
+      dto.videoUrl !== undefined || dto.videoFile !== undefined;
+    const source = touchesSource ? this.resolveSource(dto, current) : {};
 
     const updated = await this.prisma.testimonial.update({
       where: { id },
-      data,
+      data: { ...withoutVideoInput(dto), ...source },
     });
+
+    // Remove do armazenamento o que deixou de ser usado (foto trocada, vídeo trocado).
     if (dto.photo !== undefined && dto.photo !== current.photo) {
       await this.storage.remove(current.photo);
+    }
+    if (current.videoFile && current.videoFile !== updated.videoFile) {
+      await this.storage.remove(current.videoFile);
     }
     return updated;
   }
@@ -63,6 +85,53 @@ export class TestimonialsService {
     const item = await this.findOne(id);
     await this.prisma.testimonial.delete({ where: { id } });
     await this.storage.remove(item.photo);
+    await this.storage.remove(item.videoFile);
     return { ok: true };
+  }
+
+  /**
+   * Decide a fonte final do vídeo (YouTube OU arquivo). Na criação é obrigatório informar
+   * uma; na edição, o que não for enviado é mantido. O arquivo só vale se tiver sido
+   * enviado por nós — nunca um endereço externo qualquer.
+   */
+  private resolveSource(
+    dto: UpdateTestimonialDto,
+    current: VideoSource | null,
+  ): VideoSource {
+    const link = dto.videoUrl?.trim();
+    const file = dto.videoFile?.trim();
+
+    if (link && file) {
+      throw new BadRequestException(
+        'Escolha só uma fonte de vídeo: o link do YouTube ou o arquivo enviado.',
+      );
+    }
+    if (file && !this.storage.isOwnUrl(file)) {
+      throw new BadRequestException(
+        'O vídeo precisa ser enviado pelo painel (não aceitamos links externos de arquivo).',
+      );
+    }
+
+    let youtubeId = current?.youtubeId ?? null;
+    let videoFile = current?.videoFile ?? null;
+
+    if (link) {
+      youtubeId = extractYoutubeId(link); // o DTO já garantiu que o link é válido
+      videoFile = null;
+    } else if (file) {
+      videoFile = file;
+      youtubeId = null;
+    } else {
+      // null explícito limpa aquela fonte
+      if (dto.videoUrl === null) youtubeId = null;
+      if (dto.videoFile === null) videoFile = null;
+    }
+
+    if (!youtubeId && !videoFile) {
+      throw new BadRequestException(
+        'Informe o link do YouTube ou envie um arquivo de vídeo.',
+      );
+    }
+    return { youtubeId, videoFile };
   }
 }

@@ -123,6 +123,15 @@ const CardButton = styled.button`
     object-fit: cover;
     transition: transform 0.6s ease;
   }
+  .initials {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 4rem;
+    font-weight: 900;
+    color: ${({ theme }) => theme.colors.primary};
+  }
   .media::after {
     content: '';
     position: absolute;
@@ -184,10 +193,20 @@ const CardButton = styled.button`
   }
 `;
 
+const initialsOf = (name: string) =>
+  name
+    .split(/s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+
 function TestimonialCard({ item, onPlay }: { item: Testimonial; onPlay: (item: Testimonial) => void }) {
   const [failed, setFailed] = useState(false);
-  // Foto do cliente; sem ela (ou se quebrar), usa o quadro do próprio vídeo.
-  const image = !failed && item.photo ? assetUrl(item.photo) : youtubeThumbnail(item.youtubeId);
+  // Foto do cliente; sem ela (ou se quebrar), usa o quadro do vídeo do YouTube.
+  // Vídeo enviado sem foto: cai nas iniciais do cliente.
+  const fallback = item.youtubeId ? youtubeThumbnail(item.youtubeId) : undefined;
+  const image = !failed && item.photo ? assetUrl(item.photo) : fallback;
   const subtitle = [item.role, item.company].filter(Boolean).join(' · ');
 
   return (
@@ -197,7 +216,13 @@ function TestimonialCard({ item, onPlay }: { item: Testimonial; onPlay: (item: T
       aria-label={`Assistir ao depoimento de ${item.clientName}, ${item.company}`}
     >
       <div className="media">
-        <img src={image} alt="" loading="lazy" onError={() => setFailed(true)} />
+        {image ? (
+          <img src={image} alt="" loading="lazy" onError={() => setFailed(true)} />
+        ) : (
+          <span className="initials" aria-hidden>
+            {initialsOf(item.clientName)}
+          </span>
+        )}
         <span className="play" aria-hidden>
           <Play size={26} fill="currentColor" />
         </span>
@@ -228,12 +253,14 @@ const PlayerFrame = styled.div<{ $vertical: boolean }>`
   /* vertical: a largura é limitada pela altura da tela para o vídeo caber sem rolagem */
   width: ${({ $vertical }) => ($vertical ? 'min(100%, calc(68vh * 9 / 16))' : '100%')};
 
-  iframe {
+  iframe,
+  video {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     border: 0;
+    object-fit: contain;
   }
 `;
 
@@ -273,14 +300,26 @@ function VideoModal({ item, onClose }: { item: Testimonial | null; onClose: () =
       width={vertical ? '460px' : '920px'}
     >
       <PlayerFrame $vertical={vertical}>
-        {/* O iframe só existe com o modal aberto: fechar interrompe o vídeo. */}
-        <iframe
-          src={youtubeEmbedUrl(item.youtubeId)}
-          title={`Depoimento de ${item.clientName}, ${item.company}`}
-          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-          allowFullScreen
-          referrerPolicy="strict-origin-when-cross-origin"
-        />
+        {/* O player só existe com o modal aberto: fechar interrompe o vídeo. */}
+        {item.videoFile ? (
+          <video
+            src={assetUrl(item.videoFile)}
+            poster={assetUrl(item.photo)}
+            title={`Depoimento de ${item.clientName}, ${item.company}`}
+            controls
+            autoPlay
+            playsInline
+            preload="metadata"
+          />
+        ) : item.youtubeId ? (
+          <iframe
+            src={youtubeEmbedUrl(item.youtubeId)}
+            title={`Depoimento de ${item.clientName}, ${item.company}`}
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+          />
+        ) : null}
       </PlayerFrame>
       <Caption>
         <p>“{item.quote}”</p>
@@ -288,9 +327,11 @@ function VideoModal({ item, onClose }: { item: Testimonial | null; onClose: () =
           {item.clientName}
           {subtitle ? `, ${subtitle}` : ''}
         </small>
-        <a href={youtubeWatchUrl(item.youtubeId)} target="_blank" rel="noopener noreferrer">
-          Abrir no YouTube <ArrowUpRight size={14} aria-hidden />
-        </a>
+        {item.youtubeId && (
+          <a href={youtubeWatchUrl(item.youtubeId)} target="_blank" rel="noopener noreferrer">
+            Abrir no YouTube <ArrowUpRight size={14} aria-hidden />
+          </a>
+        )}
       </Caption>
     </Modal>
   );

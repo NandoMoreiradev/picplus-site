@@ -123,6 +123,105 @@ describe('Depoimentos (e2e, Prisma mockado)', () => {
       .expect(403);
   });
 
+  describe('vídeo enviado como arquivo (alternativa ao YouTube)', () => {
+    beforeEach(() => {
+      users.o1 = person('o1', [], true);
+    });
+    const { videoUrl: _omit, ...withoutLink } = valid;
+    void _omit;
+    const post = (body: object) =>
+      request(server())
+        .post('/api/admin/testimonials')
+        .set(as('o1'))
+        .send(body);
+
+    it('cadastra com arquivo enviado e não grava ID do YouTube', async () => {
+      await post({ ...withoutLink, videoFile: '/uploads/abc.mp4' }).expect(201);
+      const [args] = prisma.testimonial.create.mock.calls[0] as [
+        { data: Record<string, unknown> },
+      ];
+      expect(args.data.videoFile).toBe('/uploads/abc.mp4');
+      expect(args.data.youtubeId).toBeNull();
+    });
+
+    it('recusa quando não há nenhuma fonte de vídeo', async () => {
+      await post(withoutLink).expect(400);
+      expect(prisma.testimonial.create).not.toHaveBeenCalled();
+    });
+
+    it('recusa as duas fontes ao mesmo tempo', async () => {
+      await post({ ...valid, videoFile: '/uploads/abc.mp4' }).expect(400);
+      expect(prisma.testimonial.create).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['link externo de arquivo', 'https://outro-site.com/video.mp4'],
+      ['caminho fora das pastas de upload', '/etc/passwd'],
+      ['URL sem protocolo', '//evil.com/uploads/x.mp4'],
+    ])('recusa %s', async (_label, videoFile) => {
+      await post({ ...withoutLink, videoFile }).expect(400);
+      expect(prisma.testimonial.create).not.toHaveBeenCalled();
+    });
+
+    it('ao trocar o arquivo por um link do YouTube, limpa o arquivo antigo', async () => {
+      prisma.testimonial.findUnique.mockResolvedValue({
+        id: 't1',
+        photo: null,
+        youtubeId: null,
+        videoFile: '/uploads/antigo.mp4',
+      });
+      prisma.testimonial.update.mockImplementation(
+        ({ data }: { data: object }) => Promise.resolve({ id: 't1', ...data }),
+      );
+      await request(server())
+        .patch('/api/admin/testimonials/t1')
+        .set(as('o1'))
+        .send({ videoUrl: `https://youtu.be/${ID}` })
+        .expect(200);
+
+      const [args] = prisma.testimonial.update.mock.calls[0] as [
+        { data: Record<string, unknown> },
+      ];
+      expect(args.data.youtubeId).toBe(ID);
+      expect(args.data.videoFile).toBeNull();
+    });
+
+    it('não deixa o depoimento sem nenhuma fonte ao editar', async () => {
+      prisma.testimonial.findUnique.mockResolvedValue({
+        id: 't1',
+        photo: null,
+        youtubeId: ID,
+        videoFile: null,
+      });
+      await request(server())
+        .patch('/api/admin/testimonials/t1')
+        .set(as('o1'))
+        .send({ videoUrl: null })
+        .expect(400);
+      expect(prisma.testimonial.update).not.toHaveBeenCalled();
+    });
+
+    it('editar só o texto mantém a fonte atual', async () => {
+      prisma.testimonial.findUnique.mockResolvedValue({
+        id: 't1',
+        photo: null,
+        youtubeId: ID,
+        videoFile: null,
+      });
+      prisma.testimonial.update.mockResolvedValue({ id: 't1' });
+      await request(server())
+        .patch('/api/admin/testimonials/t1')
+        .set(as('o1'))
+        .send({ company: 'Nova Empresa' })
+        .expect(200);
+      const [args] = prisma.testimonial.update.mock.calls[0] as [
+        { data: Record<string, unknown> },
+      ];
+      expect(args.data.youtubeId).toBeUndefined();
+      expect(args.data.videoFile).toBeUndefined();
+    });
+  });
+
   describe('validação do cadastro', () => {
     beforeEach(() => {
       users.o1 = person('o1', [], true);

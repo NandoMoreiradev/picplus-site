@@ -115,13 +115,61 @@ export const api = {
   delete: <T>(path: string) => request<T>('DELETE', path),
   postForm: <T>(path: string, form: FormData) => request<T>('POST', path, { form }),
   /** Upload administrativo; devolve a URL relativa do arquivo salvo. */
-  upload: async (file: File, kind: 'image' | 'pdf' = 'image', options: { trim?: boolean } = {}) => {
+  upload: async (file: File, kind: 'image' | 'pdf' | 'video' = 'image', options: { trim?: boolean } = {}) => {
     const form = new FormData();
     form.append('file', file);
     const { url } = await request<{ url: string }>('POST', `/admin/uploads?kind=${kind}${options.trim ? '&trim=1' : ''}`, { form });
     return url;
   },
 };
+
+function parseJson<T>(text: string): T | null {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null; // resposta sem JSON
+  }
+}
+
+/**
+ * Upload de vídeo com progresso (o fetch não informa o andamento do envio, e vídeos
+ * grandes demoram). Devolve a URL do arquivo salvo.
+ */
+export function uploadVideo(file: File, onProgress: (percent: number) => void): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const token = tokenStore.get();
+    xhr.open('POST', `${API_BASE}/admin/uploads?kind=video`);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    xhr.onerror = () =>
+      reject(new ApiError('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.', 0));
+    xhr.onload = () => {
+      const data = parseJson<{ url?: string; message?: string | string[] }>(xhr.responseText);
+      if (xhr.status >= 200 && xhr.status < 300 && data?.url) return resolve(data.url);
+
+      if (xhr.status === 401 && token) {
+        tokenStore.clear();
+        window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+      }
+      const raw = data?.message;
+      const message =
+        xhr.status === 413
+          ? 'Arquivo muito grande. O limite é de 50 MB.'
+          : Array.isArray(raw)
+            ? raw[0]
+            : (raw ?? 'Não foi possível enviar o vídeo.');
+      reject(new ApiError(message, xhr.status));
+    };
+
+    const form = new FormData();
+    form.append('file', file);
+    xhr.send(form);
+  });
+}
 
 /** Converte o caminho salvo no banco (/uploads/x.jpg) em URL absoluta. */
 export function assetUrl(path?: string | null): string | undefined {

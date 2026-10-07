@@ -40,7 +40,7 @@ export class UploadsController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+      limits: { fileSize: 50 * 1024 * 1024, files: 1 },
     }),
   )
   async upload(
@@ -50,8 +50,10 @@ export class UploadsController {
     @Query('trim') trim?: string,
   ) {
     if (!file) throw new BadRequestException('Nenhum arquivo enviado.');
-    if (kind !== 'image' && kind !== 'pdf') {
-      throw new BadRequestException('Parâmetro "kind" deve ser image ou pdf.');
+    if (kind !== 'image' && kind !== 'pdf' && kind !== 'video') {
+      throw new BadRequestException(
+        'Parâmetro "kind" deve ser image, pdf ou video.',
+      );
     }
     return { url: await this.storage.save(file, kind, { trim: trim === '1' }) };
   }

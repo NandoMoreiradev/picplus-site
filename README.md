@@ -102,11 +102,23 @@ numa matriz de permissões, e em `/admin/usuarios` cadastra a equipe e atribui o
 ## Depoimentos em vídeo
 
 Seção da página inicial, gerenciada em `/admin/depoimentos`. Cada depoimento tem foto, nome, cargo, empresa,
-frase de destaque e o **link de um vídeo do YouTube** (qualquer formato: normal, `youtu.be` ou Shorts; pode estar
-como "Não listado"). Só o ID do vídeo é guardado e o player é montado pelo site em `youtube-nocookie.com`,
-carregado apenas quando alguém clica (sem cookies e sem peso na página).
+frase de destaque e **uma fonte de vídeo**, à escolha:
 
-- Até 3 depoimentos ficam lado a lado; acima disso (e no celular) vira carrossel, com setas só quando há rolagem.
-- Sem nenhum depoimento ativo, a seção **não aparece** na página.
+- **Link do YouTube** (qualquer formato: normal, `youtu.be` ou Shorts; pode estar como "Não listado"). Só o ID é
+  guardado e o player é montado em `youtube-nocookie.com`, carregado apenas no clique (sem cookies e sem peso na página).
+- **Arquivo enviado pelo painel** (MP4 com H.264, WebM ou MOV, até **50 MB**), guardado no R2. O painel mostra o progresso,
+  detecta sozinho se o vídeo é vertical ou horizontal e, sem foto, usa um quadro do vídeo como capa. Se o navegador não
+  conseguir ler o arquivo (ex.: HEVC/H.265), avisa antes de publicar.
+
+Comportamento na página: até 3 depoimentos ficam lado a lado; acima disso (e no celular) vira carrossel, com setas só
+quando há rolagem. Sem nenhum depoimento ativo, a seção **não aparece**.
+
+Observações:
+
+- **Vídeo próprio não é convertido pelo servidor.** Exporte em MP4/H.264, de 30 a 60 s, e comprima antes de enviar;
+  arquivos pesados demoram a abrir em conexão fraca. O YouTube cuida disso sozinho, então prefira-o para vídeos longos.
+- Um depoimento aceita **só uma fonte**. Trocar de fonte apaga o arquivo antigo do armazenamento; excluir o depoimento
+  apaga o vídeo enviado.
+- O envio de vídeo exige o **R2** configurado em produção (sem ele, o arquivo ficaria no disco temporário do servidor).
 - Antes de publicar, tenha **autorização por escrito** de imagem e voz de cada pessoa que aparece.
 - Cargos já existentes não ganham a permissão sozinhos: dê `testimonials.*` ao cargo desejado em `/admin/cargos`.
