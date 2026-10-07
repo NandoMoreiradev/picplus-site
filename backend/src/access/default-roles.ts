@@ -47,6 +47,9 @@ export const DEFAULT_ROLES: {
       'team.view',
       'team.create',
       'team.edit',
+      'testimonials.view',
+      'testimonials.create',
+      'testimonials.edit',
     ],
   },
   {

@@ -189,3 +189,23 @@ model ContactRequest {
 
   @@index([status, createdAt])
 }
+
+// Depoimentos em vídeo exibidos na página inicial (vídeo hospedado no YouTube).
+model Testimonial {
+  id          String   @id @default(uuid())
+  // Pessoa que dá o depoimento
+  clientName  String
+  role        String?
+  company     String
+  // Frase de destaque exibida no cartão
+  quote       String   @db.Text
+  // Só o ID do vídeo; o link é montado no site (youtube-nocookie)
+  youtubeId   String
+  photo       String?
+  // vertical (9:16, Shorts) | horizontal (16:9)
+  orientation String   @default("vertical")
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

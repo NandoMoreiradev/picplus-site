@@ -28,6 +28,8 @@ import type { UploadKind } from './storage.service';
   'brands.edit',
   'team.create',
   'team.edit',
+  'testimonials.create',
+  'testimonials.edit',
   'influencers.edit',
 )
 @Controller('admin/uploads')

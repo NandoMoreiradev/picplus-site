@@ -16,6 +16,7 @@ import { ServicesModule } from './services/services.module';
 import { StatsModule } from './stats/stats.module';
 import { StorageModule } from './storage/storage.module';
 import { TeamModule } from './team/team.module';
+import { TestimonialsModule } from './testimonials/testimonials.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -32,6 +33,7 @@ import { UsersModule } from './users/users.module';
     ServicesModule,
     BrandsModule,
     TeamModule,
+    TestimonialsModule,
     ContactsModule,
     StatsModule,
     RolesModule,

@@ -79,6 +79,11 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: crud('team', 'integrantes'),
   },
   {
+    key: 'testimonials',
+    label: 'Depoimentos em vídeo',
+    permissions: crud('testimonials', 'depoimentos'),
+  },
+  {
     key: 'users',
     label: 'Usuários',
     permissions: crud('users', 'usuários'),

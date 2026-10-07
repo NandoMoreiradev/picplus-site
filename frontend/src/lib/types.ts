@@ -128,6 +128,22 @@ export interface ContactRequest {
   createdAt: string;
 }
 
+export interface Testimonial {
+  id: string;
+  /** Pessoa que dá o depoimento. */
+  clientName: string;
+  role: string | null;
+  company: string;
+  /** Frase de destaque exibida no cartão. */
+  quote: string;
+  /** ID do vídeo no YouTube (o link é montado no site). */
+  youtubeId: string;
+  photo: string | null;
+  orientation: 'vertical' | 'horizontal';
+  order: number;
+  active: boolean;
+}
+
 export interface PublicStats {
   influencers: number;
   cases: number;

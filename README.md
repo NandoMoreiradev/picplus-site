@@ -98,3 +98,15 @@ numa matriz de permissões, e em `/admin/usuarios` cadastra a equipe e atribui o
 - **Anti-escalada:** ninguém concede permissões que não possui, nem gerencia usuários ou cargos acima do seu.
 - **Novas permissões** (ex.: uma integração com Asaas ou Gemini): acrescente a chave em `backend/src/access/permissions.ts`
   e proteja o endpoint com `@RequirePermissions('integrations.manage')`. Ela aparece sozinha na matriz de cargos.
+
+## Depoimentos em vídeo
+
+Seção da página inicial, gerenciada em `/admin/depoimentos`. Cada depoimento tem foto, nome, cargo, empresa,
+frase de destaque e o **link de um vídeo do YouTube** (qualquer formato: normal, `youtu.be` ou Shorts; pode estar
+como "Não listado"). Só o ID do vídeo é guardado e o player é montado pelo site em `youtube-nocookie.com`,
+carregado apenas quando alguém clica (sem cookies e sem peso na página).
+
+- Até 3 depoimentos ficam lado a lado; acima disso (e no celular) vira carrossel, com setas só quando há rolagem.
+- Sem nenhum depoimento ativo, a seção **não aparece** na página.
+- Antes de publicar, tenha **autorização por escrito** de imagem e voz de cada pessoa que aparece.
+- Cargos já existentes não ganham a permissão sozinhos: dê `testimonials.*` ao cargo desejado em `/admin/cargos`.

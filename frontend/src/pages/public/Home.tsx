@@ -6,6 +6,7 @@ import { BrandStrip } from '../../components/public/BrandStrip';
 import { CtaBand } from '../../components/public/CtaBand';
 import { InfluencerModal } from '../../components/public/InfluencerModal';
 import { PillarCard } from '../../components/public/PillarCard';
+import { TestimonialsSection } from '../../components/public/TestimonialsSection';
 import { ButtonLink } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Feedback';
 import { Card, Container, Eyebrow, Grid, Highlight, Section, SectionHeader } from '../../components/ui/Layout';
@@ -449,7 +450,9 @@ export function Home() {
         </Container>
       </Section>
 
-      <Section $surface $tight>
+      <TestimonialsSection />
+
+      <Section $tight>
         <Container>
           <SectionHeader eyebrow={audience.eyebrow} title={audience.title} />
           <AudienceGrid>

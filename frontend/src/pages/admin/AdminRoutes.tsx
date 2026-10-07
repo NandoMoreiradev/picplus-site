@@ -14,6 +14,7 @@ import { Login } from './Login';
 import { Roles } from './Roles';
 import { Services } from './Services';
 import { Team } from './Team';
+import { Testimonials } from './Testimonials';
 import { Users } from './Users';
 
 /** Protege a tela com a permissão de "ver" do módulo (o servidor revalida cada chamada). */
@@ -38,6 +39,7 @@ export default function AdminRoutes() {
         <Route path="cases" element={guard('cases.view', <Cases />)} />
         <Route path="servicos" element={guard('services.view', <Services />)} />
         <Route path="marcas" element={guard('brands.view', <Brands />)} />
+        <Route path="depoimentos" element={guard('testimonials.view', <Testimonials />)} />
         <Route path="equipe" element={guard('team.view', <Team />)} />
         <Route path="usuarios" element={guard('users.view', <Users />)} />
         <Route path="cargos" element={guard('roles.view', <Roles />)} />
