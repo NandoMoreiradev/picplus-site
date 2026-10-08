@@ -43,12 +43,26 @@ const StoryText = styled.div`
 const SideColumn = styled.div`
   position: sticky;
   top: calc(${({ theme }) => theme.layout.headerHeight} + 1.5rem);
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
     position: static;
+  }
+`;
+
+const MissionGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-top: 4rem;
+
+  /* Os Reveal envolvem os cards: faz o card preencher a célula para ambos terem a mesma altura. */
+  > * > * {
+    height: 100%;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    grid-template-columns: 1fr;
+    margin-top: 2.5rem;
   }
 `;
 
@@ -188,19 +202,25 @@ export function Sobre() {
                     <span>{about.founder.role}</span>
                   </figcaption>
                 </FounderCard>
-                <MissionCard>
-                  <Target size={32} aria-hidden />
-                  <h3>{about.mission.title}</h3>
-                  <p>{about.mission.text}</p>
-                </MissionCard>
-                <MissionCard>
-                  <Eye size={32} aria-hidden />
-                  <h3>{about.vision.title}</h3>
-                  <p>{about.vision.text}</p>
-                </MissionCard>
               </SideColumn>
             </Reveal>
           </StoryGrid>
+          <MissionGrid>
+            <Reveal>
+              <MissionCard>
+                <Target size={32} aria-hidden />
+                <h3>{about.mission.title}</h3>
+                <p>{about.mission.text}</p>
+              </MissionCard>
+            </Reveal>
+            <Reveal delay={120}>
+              <MissionCard>
+                <Eye size={32} aria-hidden />
+                <h3>{about.vision.title}</h3>
+                <p>{about.vision.text}</p>
+              </MissionCard>
+            </Reveal>
+          </MissionGrid>
         </Container>
       </Section>
 

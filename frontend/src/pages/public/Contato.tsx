@@ -64,25 +64,10 @@ const FormCard = styled(Card)`
   }
 `;
 
-const Socials = styled.div`
-  display: flex;
-  gap: 0.6rem;
-  margin-top: 0.5rem;
-
-  a {
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: ${({ theme }) => theme.radii.md};
-    border: 1px solid ${({ theme }) => theme.colors.border};
-    color: ${({ theme }) => theme.colors.textSecondary};
-  }
-  a:hover {
-    background: ${({ theme }) => theme.colors.primary};
-    border-color: ${({ theme }) => theme.colors.primary};
-    color: ${({ theme }) => theme.colors.textDark};
-  }
+const Channels = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: 0.75rem;
 `;
 
 export function Contato() {
@@ -148,22 +133,19 @@ export function Contato() {
                 </InfoItem>
               )}
 
-              {site.whatsapp && (
-                <div>
-                  <ButtonAnchor href={site.whatsapp} target="_blank" rel="noopener noreferrer" $variant="secondary" $block>
-                    <WhatsAppIcon size={18} aria-hidden /> Chamar no WhatsApp
-                  </ButtonAnchor>
-                </div>
-              )}
-
-              {socials.length > 0 && (
-                <Socials>
+              {(site.whatsapp || socials.length > 0) && (
+                <Channels>
+                  {site.whatsapp && (
+                    <ButtonAnchor href={site.whatsapp} target="_blank" rel="noopener noreferrer" $variant="secondary" $block>
+                      <WhatsAppIcon size={18} aria-hidden /> WhatsApp
+                    </ButtonAnchor>
+                  )}
                   {socials.map(({ href, label, Icon }) => (
-                    <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}>
-                      <Icon size={20} />
-                    </a>
+                    <ButtonAnchor key={label} href={href} target="_blank" rel="noopener noreferrer" $variant="secondary" $block>
+                      <Icon size={18} aria-hidden /> {label}
+                    </ButtonAnchor>
                   ))}
-                </Socials>
+                </Channels>
               )}
 
               <p style={{ marginTop: '1rem' }}>
