@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { Handshake, Lightbulb, Quote, Target } from 'lucide-react';
+import { Eye, Handshake, Lightbulb, Quote, Target } from 'lucide-react';
 import { BrandStrip } from '../../components/public/BrandStrip';
 import { TeamCard } from '../../components/public/cards';
 import { CtaBand } from '../../components/public/CtaBand';
@@ -40,9 +40,54 @@ const StoryText = styled.div`
   }
 `;
 
-const MissionCard = styled(Card)`
+const SideColumn = styled.div`
   position: sticky;
   top: calc(${({ theme }) => theme.layout.headerHeight} + 1.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
+    position: static;
+  }
+`;
+
+const FounderCard = styled.figure`
+  margin: 0;
+  overflow: hidden;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  background: ${({ theme }) => theme.colors.surface};
+
+  .photo {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 5;
+    background: ${({ theme }) => theme.colors.primarySoft};
+    color: ${({ theme }) => theme.colors.primary};
+    font-size: 4rem;
+    font-weight: 800;
+  }
+  .photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  figcaption {
+    padding: 1rem 1.25rem;
+  }
+  strong {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 800;
+  }
+  span {
+    font-size: 0.9rem;
+    color: ${({ theme }) => theme.colors.textSecondary};
+  }
+`;
+
+const MissionCard = styled(Card)`
   padding: 2.25rem;
   background:
     radial-gradient(circle at 100% 0%, rgba(182, 232, 41, 0.16), transparent 55%),
@@ -92,6 +137,12 @@ const ValueCard = styled(Card)`
 
 const VALUE_ICONS = [Quote, Lightbulb, Target, Handshake];
 
+const founderInitials = about.founder.name
+  .split(/\s+/)
+  .slice(0, 2)
+  .map((part) => part[0])
+  .join('');
+
 export function Sobre() {
   usePageMeta(
     'Sobre a Agência',
@@ -109,7 +160,7 @@ export function Sobre() {
             Nossa <Highlight>história</Highlight>
           </>
         }
-        description="Estratégia, produção e influência sob o mesmo teto, para eliminar o desperdício da comunicação desconectada."
+        description="Uma agência nascida no campo de batalha, movida por performance e focada em transformar marketing em vendas."
       />
 
       <Section>
@@ -123,11 +174,31 @@ export function Sobre() {
               </StoryText>
             </Reveal>
             <Reveal delay={120}>
-              <MissionCard>
-                <Target size={32} aria-hidden />
-                <h3>{about.mission.title}</h3>
-                <p>{about.mission.text}</p>
-              </MissionCard>
+              <SideColumn>
+                <FounderCard>
+                  <div className="photo">
+                    {about.founder.photo ? (
+                      <img src={about.founder.photo} alt={about.founder.name} loading="lazy" />
+                    ) : (
+                      <span aria-hidden>{founderInitials}</span>
+                    )}
+                  </div>
+                  <figcaption>
+                    <strong>{about.founder.name}</strong>
+                    <span>{about.founder.role}</span>
+                  </figcaption>
+                </FounderCard>
+                <MissionCard>
+                  <Target size={32} aria-hidden />
+                  <h3>{about.mission.title}</h3>
+                  <p>{about.mission.text}</p>
+                </MissionCard>
+                <MissionCard>
+                  <Eye size={32} aria-hidden />
+                  <h3>{about.vision.title}</h3>
+                  <p>{about.vision.text}</p>
+                </MissionCard>
+              </SideColumn>
             </Reveal>
           </StoryGrid>
         </Container>
