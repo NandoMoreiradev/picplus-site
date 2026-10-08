@@ -13,7 +13,7 @@ export const about = {
   founder: {
     name: 'Guilherme Fernandes',
     role: 'Fundador da PicPlus',
-    photo: '',
+    photo: '/guilherme-fernandes.jpg',
   },
   mission: {
     title: 'Nossa missão',
