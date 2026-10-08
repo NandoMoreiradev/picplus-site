@@ -111,6 +111,7 @@ const HeroWrap = styled.header`
 const HeroContent = styled.div`
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 1.1rem;
   max-width: 760px;
 
