@@ -13,11 +13,7 @@ export const piccast = {
     { videoId: 'VwXP5ISJTZA', number: 4, title: 'Como expandir seu negócio e transformar em uma rede' },
     { videoId: 'vuSAAUjfJoc', title: 'Os bastidores do agronegócio' },
     { videoId: 'yeu_Gx3idg8', number: 1, title: 'Vanderson Rocha Carnes' },
-    {
-      videoId: 'FsoGQtc8WdM',
-      number: 20,
-      title: 'Transformando desafios em oportunidades: a gestão no varejo e atacado',
-      guest: 'Juliano César',
-    },
+    { videoId: 'FsoGQtc8WdM', number: 20, title: 'Transformando desafios em oportunidades: a gestão no varejo e atacado', guest: 'Juliano César',},
+    { videoId: '810QT78dtFg', number: 5, title: 'Desenvolvimento de liderança e gestão de talentos' },
   ] as { videoId: string; number?: number; title: string; guest?: string }[],
 };
