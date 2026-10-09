@@ -210,3 +210,13 @@ model Testimonial {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// Configurações gerais do site: uma única linha (id "default").
+model SiteSettings {
+  id            String   @id @default("default")
+  // Imagem de compartilhamento (Open Graph, 1200x630) do site e fallback de páginas sem imagem própria
+  ogImage       String?
+  // Imagem de compartilhamento da listagem do blog (se vazia, usa ogImage)
+  blogOgImage   String?
+  updatedAt     DateTime @updatedAt
+}

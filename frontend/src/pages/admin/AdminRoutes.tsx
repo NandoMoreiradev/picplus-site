@@ -12,6 +12,7 @@ import { Dashboard } from './Dashboard';
 import { Influencers } from './Influencers';
 import { Login } from './Login';
 import { Roles } from './Roles';
+import { Settings } from './Settings';
 import { Services } from './Services';
 import { Team } from './Team';
 import { Testimonials } from './Testimonials';
@@ -43,6 +44,7 @@ export default function AdminRoutes() {
         <Route path="equipe" element={guard('team.view', <Team />)} />
         <Route path="usuarios" element={guard('users.view', <Users />)} />
         <Route path="cargos" element={guard('roles.view', <Roles />)} />
+        <Route path="configuracoes" element={guard('settings.view', <Settings />)} />
         <Route path="conta" element={<Account />} />
       </Route>
     </Routes>

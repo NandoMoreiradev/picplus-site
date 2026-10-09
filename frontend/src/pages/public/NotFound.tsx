@@ -36,7 +36,7 @@ const Wrap = styled.div`
 `;
 
 export function NotFound() {
-  usePageMeta('Página não encontrada');
+  usePageMeta('Página não encontrada', undefined, { noindex: true });
   return (
     <Section>
       <Container>

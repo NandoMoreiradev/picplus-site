@@ -5,7 +5,9 @@ import {
   Building2,
   ExternalLink,
   Inbox,
+  ChevronDown,
   KeyRound,
+  Settings as SettingsIcon,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -76,14 +78,52 @@ const Nav = styled.nav`
   gap: 0.2rem;
   flex: 1;
 
-  .group {
-    margin: 1rem 0.75rem 0.4rem;
-    font-size: 0.7rem;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: ${({ theme }) => theme.colors.textMuted};
+  .top {
+    margin-bottom: 0.25rem;
   }
+`;
+
+const GroupToggle = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.9rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: ${({ theme }) => theme.radii.md};
+  color: ${({ theme }) => theme.colors.textMuted};
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.text};
+  }
+  .chevron {
+    margin-left: auto;
+    transition: transform ${({ theme }) => theme.transitions.fast};
+  }
+  &[aria-expanded='false'] .chevron {
+    transform: rotate(-90deg);
+  }
+  .badge {
+    min-width: 18px;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.textDark};
+    font-size: 0.68rem;
+    line-height: 18px;
+    text-align: center;
+  }
+`;
+
+const GroupItems = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 `;
 
 const Item = styled(NavLink)`
@@ -220,41 +260,64 @@ interface NavItemDef {
   end?: boolean;
   badge?: 'pendingInfluencers' | 'inbox';
 }
-type NavEntry = NavItemDef | { group: string };
 
-const NAV: NavEntry[] = [
-  { to: '/admin', label: 'Visão geral', icon: LayoutDashboard, end: true },
-  { group: 'Relacionamento' },
-  { to: '/admin/influenciadores', label: 'Influenciadores', icon: Users, perm: 'influencers.view', badge: 'pendingInfluencers' },
-  { to: '/admin/contatos', label: 'Contatos e orçamentos', icon: Inbox, perm: 'contacts.view', badge: 'inbox' },
-  { group: 'Conteúdo do site' },
-  { to: '/admin/blog', label: 'Blog', icon: Newspaper, perm: 'articles.view' },
-  { to: '/admin/cases', label: 'Cases de sucesso', icon: Trophy, perm: 'cases.view' },
-  { to: '/admin/depoimentos', label: 'Depoimentos', icon: Quote, perm: 'testimonials.view' },
-  { to: '/admin/servicos', label: 'Serviços', icon: Sparkles, perm: 'services.view' },
-  { to: '/admin/marcas', label: 'Marcas parceiras', icon: Building2, perm: 'brands.view' },
-  { to: '/admin/equipe', label: 'Equipe do site', icon: UserSquare2, perm: 'team.view' },
-  { group: 'Acesso' },
-  { to: '/admin/usuarios', label: 'Usuários', icon: UserCog, perm: 'users.view' },
-  { to: '/admin/cargos', label: 'Cargos e permissões', icon: ShieldCheck, perm: 'roles.view' },
-  { group: 'Configurações' },
-  { to: '/admin/conta', label: 'Minha conta', icon: KeyRound },
+interface NavGroupDef {
+  key: string;
+  label: string;
+  items: NavItemDef[];
+}
+
+/** Itens soltos no topo do menu (sempre visíveis). */
+const NAV_TOP: NavItemDef[] = [{ to: '/admin', label: 'Visão geral', icon: LayoutDashboard, end: true }];
+
+/**
+ * Grupos recolhíveis do menu. Para um módulo novo (ex.: tarefas), acrescente um item a um
+ * grupo existente ou um grupo novo aqui, e proteja a rota com a permissão correspondente.
+ */
+const NAV_GROUPS: NavGroupDef[] = [
+  {
+    key: 'relacionamento',
+    label: 'Relacionamento',
+    items: [
+      { to: '/admin/influenciadores', label: 'Influenciadores', icon: Users, perm: 'influencers.view', badge: 'pendingInfluencers' },
+      { to: '/admin/contatos', label: 'Contatos e orçamentos', icon: Inbox, perm: 'contacts.view', badge: 'inbox' },
+    ],
+  },
+  {
+    key: 'conteudo',
+    label: 'Conteúdo do site',
+    items: [
+      { to: '/admin/blog', label: 'Blog', icon: Newspaper, perm: 'articles.view' },
+      { to: '/admin/cases', label: 'Cases de sucesso', icon: Trophy, perm: 'cases.view' },
+      { to: '/admin/depoimentos', label: 'Depoimentos', icon: Quote, perm: 'testimonials.view' },
+      { to: '/admin/servicos', label: 'Serviços', icon: Sparkles, perm: 'services.view' },
+      { to: '/admin/marcas', label: 'Marcas parceiras', icon: Building2, perm: 'brands.view' },
+      { to: '/admin/equipe', label: 'Equipe do site', icon: UserSquare2, perm: 'team.view' },
+    ],
+  },
+  {
+    key: 'administracao',
+    label: 'Administração',
+    items: [
+      { to: '/admin/usuarios', label: 'Usuários', icon: UserCog, perm: 'users.view' },
+      { to: '/admin/cargos', label: 'Cargos e permissões', icon: ShieldCheck, perm: 'roles.view' },
+      { to: '/admin/configuracoes', label: 'Configurações do site', icon: SettingsIcon, perm: 'settings.view' },
+    ],
+  },
 ];
 
-/** Itens do menu que o usuário pode ver, sem cabeçalhos de grupo que ficariam vazios. */
-function visibleNav(entries: NavEntry[], can: (permission: string) => boolean): NavEntry[] {
-  const isItem = (entry: NavEntry): entry is NavItemDef => !('group' in entry);
-  const allowed = (entry: NavItemDef) => !entry.perm || can(entry.perm);
+const NAV_STATE_KEY = 'picplus_admin_nav_closed';
 
-  return entries.filter((entry, index) => {
-    if (isItem(entry)) return allowed(entry);
-    // cabeçalho: mantém só se houver item visível antes do próximo cabeçalho
-    const rest = entries.slice(index + 1);
-    const nextGroup = rest.findIndex((e) => !isItem(e));
-    const section = nextGroup === -1 ? rest : rest.slice(0, nextGroup);
-    return section.some((e) => isItem(e) && allowed(e));
-  });
+function readClosedGroups(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(NAV_STATE_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
 }
+
+const isActivePath = (pathname: string, to: string) => pathname === to || pathname.startsWith(`${to}/`);
 
 export function AdminLayout() {
   const { user, loading, logout, can } = useAuth();
@@ -263,6 +326,18 @@ export function AdminLayout() {
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === location.pathname;
   const setOpen = (value: boolean) => setOpenOn(value ? location.pathname : null);
+  // Grupos recolhidos pelo usuário (lembrados no navegador). O grupo da página atual abre sozinho.
+  const [closed, setClosed] = useState<string[]>(readClosedGroups);
+  const toggleGroup = (key: string) =>
+    setClosed((previous) => {
+      const next = previous.includes(key) ? previous.filter((k) => k !== key) : [...previous, key];
+      try {
+        localStorage.setItem(NAV_STATE_KEY, JSON.stringify(next));
+      } catch {
+        /* storage indisponível */
+      }
+      return next;
+    });
   // Os contadores do menu são recarregados a cada navegação.
   const stats = useFetch<AdminStats>(user ? '/admin/stats' : null, undefined, location.pathname);
 
@@ -286,6 +361,18 @@ export function AdminLayout() {
     return 0;
   };
 
+  const renderItem = (entry: NavItemDef) => {
+    const Icon = entry.icon;
+    const badge = badgeFor(entry.badge);
+    return (
+      <Item key={entry.to} to={entry.to} end={entry.end ?? false}>
+        <Icon size={19} aria-hidden />
+        {entry.label}
+        {badge > 0 && <span className="badge">{badge}</span>}
+      </Item>
+    );
+  };
+
   return (
     <ToastProvider>
       <Shell>
@@ -299,22 +386,27 @@ export function AdminLayout() {
           </Brand>
 
           <Nav>
-            {visibleNav(NAV, can).map((entry, index) => {
-              if ('group' in entry) {
-                return (
-                  <div className="group" key={`g-${index}`}>
-                    {entry.group}
-                  </div>
-                );
-              }
-              const Icon = entry.icon;
-              const badge = badgeFor(entry.badge);
+            {NAV_TOP.map(renderItem)}
+            {NAV_GROUPS.map((group) => {
+              const items = group.items.filter((item) => !item.perm || can(item.perm));
+              if (items.length === 0) return null;
+              const hasActive = items.some((item) => isActivePath(location.pathname, item.to));
+              const expanded = hasActive || !closed.includes(group.key);
+              const pending = items.reduce((sum, item) => sum + badgeFor(item.badge), 0);
               return (
-                <Item key={entry.to} to={entry.to} end={entry.end ?? false}>
-                  <Icon size={19} aria-hidden />
-                  {entry.label}
-                  {badge > 0 && <span className="badge">{badge}</span>}
-                </Item>
+                <div key={group.key}>
+                  <GroupToggle
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-controls={`nav-${group.key}`}
+                    onClick={() => !hasActive && toggleGroup(group.key)}
+                  >
+                    {group.label}
+                    {!expanded && pending > 0 && <span className="badge">{pending}</span>}
+                    <ChevronDown className="chevron" size={14} aria-hidden />
+                  </GroupToggle>
+                  {expanded && <GroupItems id={`nav-${group.key}`}>{items.map(renderItem)}</GroupItems>}
+                </div>
               );
             })}
           </Nav>
@@ -324,6 +416,9 @@ export function AdminLayout() {
               <strong>{user.name}</strong>
               {user.isOwner ? 'Proprietário' : (user.role?.name ?? 'Sem cargo')} · {user.email}
             </div>
+            <Item to="/admin/conta">
+              <KeyRound size={19} aria-hidden /> Minha conta
+            </Item>
             <a className="ext" href="/" target="_blank" rel="noopener noreferrer">
               <ExternalLink size={18} aria-hidden /> Ver o site
             </a>

@@ -12,6 +12,7 @@ import { InfluencersModule } from './influencers/influencers.module';
 import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RolesModule } from './roles/roles.module';
+import { SettingsModule } from './settings/settings.module';
 import { ServicesModule } from './services/services.module';
 import { StatsModule } from './stats/stats.module';
 import { StorageModule } from './storage/storage.module';
@@ -34,6 +35,7 @@ import { UsersModule } from './users/users.module';
     BrandsModule,
     TeamModule,
     TestimonialsModule,
+    SettingsModule,
     ContactsModule,
     StatsModule,
     RolesModule,

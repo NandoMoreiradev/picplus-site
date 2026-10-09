@@ -90,7 +90,13 @@ export function BlogPost() {
   const related = useFetch<ArticleSummary[]>(slug ? `/articles/${slug}/related` : null);
   const [copied, setCopied] = useState(false);
 
-  usePageMeta(data?.title, data?.excerpt ?? undefined);
+  usePageMeta(data?.title, data?.excerpt ?? undefined, {
+    image: data?.coverImage,
+    noindex: !data,
+    jsonLd: data
+      ? { '@context': 'https://schema.org', '@type': 'Article', headline: data.title, description: data.excerpt ?? undefined, image: data.coverImage ?? undefined, publisher: { '@type': 'Organization', name: 'PicPlus' } }
+      : undefined,
+  });
 
   if (loading && !data) return <PageLoader />;
   if (error || !data) {

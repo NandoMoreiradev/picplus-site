@@ -29,7 +29,7 @@ const Filters = styled.div`
 `;
 
 export function Blog() {
-  usePageMeta('Blog', 'Artigos sobre posicionamento, funil de vendas, produção audiovisual e influência, direto da equipe PicPlus.');
+  usePageMeta('Blog', 'Artigos sobre posicionamento, funil de vendas, produção audiovisual e influência, direto da equipe PicPlus.', { imageFallback: 'blog' });
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<string | null>(null);

@@ -84,6 +84,14 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: crud('testimonials', 'depoimentos'),
   },
   {
+    key: 'settings',
+    label: 'Configurações do site',
+    permissions: [
+      { key: 'settings.view', label: 'Ver configurações do site' },
+      { key: 'settings.edit', label: 'Editar configurações (imagem de compartilhamento)' },
+    ],
+  },
+  {
     key: 'users',
     label: 'Usuários',
     permissions: crud('users', 'usuários'),

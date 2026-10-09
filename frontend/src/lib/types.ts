@@ -203,3 +203,8 @@ export interface AdminUser {
   createdAt: string;
   role: { id: string; name: string } | null;
 }
+
+export interface SiteSettings {
+  ogImage: string | null;
+  blogOgImage: string | null;
+}

@@ -1,3 +1,4 @@
+import { site } from '../../config/site';
 import { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { ArrowRight, Check, X } from 'lucide-react';
@@ -345,7 +346,15 @@ function GridSkeleton({ count = 3, height = '340px' }: { count?: number; height?
 /* ── Página ──────────────────────────────────────────── */
 
 export function Home() {
-  usePageMeta();
+  usePageMeta(undefined, undefined, {
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: site.name,
+      taxID: site.cnpj,
+      sameAs: Object.values(site.social).filter(Boolean),
+    },
+  });
   const [selected, setSelected] = useState<ShowcaseInfluencer | null>(null);
 
   const stats = useFetch<PublicStats>('/stats');

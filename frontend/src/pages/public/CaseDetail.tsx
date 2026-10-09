@@ -135,7 +135,7 @@ export function CaseDetail() {
   const all = useFetch<SuccessCase[]>('/cases');
   const [zoom, setZoom] = useState<string | null>(null);
 
-  usePageMeta(data?.title, data?.summary ?? undefined);
+  usePageMeta(data?.title, data?.summary ?? undefined, { image: data?.coverImage ?? data?.images?.[0], noindex: !data });
 
   if (loading && !data) return <PageLoader />;
   if (error || !data) {
