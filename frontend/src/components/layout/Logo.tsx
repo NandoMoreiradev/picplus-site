@@ -1,25 +1,23 @@
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
+import logoPicplus from '../../assets/logo_picplus.png';
 
+// `size` mantém a escala em rem usada antes (texto); a imagem é 1.3x essa medida de altura.
 const LogoLink = styled(Link)<{ $size?: string }>`
-  font-size: ${({ $size = '2rem' }) => $size};
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  color: ${({ theme }) => theme.colors.text};
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
 
-  span {
-    color: ${({ theme }) => theme.colors.primary};
-  }
-  &:hover {
-    color: ${({ theme }) => theme.colors.text};
+  img {
+    height: ${({ $size = '2rem' }) => `calc(${$size} * 1.3)`};
+    width: auto;
   }
 `;
 
 export function Logo({ to = '/', size, label = 'PicPlus — página inicial' }: { to?: string; size?: string; label?: string }) {
   return (
     <LogoLink to={to} $size={size} aria-label={label}>
-      picplus<span>.</span>
+      <img src={logoPicplus} alt="PicPlus" width={500} height={190} />
     </LogoLink>
   );
 }

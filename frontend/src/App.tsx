@@ -13,6 +13,7 @@ import { Home } from './pages/public/Home';
 import { Influenciadores } from './pages/public/Influenciadores';
 import { NotFound } from './pages/public/NotFound';
 import { Orcamento } from './pages/public/Orcamento';
+import { PicCast } from './pages/public/PicCast';
 import { Servicos } from './pages/public/Servicos';
 import { Sobre } from './pages/public/Sobre';
 
@@ -32,6 +33,7 @@ function App() {
         <Route path="cadastro-influenciador" element={<CadastroInfluenciador />} />
         <Route path="blog" element={<Blog />} />
         <Route path="blog/:slug" element={<BlogPost />} />
+        <Route path="piccast" element={<PicCast />} />
         <Route path="contato" element={<Contato />} />
         <Route path="orcamento" element={<Orcamento />} />
         <Route path="*" element={<NotFound />} />

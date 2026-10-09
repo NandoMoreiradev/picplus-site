@@ -9,8 +9,9 @@ const NAV_ITEMS = [
   { to: '/sobre', label: 'Sobre a Agência' },
   { to: '/servicos', label: 'Serviços' },
   { to: '/cases', label: 'Cases de Sucesso' },
-  { to: '/influenciadores', label: 'Nossos Parceiros' },
+  { to: '/influenciadores', label: 'Influenciadores' },
   { to: '/blog', label: 'Blog' },
+  { to: '/piccast', label: 'PicCast' },
   { to: '/contato', label: 'Contato' },
 ];
 
