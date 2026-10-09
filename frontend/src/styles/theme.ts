@@ -25,8 +25,8 @@ export const theme = {
     overlay: 'rgba(0, 0, 0, 0.72)',
   },
   fonts: {
-    main: "'Nunito', 'Inter', sans-serif", // Nunito fits the rounded logo style
-    heading: "'Nunito', 'Inter', sans-serif",
+    main: "'Poppins', system-ui, sans-serif",
+    heading: "'Hero', 'Poppins', system-ui, sans-serif",
   },
   radii: {
     sm: '6px',

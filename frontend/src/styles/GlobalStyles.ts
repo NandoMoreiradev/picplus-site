@@ -1,7 +1,30 @@
 import { createGlobalStyle } from 'styled-components';
 
 export const GlobalStyles = createGlobalStyle`
-  /* Fontes carregadas via <link> no index.html, para não bloquear a renderização. */
+  /* Poppins carregada via <link> no index.html, para não bloquear a renderização. */
+
+  /* Hero (títulos): arquivos locais em public/fonts. Só existem Light, Regular e Bold. */
+  @font-face {
+    font-family: 'Hero';
+    src: url('/fonts/Hero-Light.otf') format('opentype');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Hero';
+    src: url('/fonts/Hero-Regular.otf') format('opentype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Hero';
+    src: url('/fonts/Hero-Bold.otf') format('opentype');
+    font-weight: 700 900;
+    font-style: normal;
+    font-display: swap;
+  }
 
   *, *::before, *::after {
     margin: 0;
