@@ -6,6 +6,7 @@ import {
   ExternalLink,
   Inbox,
   ChevronDown,
+  ClipboardList,
   KeyRound,
   Settings as SettingsIcon,
   LayoutDashboard,
@@ -117,6 +118,25 @@ const GroupToggle = styled.button`
     font-size: 0.68rem;
     line-height: 18px;
     text-align: center;
+  }
+`;
+
+const SoonItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.75rem;
+  color: ${({ theme }) => theme.colors.textMuted};
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: not-allowed;
+  opacity: 0.6;
+
+  .soon {
+    margin-left: auto;
+    font-size: 0.68rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
 `;
 
@@ -259,6 +279,8 @@ interface NavItemDef {
   perm?: string;
   end?: boolean;
   badge?: 'pendingInfluencers' | 'inbox';
+  /** Módulo ainda não implementado: aparece no menu, sem link. */
+  soon?: boolean;
 }
 
 interface NavGroupDef {
@@ -282,6 +304,11 @@ const NAV_GROUPS: NavGroupDef[] = [
       { to: '/admin/influenciadores', label: 'Influenciadores', icon: Users, perm: 'influencers.view', badge: 'pendingInfluencers' },
       { to: '/admin/contatos', label: 'Contatos e orçamentos', icon: Inbox, perm: 'contacts.view', badge: 'inbox' },
     ],
+  },
+  {
+    key: 'gestao',
+    label: 'Gestão',
+    items: [{ to: '/admin/tarefas', label: 'Gestão de Tarefas', icon: ClipboardList, soon: true }],
   },
   {
     key: 'conteudo',
@@ -363,6 +390,15 @@ export function AdminLayout() {
 
   const renderItem = (entry: NavItemDef) => {
     const Icon = entry.icon;
+    if (entry.soon) {
+      return (
+        <SoonItem key={entry.to} aria-disabled="true">
+          <Icon size={19} aria-hidden />
+          {entry.label}
+          <span className="soon">Em breve</span>
+        </SoonItem>
+      );
+    }
     const badge = badgeFor(entry.badge);
     return (
       <Item key={entry.to} to={entry.to} end={entry.end ?? false}>
