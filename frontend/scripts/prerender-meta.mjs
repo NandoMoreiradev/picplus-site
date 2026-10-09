@@ -14,6 +14,7 @@ const staticRoutes = [
   { path: '/' },
   { path: '/sobre', title: 'Sobre a Agência', description: 'Conheça a história, a missão e os valores da PicPlus: estratégia, produção e influência sob o mesmo teto.' },
   { path: '/servicos', title: 'Serviços', description: 'Assessoria de marketing, produtora audiovisual e agenciamento de influenciadores: conheça cada serviço e a estratégia por trás dele.' },
+  { path: '/planos', title: 'Planos e Pacotes', description: 'Uma equipe de marketing completa pelo custo total de um funcionário. Conheça os pacotes da PicPlus: estratégia, produção audiovisual e influência em um único hub.' },
   { path: '/cases', title: 'Cases de Sucesso', description: 'Conheça projetos desenvolvidos pela PicPlus, unindo estratégia, produção e influência, e os seus resultados.' },
   { path: '/influenciadores', title: 'Nossos Parceiros', description: 'Conheça os influenciadores parceiros da PicPlus, selecionados para transferir autoridade e gerar demanda.' },
   { path: '/cadastro-influenciador', title: 'Cadastro de Influenciadores', description: 'Cadastre o seu perfil na vitrine de parceiros da PicPlus e seja apresentado às marcas que atendemos.' },

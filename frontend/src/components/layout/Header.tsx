@@ -8,6 +8,7 @@ import { Logo } from './Logo';
 const NAV_ITEMS = [
   { to: '/sobre', label: 'Sobre a Agência' },
   { to: '/servicos', label: 'Serviços' },
+  { to: '/planos', label: 'Planos' },
   { to: '/cases', label: 'Cases de Sucesso' },
   { to: '/influenciadores', label: 'Influenciadores' },
   { to: '/blog', label: 'Blog' },
