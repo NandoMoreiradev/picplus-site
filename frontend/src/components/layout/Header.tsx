@@ -17,6 +17,9 @@ const NAV_ITEMS: { to: string; label: string; anchor?: string }[] = [
   { to: '/contato', label: 'Contato' },
 ];
 
+// Abaixo disso os 8 itens + botão não cabem em uma linha: troca pelo menu hambúrguer.
+const NAV_BREAKPOINT = '1180px';
+
 const HeaderContainer = styled.header<{ $scrolled: boolean }>`
   position: sticky;
   top: 0;
@@ -35,17 +38,17 @@ const Bar = styled.div`
   justify-content: space-between;
   gap: 1.5rem;
   height: ${({ theme }) => theme.layout.headerHeight};
-  max-width: ${({ theme }) => theme.layout.maxWidth};
+  max-width: 1360px;
   margin: 0 auto;
   padding: 0 1.5rem;
 `;
 
 const Nav = styled.nav`
   display: flex;
-  gap: 1.75rem;
+  gap: clamp(1rem, 1.5vw, 1.75rem);
   align-items: center;
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
+  @media (max-width: ${NAV_BREAKPOINT}) {
     display: none;
   }
 `;
@@ -54,6 +57,7 @@ const navItemStyles = css`
   position: relative;
   font-size: 0.95rem;
   font-weight: 700;
+  white-space: nowrap;
   color: ${({ theme }) => theme.colors.textSecondary};
   padding: 0.35rem 0;
 
@@ -109,7 +113,7 @@ const MenuButton = styled.button`
   border-radius: ${({ theme }) => theme.radii.md};
   border: 1px solid ${({ theme }) => theme.colors.border};
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
+  @media (max-width: ${NAV_BREAKPOINT}) {
     display: grid;
   }
 `;
