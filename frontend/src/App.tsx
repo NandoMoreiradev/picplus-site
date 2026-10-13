@@ -14,7 +14,7 @@ import { Influenciadores } from './pages/public/Influenciadores';
 import { NotFound } from './pages/public/NotFound';
 import { Orcamento } from './pages/public/Orcamento';
 import { PicCast } from './pages/public/PicCast';
-import { Planos } from './pages/public/Planos';
+// import { Planos } from './pages/public/Planos'; // Página desativada por enquanto (ver rota abaixo).
 import { Servicos } from './pages/public/Servicos';
 import { Sobre } from './pages/public/Sobre';
 
@@ -28,7 +28,9 @@ function App() {
         <Route index element={<Home />} />
         <Route path="sobre" element={<Sobre />} />
         <Route path="servicos" element={<Servicos />} />
-        <Route path="planos" element={<Planos />} />
+        {/* Página de Planos desativada por enquanto: /planos cai no NotFound. Para reativar, descomente aqui, o import,
+            o item no Header, o link no Footer e a rota em scripts/prerender-meta.mjs. */}
+        {/* <Route path="planos" element={<Planos />} /> */}
         <Route path="cases" element={<Cases />} />
         <Route path="cases/:slug" element={<CaseDetail />} />
         <Route path="influenciadores" element={<Influenciadores />} />

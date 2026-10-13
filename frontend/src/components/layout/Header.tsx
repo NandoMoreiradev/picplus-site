@@ -8,7 +8,7 @@ import { Logo } from './Logo';
 const NAV_ITEMS: { to: string; label: string; anchor?: string }[] = [
   { to: '/sobre', label: 'Sobre a PicPlus' },
   { to: '/servicos', label: 'Serviços' },
-  { to: '/planos', label: 'Planos' },
+  // { to: '/planos', label: 'Planos' }, // desativado por enquanto
   // Âncora da página inicial. Fica fora do NavLink, que marcaria o item ativo em toda a home.
   { to: '/#depoimentos', label: 'Depoimentos', anchor: 'depoimentos' },
   { to: '/influenciadores', label: 'Influenciadores' },
