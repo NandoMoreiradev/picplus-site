@@ -11,6 +11,11 @@ import { Reveal } from '../ui/Reveal';
 
 const GAP = 20; // px (1.25rem)
 
+/** Alvo do link "Depoimentos" do menu (/#depoimentos); a margem compensa o cabeçalho fixo. */
+const DepoimentosAnchor = styled(Section)`
+  scroll-margin-top: ${({ theme }) => theme.layout.headerHeight};
+`;
+
 /* ── Faixa de cartões ────────────────────────────────── */
 
 const Viewport = styled.div`
@@ -381,7 +386,7 @@ export function TestimonialsSection() {
   };
 
   return (
-    <Section $surface>
+    <DepoimentosAnchor id="depoimentos" $surface>
       <Container>
         <SectionHeader
           eyebrow="Depoimentos"
@@ -411,6 +416,6 @@ export function TestimonialsSection() {
         </Reveal>
       </Container>
       <VideoModal item={playing} onClose={() => setPlaying(null)} />
-    </Section>
+    </DepoimentosAnchor>
   );
 }

@@ -496,11 +496,6 @@ export function Home() {
                 ))}
               </Grid>
             )}
-            <MoreLink>
-              <ButtonLink to="/cases" $variant="secondary">
-                Ver todos os cases <ArrowRight size={18} aria-hidden />
-              </ButtonLink>
-            </MoreLink>
           </Container>
         </Section>
       )}

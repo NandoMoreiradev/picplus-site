@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { NavLink as RouterNavLink, useLocation } from 'react-router-dom';
-import styled from 'styled-components';
+import { Link, NavLink as RouterNavLink, useLocation } from 'react-router-dom';
+import styled, { css } from 'styled-components';
 import { Menu, X } from 'lucide-react';
 import { ButtonLink } from '../ui/Button';
 import { Logo } from './Logo';
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { to: string; label: string; anchor?: string }[] = [
   { to: '/sobre', label: 'Sobre a Agência' },
   { to: '/servicos', label: 'Serviços' },
   { to: '/planos', label: 'Planos' },
-  { to: '/cases', label: 'Cases de Sucesso' },
+  // Âncora da página inicial. Fica fora do NavLink, que marcaria o item ativo em toda a home.
+  { to: '/#depoimentos', label: 'Depoimentos', anchor: 'depoimentos' },
   { to: '/influenciadores', label: 'Influenciadores' },
   { to: '/blog', label: 'Blog' },
   { to: '/piccast', label: 'PicCast' },
@@ -49,7 +50,7 @@ const Nav = styled.nav`
   }
 `;
 
-const NavItem = styled(RouterNavLink)`
+const navItemStyles = css`
   position: relative;
   font-size: 0.95rem;
   font-weight: 700;
@@ -78,6 +79,14 @@ const NavItem = styled(RouterNavLink)`
   &:hover::after {
     transform: scaleX(1);
   }
+`;
+
+const NavItem = styled(RouterNavLink)`
+  ${navItemStyles}
+`;
+
+const AnchorItem = styled(Link)`
+  ${navItemStyles}
 `;
 
 const Actions = styled.div`
@@ -133,7 +142,8 @@ const MobileMenu = styled.div`
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
+  const isAnchorActive = (anchor: string) => pathname === '/' && hash === `#${anchor}`;
   // O menu "pertence" à rota em que foi aberto: ao navegar ele fecha sozinho.
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === pathname;
@@ -168,11 +178,17 @@ export function Header() {
         <Logo />
 
         <Nav aria-label="Navegação principal">
-          {NAV_ITEMS.map((item) => (
-            <NavItem key={item.to} to={item.to}>
-              {item.label}
-            </NavItem>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.anchor ? (
+              <AnchorItem key={item.to} to={item.to} className={isAnchorActive(item.anchor) ? 'active' : undefined}>
+                {item.label}
+              </AnchorItem>
+            ) : (
+              <NavItem key={item.to} to={item.to}>
+                {item.label}
+              </NavItem>
+            ),
+          )}
         </Nav>
 
         <Actions>
@@ -195,11 +211,17 @@ export function Header() {
       {/* Fora do <header>: o backdrop-filter dele criaria um bloco de contenção e quebraria o position: fixed. */}
       {open && (
         <MobileMenu id="mobile-menu" role="dialog" aria-label="Menu">
-          {NAV_ITEMS.map((item) => (
-            <RouterNavLink key={item.to} to={item.to} className={({ isActive }) => `link${isActive ? ' active' : ''}`}>
-              {item.label}
-            </RouterNavLink>
-          ))}
+          {NAV_ITEMS.map((item) =>
+            item.anchor ? (
+              <Link key={item.to} to={item.to} className={`link${isAnchorActive(item.anchor) ? ' active' : ''}`}>
+                {item.label}
+              </Link>
+            ) : (
+              <RouterNavLink key={item.to} to={item.to} className={({ isActive }) => `link${isActive ? ' active' : ''}`}>
+                {item.label}
+              </RouterNavLink>
+            ),
+          )}
           <ButtonLink to="/orcamento" className="mobile-cta" $size="lg" $block>
             Solicitar orçamento
           </ButtonLink>
