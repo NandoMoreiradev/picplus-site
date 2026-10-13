@@ -122,3 +122,31 @@ Observações:
 - O envio de vídeo exige o **R2** configurado em produção (sem ele, o arquivo ficaria no disco temporário do servidor).
 - Antes de publicar, tenha **autorização por escrito** de imagem e voz de cada pessoa que aparece.
 - Cargos já existentes não ganham a permissão sozinhos: dê `testimonials.*` ao cargo desejado em `/admin/cargos`.
+
+## Gestão de tarefas
+
+Módulo do painel em `/admin/tarefas` (menu **Gestão → Gestão de Tarefas**), inspirado no módulo de tarefas do Maskot Edu,
+com o visual do PicPlus. As telas ficam em `frontend/src/components/tasks` e a API em `backend/src/tasks`.
+
+- **Projetos e Kanban:** cada projeto tem o seu quadro, com colunas (**estágios**) editáveis em ⚙ Configurações.
+  Arrastar cartões entre colunas (mouse, toque ou teclado) muda o estágio e a ordem. Estágio marcado como **final**
+  (ex.: "Concluído") conclui a tarefa que chega nele; reabrir a devolve ao primeiro estágio em aberto.
+- **Visões:** Kanban (só dentro de um projeto), Lista (ordenável) e Calendário (arrastar/redimensionar reagenda o prazo).
+  A barra lateral traz as visões "Todas", "Hoje", "Próximos 7 dias", "Atribuídas a mim" e "Atrasadas", e os projetos
+  (dá para fixar, editar, duplicar sem as tarefas e excluir). Busca e filtros (prioridade, responsável, tags, atrasadas)
+  são aplicados no navegador; as preferências de tela ficam salvas por pessoa, só neste navegador.
+- **Tarefa:** descrição em texto rico, responsável e colaboradores, início/prazo, prioridade, tags, checklist (cada item é
+  uma subtarefa), comentários em fio, anexos (imagem, PDF ou vídeo, mesmos limites de tamanho do envio do painel) e histórico
+  de alterações. Seleção em massa muda estágio, prioridade, responsável ou prazo de várias tarefas de uma vez.
+- **Lixeira:** excluir tarefas e projetos é reversível (`/admin/tarefas` → 🗑). Restaurar um projeto devolve as tarefas que
+  caíram com ele; a exclusão definitiva apaga também os arquivos anexados.
+- **Permissões** (`tasks.*`): `view`, `create`, `edit` (editar e mover; também remove itens de checklist), `comment`
+  (comentar e anexar), `delete` (excluir/restaurar) e `manage` (projetos, estágios e tags). Cargos já existentes não ganham
+  as permissões sozinhos: marque-as em `/admin/cargos`. Os cargos padrão Comercial e Conteúdo (criados só em bancos novos)
+  já incluem `view`, `create`, `edit` e `comment`.
+- **Prazos** são datas de calendário (sem hora): guardadas à meia-noite UTC e lidas pela data, para o dia nunca "pular" por fuso.
+- **Fora desta primeira versão** (existem no Maskot): dashboard, timeline/Gantt, controle de tempo, recorrência, dependências,
+  templates, automações, campos personalizados, projetos privados, pastas de projetos, tempo real (socket) e lembretes por e-mail.
+
+Os testes do módulo (`backend/test/tasks.e2e-spec.ts`) rodam contra um PostgreSQL real em memória (PGlite) com as
+migrações do projeto, em `npm run test:e2e`.

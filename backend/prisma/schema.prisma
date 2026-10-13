@@ -13,19 +13,27 @@ datasource db {
 // ─────────────────────────────────────────────────────────────
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String
-  name      String
+  id                String            @id @default(uuid())
+  email             String            @unique
+  password          String
+  name              String
   // Proprietário: tem todas as permissões, independentemente do cargo, e não pode ficar sem ninguém.
-  isOwner   Boolean   @default(false)
+  isOwner           Boolean           @default(false)
   // Usuário desativado não consegue entrar e tem a sessão invalidada.
-  active    Boolean   @default(true)
-  role      Role?     @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  roleId    String?
-  articles  Article[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  active            Boolean           @default(true)
+  role              Role?             @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  roleId            String?
+  articles          Article[]
+  // Gestão de tarefas
+  tasksAssigned     Task[]            @relation("TaskAssignedTo")
+  tasksCreated      Task[]            @relation("TaskCreatedBy")
+  taskCoAssignments TaskAssignee[]    @relation("TaskCoAssignee")
+  taskProjects      TaskProject[]     @relation("TaskProjectOwner")
+  taskComments      TaskComment[]     @relation("TaskCommentAuthor")
+  taskAttachments   TaskAttachment[]  @relation("TaskAttachmentUploader")
+  taskActivities    TaskActivityLog[] @relation("TaskActivityUser")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
   @@index([roleId])
 }
@@ -132,16 +140,16 @@ model Service {
 }
 
 model Brand {
-  id        String   @id @default(uuid())
-  name      String
-  logo      String
+  id         String   @id @default(uuid())
+  name       String
+  logo       String
   // Fundo do cartão do logo no site: light | dark (use dark para logos brancos)
-  background String  @default("light")
-  website   String?
-  order     Int      @default(0)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  background String   @default("light")
+  website    String?
+  order      Int      @default(0)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model TeamMember {
@@ -213,10 +221,195 @@ model Testimonial {
 
 // Configurações gerais do site: uma única linha (id "default").
 model SiteSettings {
-  id            String   @id @default("default")
+  id          String   @id @default("default")
   // Imagem de compartilhamento (Open Graph, 1200x630) do site e fallback de páginas sem imagem própria
-  ogImage       String?
+  ogImage     String?
   // Imagem de compartilhamento da listagem do blog (se vazia, usa ogImage)
-  blogOgImage   String?
-  updatedAt     DateTime @updatedAt
+  blogOgImage String?
+  updatedAt   DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────
+// Gestão de tarefas (painel)
+// ─────────────────────────────────────────────────────────────
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskActivityAction {
+  CREATED
+  UPDATED
+  DELETED
+  RESTORED
+  COMPLETED
+  REOPENED
+  COMMENT_ADDED
+  ATTACHMENT_ADDED
+  SUBTASK_ADDED
+}
+
+// Todo projeto tem os próprios estágios (as colunas do Kanban).
+// Excluir um projeto o leva à lixeira junto com as tarefas (mesmo deletedAt), e restaurar devolve tudo.
+model TaskProject {
+  id           String        @id @default(uuid())
+  name         String
+  description  String?       @db.Text
+  color        String        @default("#B6E829")
+  status       ProjectStatus @default(ACTIVE)
+  startDate    DateTime?
+  endDate      DateTime?
+  isPinned     Boolean       @default(false)
+  displayOrder Int           @default(0)
+  owner        User?         @relation("TaskProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId      String?
+  stages       TaskStage[]
+  tasks        Task[]
+  deletedAt    DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([deletedAt])
+  @@index([ownerId])
+}
+
+model TaskStage {
+  id          String      @id @default(uuid())
+  name        String
+  color       String      @default("#737373")
+  order       Int         @default(0)
+  // Tarefas que entram em um estágio "concluído" são marcadas como concluídas.
+  isCompleted Boolean     @default(false)
+  project     TaskProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  tasks       Task[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([projectId, order])
+}
+
+model TaskTag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("#737373")
+  tasks     Task[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Subtarefas (itens de checklist) são tarefas com parentTaskId: pertencem à tarefa-pai e não aparecem nas listagens.
+model Task {
+  id               String            @id @default(uuid())
+  title            String
+  // HTML gerado pelo editor de texto.
+  description      String?           @db.Text
+  priority         TaskPriority      @default(MEDIUM)
+  startDate        DateTime?
+  dueDate          DateTime?
+  // Preenchido ao concluir (estágio concluído ou checklist marcado); nulo = em aberto.
+  completedAt      DateTime?
+  // Posição manual dentro da coluna do Kanban.
+  order            Int               @default(0)
+  estimatedMinutes Int?
+  project          TaskProject       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId        String
+  stage            TaskStage         @relation(fields: [stageId], references: [id], onDelete: NoAction)
+  stageId          String
+  assignedTo       User?             @relation("TaskAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedToId     String?
+  createdBy        User?             @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById      String?
+  coAssignees      TaskAssignee[]
+  tags             TaskTag[]
+  parentTask       Task?             @relation("TaskSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  parentTaskId     String?
+  subtasks         Task[]            @relation("TaskSubtasks")
+  comments         TaskComment[]
+  attachments      TaskAttachment[]
+  activities       TaskActivityLog[]
+  deletedAt        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([projectId, stageId, order])
+  @@index([assignedToId])
+  @@index([parentTaskId])
+  @@index([dueDate])
+  @@index([deletedAt])
+}
+
+model TaskAssignee {
+  id        String   @id @default(uuid())
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String
+  user      User     @relation("TaskCoAssignee", fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([taskId, userId])
+  @@index([userId])
+}
+
+model TaskComment {
+  id              String        @id @default(uuid())
+  // HTML gerado pelo editor de texto.
+  content         String        @db.Text
+  task            Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId          String
+  user            User?         @relation("TaskCommentAuthor", fields: [userId], references: [id], onDelete: SetNull)
+  userId          String?
+  // Respostas em fio: o comentário "pai" ao qual este responde.
+  parentComment   TaskComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  parentCommentId String?
+  replies         TaskComment[] @relation("CommentReplies")
+  isEdited        Boolean       @default(false)
+  isDeleted       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([taskId, createdAt])
+  @@index([parentCommentId])
+}
+
+model TaskAttachment {
+  id           String   @id @default(uuid())
+  fileName     String
+  fileType     String
+  fileSize     Int
+  // URL do arquivo no armazenamento.
+  url          String
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId       String
+  uploadedBy   User?    @relation("TaskAttachmentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  @@index([taskId])
+}
+
+model TaskActivityLog {
+  id          String             @id @default(uuid())
+  action      TaskActivityAction
+  description String?
+  // Antes/depois de cada campo alterado: { campo: { old, new } }.
+  changes     Json?
+  task        Task               @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId      String
+  user        User?              @relation("TaskActivityUser", fields: [userId], references: [id], onDelete: SetNull)
+  userId      String?
+  createdAt   DateTime           @default(now())
+
+  @@index([taskId, createdAt])
 }

@@ -168,13 +168,13 @@ export function Sobre() {
   return (
     <>
       <PageHero
-        eyebrow="Sobre a agência"
+        eyebrow="Sobre a PicPlus"
         title={
           <>
             Nossa <Highlight>história</Highlight>
           </>
         }
-        description="Uma agência nascida no campo de batalha, movida por performance e focada em transformar marketing em vendas."
+        description="Uma história nascida no campo de batalha, movida por performance e focada em transformar marketing em vendas."
       />
 
       <Section>

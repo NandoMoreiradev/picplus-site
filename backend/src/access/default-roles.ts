@@ -25,6 +25,10 @@ export const DEFAULT_ROLES: {
       'influencers.review',
       'cases.view',
       'services.view',
+      'tasks.view',
+      'tasks.create',
+      'tasks.edit',
+      'tasks.comment',
     ],
   },
   {
@@ -50,6 +54,10 @@ export const DEFAULT_ROLES: {
       'testimonials.view',
       'testimonials.create',
       'testimonials.edit',
+      'tasks.view',
+      'tasks.create',
+      'tasks.edit',
+      'tasks.comment',
     ],
   },
   {

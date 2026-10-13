@@ -163,7 +163,7 @@ export function Footer() {
 
         <FooterSection>
           <Title>Links Rápidos</Title>
-          <FooterLink to="/sobre">Sobre a Agência</FooterLink>
+          <FooterLink to="/sobre">Sobre a PicPlus</FooterLink>
           <FooterLink to="/servicos">Nossos Serviços</FooterLink>
           <FooterLink to="/planos">Planos e Pacotes</FooterLink>
           <FooterLink to="/#depoimentos">Depoimentos</FooterLink>

@@ -8,7 +8,7 @@
 export const about = {
   story: [
     'A PicPlus não nasceu em um escritório luxuoso, mas no campo de batalha. Fundada por Guilherme Fernandes, a agência surgiu da insatisfação com um mercado cheio de promessas vazias e empresas perdendo dinheiro com métricas de vaidade. O início foi marcado por pura estratégia e execução: sem equipamentos caros, o primeiro contrato foi executado usando o celular do próprio cliente para gravar os vídeos. O foco era 100% em conversão e o resultado provou o conceito de forma estrondosa: esse mesmo cliente teve um aumento de mais de R$ 500.000,00 no faturamento em um único mês.',
-    'Esse case validou a tese central da agência de que uma estratégia de marketing inteligente, quando bem executada, é o verdadeiro motor de vendas de um negócio. Hoje, essa essência implacável por performance se uniu a uma estrutura de ponta, permitindo que a PicPlus entregue soluções robustas como assessoria estratégica, produtora audiovisual com qualidade de cinema e agenciamento de influenciadores para marcas de alto nível.',
+    'Esse case validou a tese central da PicPlus Company de que uma estratégia de marketing inteligente, quando bem executada, é o verdadeiro motor de vendas de um negócio. Hoje, essa essência implacável por performance se uniu a uma estrutura de ponta, permitindo que a PicPlus entregue soluções robustas como assessoria estratégica, produtora audiovisual com qualidade de cinema e agenciamento de influenciadores para marcas de alto nível.',
   ],
   founder: {
     name: 'Guilherme Fernandes',
@@ -21,7 +21,7 @@ export const about = {
   },
   vision: {
     title: 'Nossa visão',
-    text: 'Consolidar a PicPlus como a maior e mais respeitada agência de marketing e produtora audiovisual de todo o eixo Norte e Nordeste do Brasil.',
+    text: 'Consolidar a PicPlus como a maior e mais respeitada assessoria de marketing e produtora audiovisual de todo o eixo Norte e Nordeste do Brasil.',
   },
   values: [
     {

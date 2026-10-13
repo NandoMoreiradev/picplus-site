@@ -130,10 +130,27 @@ export class StorageService {
     expected: UploadKind,
     options: { trim?: boolean } = {},
   ): Promise<string> {
+    return (await this.saveAny(file, [expected], options)).url;
+  }
+
+  /**
+   * Salva o arquivo se o tipo REAL (pelos bytes) estiver entre os permitidos.
+   * Devolve a URL e o tipo detectado (o mimetype do cliente não é confiável).
+   */
+  async saveAny(
+    file: Express.Multer.File,
+    allowed: UploadKind[],
+    options: { trim?: boolean } = {},
+  ): Promise<{ url: string; mime: string }> {
     const detected = sniff(file.buffer);
-    if (!detected || detected.kind !== expected) {
-      throw new BadRequestException(INVALID_FILE_MESSAGE[expected]);
+    if (!detected || !allowed.includes(detected.kind)) {
+      throw new BadRequestException(
+        allowed.length === 1
+          ? INVALID_FILE_MESSAGE[allowed[0]]
+          : 'Envie uma imagem (JPG, PNG ou WebP), um PDF ou um vídeo (MP4, WebM ou MOV).',
+      );
     }
+    const expected = detected.kind;
     if (file.size > MAX_SIZE[expected]) {
       throw new BadRequestException(
         `Arquivo muito grande. Limite de ${MAX_SIZE[expected] / 1024 / 1024} MB.`,
@@ -159,12 +176,15 @@ export class StorageService {
           CacheControl: 'public, max-age=31536000, immutable',
         }),
       );
-      return `${config.r2.publicUrl}/${key}`;
+      return { url: `${config.r2.publicUrl}/${key}`, mime: detected.mime };
     }
 
     await mkdir(config.uploads.dir, { recursive: true });
     await writeFile(join(config.uploads.dir, filename), body);
-    return `${config.uploads.publicPath}/${filename}`;
+    return {
+      url: `${config.uploads.publicPath}/${filename}`,
+      mime: detected.mime,
+    };
   }
 
   /**

@@ -45,6 +45,21 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     ],
   },
   {
+    key: 'tasks',
+    label: 'Gestão de tarefas',
+    permissions: [
+      { key: 'tasks.view', label: 'Ver tarefas e projetos' },
+      { key: 'tasks.create', label: 'Criar tarefas' },
+      { key: 'tasks.edit', label: 'Editar e mover tarefas' },
+      { key: 'tasks.comment', label: 'Comentar e anexar arquivos' },
+      { key: 'tasks.delete', label: 'Excluir e restaurar tarefas' },
+      {
+        key: 'tasks.manage',
+        label: 'Gerenciar projetos, estágios e tags',
+      },
+    ],
+  },
+  {
     key: 'articles',
     label: 'Blog',
     permissions: [

@@ -16,6 +16,7 @@ import { SettingsModule } from './settings/settings.module';
 import { ServicesModule } from './services/services.module';
 import { StatsModule } from './stats/stats.module';
 import { StorageModule } from './storage/storage.module';
+import { TasksModule } from './tasks/tasks.module';
 import { TeamModule } from './team/team.module';
 import { TestimonialsModule } from './testimonials/testimonials.module';
 import { UsersModule } from './users/users.module';
@@ -35,6 +36,7 @@ import { UsersModule } from './users/users.module';
     BrandsModule,
     TeamModule,
     TestimonialsModule,
+    TasksModule,
     SettingsModule,
     ContactsModule,
     StatsModule,

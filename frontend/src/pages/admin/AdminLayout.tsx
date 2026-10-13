@@ -254,7 +254,7 @@ const TopBar = styled.header`
   }
 `;
 
-const Content = styled.main`
+const Content = styled.main<{ $bleed?: boolean }>`
   max-width: 1280px;
   margin: 0 auto;
   padding: 2.25rem 2rem 4rem;
@@ -262,6 +262,23 @@ const Content = styled.main`
   @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
     padding: 1.5rem 1rem 3rem;
   }
+
+  /* Telas de trabalho (ex.: tarefas) ocupam toda a área, com a altura da janela.
+     O "&&" garante que isto vença o padding responsivo acima. */
+  ${({ $bleed, theme }) =>
+    $bleed &&
+    `
+    && {
+      max-width: none;
+      padding: 0;
+      height: 100vh;
+    }
+    @media (max-width: ${theme.breakpoints.laptop}) {
+      && {
+        height: calc(100vh - 64px); /* menos a barra superior do celular */
+      }
+    }
+  `}
 `;
 
 const Scrim = styled.div`
@@ -308,7 +325,7 @@ const NAV_GROUPS: NavGroupDef[] = [
   {
     key: 'gestao',
     label: 'Gestão',
-    items: [{ to: '/admin/tarefas', label: 'Gestão de Tarefas', icon: ClipboardList, soon: true }],
+    items: [{ to: '/admin/tarefas', label: 'Gestão de Tarefas', icon: ClipboardList, perm: 'tasks.view' }],
   },
   {
     key: 'conteudo',
@@ -471,7 +488,7 @@ export function AdminLayout() {
             </button>
             <Logo to="/admin" size="1.4rem" label="Painel PicPlus" />
           </TopBar>
-          <Content>
+          <Content $bleed={location.pathname.startsWith('/admin/tarefas')}>
             <Outlet />
           </Content>
         </Main>

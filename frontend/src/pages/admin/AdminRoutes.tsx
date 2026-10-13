@@ -1,6 +1,8 @@
+import { lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { RequirePermission } from '../../components/admin/RequirePermission';
+import { PageLoader } from '../../components/ui/Feedback';
 import { Account } from './Account';
 import { AdminLayout } from './AdminLayout';
 import { ArticleEditor } from './ArticleEditor';
@@ -17,6 +19,9 @@ import { Services } from './Services';
 import { Team } from './Team';
 import { Testimonials } from './Testimonials';
 import { Users } from './Users';
+
+// A gestão de tarefas traz calendário e editor de texto: só baixa quando alguém abre a tela.
+const Tasks = lazy(() => import('./Tasks'));
 
 /** Protege a tela com a permissão de "ver" do módulo (o servidor revalida cada chamada). */
 const guard = (permission: string, page: ReactNode) => (
@@ -40,6 +45,15 @@ export default function AdminRoutes() {
         <Route path="cases" element={guard('cases.view', <Cases />)} />
         <Route path="servicos" element={guard('services.view', <Services />)} />
         <Route path="marcas" element={guard('brands.view', <Brands />)} />
+        <Route
+          path="tarefas"
+          element={guard(
+            'tasks.view',
+            <Suspense fallback={<PageLoader label="Carregando tarefas…" />}>
+              <Tasks />
+            </Suspense>,
+          )}
+        />
         <Route path="depoimentos" element={guard('testimonials.view', <Testimonials />)} />
         <Route path="equipe" element={guard('team.view', <Team />)} />
         <Route path="usuarios" element={guard('users.view', <Users />)} />

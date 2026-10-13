@@ -6,7 +6,7 @@ import { ButtonLink } from '../ui/Button';
 import { Logo } from './Logo';
 
 const NAV_ITEMS: { to: string; label: string; anchor?: string }[] = [
-  { to: '/sobre', label: 'Sobre a Agência' },
+  { to: '/sobre', label: 'Sobre a PicPlus' },
   { to: '/servicos', label: 'Serviços' },
   { to: '/planos', label: 'Planos' },
   // Âncora da página inicial. Fica fora do NavLink, que marcaria o item ativo em toda a home.
