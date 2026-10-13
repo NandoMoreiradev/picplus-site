@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import styled from 'styled-components';
 import { Check, Link2, Target } from 'lucide-react';
 import { CtaBand } from '../../components/public/CtaBand';
@@ -102,6 +104,7 @@ const ServiceBlock = styled(Card)`
   display: grid;
   grid-template-columns: 1.15fr 1fr;
   overflow: hidden;
+  scroll-margin-top: calc(${({ theme }) => theme.layout.headerHeight} + 1rem);
 
   @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
     grid-template-columns: 1fr;
@@ -229,9 +232,176 @@ const ServiceBlock = styled(Card)`
   }
 `;
 
+const HowWeDoWrap = styled.div`
+  margin-top: 3.5rem;
+`;
+
+const HowWeDoTitle = styled.h3`
+  margin-bottom: 1.25rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+
+  span {
+    color: ${({ theme }) => theme.colors.primary};
+  }
+`;
+
+const ProcessTabs = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+
+  button {
+    padding: 0.55rem 0.95rem;
+    border-radius: 999px;
+    border: 1px solid ${({ theme }) => theme.colors.border};
+    background: ${({ theme }) => theme.colors.surface};
+    color: ${({ theme }) => theme.colors.text};
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all ${({ theme }) => theme.transitions.default};
+  }
+  button:hover {
+    border-color: ${({ theme }) => theme.colors.primaryBorder};
+    color: ${({ theme }) => theme.colors.primary};
+  }
+  button[aria-selected='true'] {
+    border-color: ${({ theme }) => theme.colors.primary};
+    background: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.textDark};
+  }
+`;
+
+const ProcessSteps = styled.ol`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1.5rem;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+
+  li {
+    position: relative;
+    counter-increment: step;
+    padding-top: 3.5rem;
+  }
+  /* Número da etapa */
+  li::before {
+    content: counter(step);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    background: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.textDark};
+    font-weight: 800;
+  }
+  /* Linha que liga uma etapa à próxima */
+  li:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 1.25rem;
+    left: 2.5rem;
+    right: -1.5rem;
+    height: 2px;
+    background: ${({ theme }) => theme.colors.border};
+  }
+  h4 {
+    margin-bottom: 0.4rem;
+    font-size: 1.05rem;
+    font-weight: 800;
+  }
+  p {
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: ${({ theme }) => theme.colors.textSecondary};
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    grid-template-columns: 1fr;
+    gap: 0;
+
+    li {
+      padding: 0 0 1.75rem 3.5rem;
+    }
+    li:not(:last-child)::after {
+      top: 2.5rem;
+      bottom: 0;
+      left: 1.25rem;
+      right: auto;
+      width: 2px;
+      height: auto;
+    }
+  }
+`;
+
+function HowWeDo({ pillarKey, services }: { pillarKey: string; services: ServiceDetail[] }) {
+  const withProcess = services.filter((service) => service.process?.length);
+  const [activeId, setActiveId] = useState(withProcess[0]?.id);
+  if (!withProcess.length) return null;
+
+  const active = withProcess.find((service) => service.id === activeId) ?? withProcess[0];
+  const tabId = (id: string) => `${pillarKey}-tab-${id}`;
+  const panelId = `${pillarKey}-panel`;
+
+  // Setas ← → trocam de aba, como em qualquer tablist.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    const current = withProcess.findIndex((service) => service.id === active.id);
+    const step = event.key === 'ArrowRight' ? 1 : -1;
+    const next = withProcess[(current + step + withProcess.length) % withProcess.length];
+    setActiveId(next.id);
+    document.getElementById(tabId(next.id))?.focus();
+  };
+
+  return (
+    <Reveal>
+      <HowWeDoWrap>
+        <HowWeDoTitle>
+          Como <span>fazemos</span>
+        </HowWeDoTitle>
+        <ProcessTabs role="tablist" aria-label="Serviços do pilar" onKeyDown={onKeyDown}>
+          {withProcess.map((service) => (
+            <button
+              key={service.id}
+              id={tabId(service.id)}
+              type="button"
+              role="tab"
+              aria-selected={service.id === active.id}
+              aria-controls={panelId}
+              tabIndex={service.id === active.id ? 0 : -1}
+              onClick={() => setActiveId(service.id)}
+            >
+              {service.title}
+            </button>
+          ))}
+        </ProcessTabs>
+        <div id={panelId} role="tabpanel" aria-labelledby={tabId(active.id)}>
+          <ProcessSteps>
+            {active.process?.map((step) => (
+              <li key={step.title}>
+                <h4>{step.title}</h4>
+                <p>{step.text}</p>
+              </li>
+            ))}
+          </ProcessSteps>
+        </div>
+      </HowWeDoWrap>
+    </Reveal>
+  );
+}
+
 function ServiceDetailCard({ service }: { service: ServiceDetail }) {
   return (
-    <ServiceBlock $interactive>
+    <ServiceBlock $interactive id={service.id}>
       <div className="main">
         <div className="icon">
           <ServiceIcon icon={service.icon} size={28} aria-hidden />
@@ -328,6 +498,7 @@ export function Servicos() {
                   </Reveal>
                 ))}
               </ServiceList>
+              <HowWeDo pillarKey={detail.key} services={detail.services} />
             </Container>
           </PillarSection>
         );

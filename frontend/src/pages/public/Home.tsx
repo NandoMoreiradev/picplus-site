@@ -7,6 +7,7 @@ import { BrandStrip } from '../../components/public/BrandStrip';
 import { CtaBand } from '../../components/public/CtaBand';
 import { InfluencerModal } from '../../components/public/InfluencerModal';
 import { PillarCard } from '../../components/public/PillarCard';
+import { ServicesShowcase } from '../../components/public/ServicesShowcase';
 import { TestimonialsSection } from '../../components/public/TestimonialsSection';
 import { ButtonLink } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Feedback';
@@ -440,6 +441,26 @@ export function Home() {
       </Section>
 
       <Section>
+        <Container>
+          <SectionHeader
+            eyebrow="Nossos serviços"
+            title={
+              <>
+                Tudo o que o hub entrega, <Highlight>do posicionamento à venda</Highlight>
+              </>
+            }
+            description="Passe o mouse para ver o que cada serviço faz pelo seu negócio."
+          />
+          <ServicesShowcase />
+          <MoreLink>
+            <ButtonLink to="/servicos" $variant="secondary">
+              Ver todos os serviços em detalhe <ArrowRight size={18} aria-hidden />
+            </ButtonLink>
+          </MoreLink>
+        </Container>
+      </Section>
+
+      <Section $tight>
         <Container>
           <SectionHeader
             eyebrow="Como trabalhamos"
