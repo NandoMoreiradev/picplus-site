@@ -81,7 +81,7 @@ export function TaskActivity({ taskId }: { taskId: string }) {
     <List>
       {items.map((item) => (
         <Item key={item.id}>
-          <Avatar name={item.user?.name ?? 'Sistema'} size={30} />
+          <Avatar key={item.user?.avatarUrl ?? 'none'} src={item.user?.avatarUrl} name={item.user?.name ?? 'Sistema'} size={30} />
           <div className="body">
             <span className="who">{item.user?.name ?? 'Usuário removido'}</span> — {item.description ?? 'tarefa atualizada'}
             <span className="when">{formatDateTime(item.createdAt)}</span>

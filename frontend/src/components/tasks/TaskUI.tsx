@@ -99,7 +99,7 @@ export function AvatarStack({ people, size = 24, max = 3 }: { people: Person[]; 
   return (
     <StackWrap title={people.map((p) => p.name).join(', ')}>
       {shown.map((person) => (
-        <Avatar key={person.id} name={person.name} size={size} />
+        <Avatar key={`${person.id}:${person.avatarUrl ?? ""}`} src={person.avatarUrl} name={person.name} size={size} />
       ))}
       {extra > 0 && <span className="more">+{extra}</span>}
     </StackWrap>
@@ -210,6 +210,8 @@ export interface MultiOption {
   /** Cor (tags) ou nome para o avatar (pessoas). */
   color?: string;
   person?: boolean;
+  /** Foto da pessoa (quando person). */
+  avatarUrl?: string | null;
 }
 
 /**
@@ -280,7 +282,7 @@ export function MultiSelect({
                 <span className="box">{on && <Check size={12} strokeWidth={3} aria-hidden />}</span>
                 {option.person ? (
                   <span aria-hidden>
-                    <Avatar name={option.label} size={22} />
+                    <Avatar key={option.avatarUrl ?? 'none'} src={option.avatarUrl} name={option.label} size={22} />
                   </span>
                 ) : (
                   option.color && <ColorDot $color={option.color} />

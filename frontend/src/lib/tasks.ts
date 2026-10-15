@@ -9,6 +9,7 @@ export type ProjectStatus = 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'C
 export interface Person {
   id: string;
   name: string;
+  avatarUrl?: string | null;
 }
 
 export interface TaskUser extends Person {

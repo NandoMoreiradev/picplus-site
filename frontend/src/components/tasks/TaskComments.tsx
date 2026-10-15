@@ -210,7 +210,7 @@ export function TaskComments({
     const removed = comment.isDeleted;
     return (
       <Item key={comment.id}>
-        <Avatar name={comment.user?.name ?? 'Usuário removido'} size={34} />
+        <Avatar key={comment.user?.avatarUrl ?? 'none'} src={comment.user?.avatarUrl} name={comment.user?.name ?? 'Usuário removido'} size={34} />
         <div className="body">
           <div className="head">
             <strong>{comment.user?.name ?? 'Usuário removido'}</strong>

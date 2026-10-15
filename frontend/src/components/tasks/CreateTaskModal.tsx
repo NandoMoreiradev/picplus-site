@@ -163,7 +163,7 @@ export function CreateTaskModal({
               placeholder="Ninguém"
               value={coAssigneeIds}
               onChange={setCoAssigneeIds}
-              options={users.filter((user) => user.id !== assignedToId).map((user) => ({ value: user.id, label: user.name, person: true }))}
+              options={users.filter((user) => user.id !== assignedToId).map((user) => ({ value: user.id, label: user.name, person: true, avatarUrl: user.avatarUrl }))}
               renderValue={(selected) => selected.map((item) => item.label).join(', ')}
             />
           </FieldShell>

@@ -443,7 +443,7 @@ export function TaskDetail({
               disabled={!canEdit}
               value={task.coAssignees.map((c) => c.userId)}
               onChange={(ids) => void save({ coAssigneeIds: ids })}
-              options={users.filter((user) => user.id !== task.assignedToId).map((user) => ({ value: user.id, label: user.name, person: true }))}
+              options={users.filter((user) => user.id !== task.assignedToId).map((user) => ({ value: user.id, label: user.name, person: true, avatarUrl: user.avatarUrl }))}
               renderValue={(selected) => selected.map((item) => item.label).join(', ')}
             />
           </div>

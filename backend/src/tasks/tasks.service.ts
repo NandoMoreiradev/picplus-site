@@ -16,7 +16,9 @@ import {
   UpdateTaskDto,
 } from './dto/task.dto';
 
-const PERSON = { select: { id: true, name: true } } as const;
+const PERSON = {
+  select: { id: true, name: true, avatarUrl: true },
+} as const;
 
 /** Tudo que a listagem, o Kanban e o detalhe precisam de uma tarefa. */
 const TASK_INCLUDE = {
@@ -115,7 +117,7 @@ export class TasksService {
   assignableUsers() {
     return this.prisma.user.findMany({
       where: { active: true },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, avatarUrl: true },
       orderBy: { name: 'asc' },
     });
   }

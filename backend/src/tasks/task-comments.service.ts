@@ -7,7 +7,9 @@ import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCommentDto, UpdateCommentDto } from './dto/task.dto';
 
-const AUTHOR = { select: { id: true, name: true } } as const;
+const AUTHOR = {
+  select: { id: true, name: true, avatarUrl: true },
+} as const;
 
 interface CommentNode {
   id: string;
