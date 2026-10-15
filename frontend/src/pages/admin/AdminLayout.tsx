@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
-import styled from 'styled-components';
+import styled, { useTheme } from 'styled-components';
 import {
   Building2,
   ExternalLink,
@@ -13,6 +13,8 @@ import {
   LogOut,
   Menu,
   Newspaper,
+  PanelLeftClose,
+  PanelLeftOpen,
   Quote,
   ShieldCheck,
   Sparkles,
@@ -28,28 +30,68 @@ import { PageLoader } from '../../components/ui/Feedback';
 import { ToastProvider } from '../../components/ui/Toast';
 import { useAuth } from '../../context/auth-context';
 import { useFetch } from '../../hooks/useFetch';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import type { AdminStats } from '../../lib/types';
 
 const SIDEBAR_WIDTH = '264px';
+const RAIL_WIDTH = '76px';
 
 const Shell = styled.div`
   display: flex;
   min-height: 100vh;
 `;
 
-const Sidebar = styled.aside<{ $open: boolean }>`
+const Sidebar = styled.aside<{ $open: boolean; $rail: boolean }>`
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 200;
-  width: ${SIDEBAR_WIDTH};
+  width: ${({ $rail }) => ($rail ? RAIL_WIDTH : SIDEBAR_WIDTH)};
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  padding: 1.5rem 1rem;
+  padding: 1.5rem ${({ $rail }) => ($rail ? '0.6rem' : '1rem')};
   background: ${({ theme }) => theme.colors.surface};
   border-right: 1px solid ${({ theme }) => theme.colors.border};
+  overflow-x: hidden;
   overflow-y: auto;
-  transition: transform ${({ theme }) => theme.transitions.default};
+  transition:
+    transform ${({ theme }) => theme.transitions.default},
+    width ${({ theme }) => theme.transitions.default};
+
+  /* Modo recolhido (só ícones): rótulos somem e o nome vira dica (title) do item. */
+  ${({ $rail }) =>
+    $rail &&
+    `
+    && .label,
+    && .user .text,
+    && .brand-logo,
+    && .soon {
+      display: none;
+    }
+    && a,
+    && button.logout,
+    && .soon-item {
+      justify-content: center;
+      gap: 0;
+      padding-left: 0;
+      padding-right: 0;
+    }
+    && .badge {
+      position: absolute;
+      top: 5px;
+      right: 9px;
+      min-width: 9px;
+      width: 9px;
+      height: 9px;
+      padding: 0;
+      font-size: 0;
+      line-height: 0;
+    }
+    && .user {
+      justify-content: center;
+      padding: 0;
+    }
+  `}
 
   @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
     transform: translateX(${({ $open }) => ($open ? '0' : '-100%')});
@@ -57,11 +99,33 @@ const Sidebar = styled.aside<{ $open: boolean }>`
   }
 `;
 
-const Brand = styled.div`
+const Brand = styled.div<{ $rail: boolean }>`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 0.5rem;
+  justify-content: ${({ $rail }) => ($rail ? 'center' : 'space-between')};
+  gap: 0.5rem;
+  padding: ${({ $rail }) => ($rail ? '0' : '0 0.5rem')};
+
+  button.collapse {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: ${({ theme }) => theme.radii.md};
+    color: ${({ theme }) => theme.colors.textMuted};
+    transition: all ${({ theme }) => theme.transitions.fast};
+  }
+  button.collapse:hover {
+    background: ${({ theme }) => theme.colors.surfaceHover};
+    color: ${({ theme }) => theme.colors.text};
+  }
+  /* O botão só existe no desktop: no celular o menu é uma gaveta. */
+  @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
+    button.collapse {
+      display: none;
+    }
+  }
 
   small {
     display: block;
@@ -141,6 +205,13 @@ const SoonItem = styled.div`
   }
 `;
 
+const GroupRule = styled.hr`
+  width: 100%;
+  margin: 0.6rem 0 0.4rem;
+  border: 0;
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
+`;
+
 const GroupItems = styled.div`
   display: flex;
   flex-direction: column;
@@ -148,6 +219,7 @@ const GroupItems = styled.div`
 `;
 
 const Item = styled(NavLink)`
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -224,10 +296,11 @@ const Footer = styled.div`
   }
 `;
 
-const Main = styled.div`
+const Main = styled.div<{ $rail: boolean }>`
   flex: 1;
   min-width: 0;
-  margin-left: ${SIDEBAR_WIDTH};
+  margin-left: ${({ $rail }) => ($rail ? RAIL_WIDTH : SIDEBAR_WIDTH)};
+  transition: margin-left ${({ theme }) => theme.transitions.default};
 
   @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
     margin-left: 0;
@@ -358,6 +431,7 @@ const NAV_GROUPS: NavGroupDef[] = [
 ];
 
 const NAV_STATE_KEY = 'picplus_admin_nav_closed';
+const NAV_COLLAPSED_KEY = 'picplus_admin_nav_collapsed';
 
 function readClosedGroups(): string[] {
   try {
@@ -373,6 +447,27 @@ const isActivePath = (pathname: string, to: string) => pathname === to || pathna
 export function AdminLayout() {
   const { user, loading, logout, can } = useAuth();
   const location = useLocation();
+  const theme = useTheme();
+  // Menu recolhido (só ícones): preferência lembrada no navegador. Só vale no desktop.
+  const [collapsed, setCollapsed] = usePersistentState<boolean>(
+    NAV_COLLAPSED_KEY,
+    false,
+    (value): value is boolean => typeof value === 'boolean',
+  );
+  const desktopQuery = `(min-width: calc(${theme.breakpoints.laptop} + 1px))`;
+  const [isDesktop, setIsDesktop] = useState(() => window.matchMedia(desktopQuery).matches);
+  useEffect(() => {
+    const query = window.matchMedia(desktopQuery);
+    const onChange = () => setIsDesktop(query.matches);
+    query.addEventListener('change', onChange);
+    return () => query.removeEventListener('change', onChange);
+  }, [desktopQuery]);
+  const rail = collapsed && isDesktop;
+  const toggleCollapsed = () => {
+    setCollapsed((previous) => !previous);
+    // Calendário e outros layouts medem o contêiner: avisa que a largura mudou ao fim da transição.
+    window.setTimeout(() => window.dispatchEvent(new Event('resize')), 350);
+  };
   // O menu mobile pertence à rota em que foi aberto: ao navegar, fecha sozinho.
   const [openOn, setOpenOn] = useState<string | null>(null);
   const open = openOn === location.pathname;
@@ -416,18 +511,18 @@ export function AdminLayout() {
     const Icon = entry.icon;
     if (entry.soon) {
       return (
-        <SoonItem key={entry.to} aria-disabled="true">
+        <SoonItem key={entry.to} className="soon-item" aria-disabled="true" title={rail ? entry.label : undefined}>
           <Icon size={19} aria-hidden />
-          {entry.label}
+          <span className="label">{entry.label}</span>
           <span className="soon">Em breve</span>
         </SoonItem>
       );
     }
     const badge = badgeFor(entry.badge);
     return (
-      <Item key={entry.to} to={entry.to} end={entry.end ?? false}>
+      <Item key={entry.to} to={entry.to} end={entry.end ?? false} title={rail ? entry.label : undefined} aria-label={rail ? entry.label : undefined}>
         <Icon size={19} aria-hidden />
-        {entry.label}
+        <span className="label">{entry.label}</span>
         {badge > 0 && <span className="badge">{badge}</span>}
       </Item>
     );
@@ -437,12 +532,21 @@ export function AdminLayout() {
     <ToastProvider>
       <Shell>
         {open && <Scrim onClick={() => setOpen(false)} />}
-        <Sidebar $open={open} aria-label="Menu do painel">
-          <Brand>
-            <div>
+        <Sidebar $open={open} $rail={rail} aria-label="Menu do painel">
+          <Brand $rail={rail}>
+            <div className="brand-logo">
               <Logo to="/admin" size="1.6rem" label="Painel PicPlus" />
               <small>Painel</small>
             </div>
+            <button
+              type="button"
+              className="collapse"
+              onClick={toggleCollapsed}
+              aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
+              title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            >
+              {collapsed ? <PanelLeftOpen size={20} aria-hidden /> : <PanelLeftClose size={20} aria-hidden />}
+            </button>
           </Brand>
 
           <Nav>
@@ -451,20 +555,24 @@ export function AdminLayout() {
               const items = group.items.filter((item) => !item.perm || can(item.perm));
               if (items.length === 0) return null;
               const hasActive = items.some((item) => isActivePath(location.pathname, item.to));
-              const expanded = hasActive || !closed.includes(group.key);
+              // Recolhido não há títulos de grupo: todos os ícones ficam visíveis, separados por uma linha.
+              const expanded = rail || hasActive || !closed.includes(group.key);
               const pending = items.reduce((sum, item) => sum + badgeFor(item.badge), 0);
               return (
                 <div key={group.key}>
-                  <GroupToggle
-                    type="button"
-                    aria-expanded={expanded}
-                    aria-controls={`nav-${group.key}`}
-                    onClick={() => !hasActive && toggleGroup(group.key)}
-                  >
-                    {group.label}
-                    {!expanded && pending > 0 && <span className="badge">{pending}</span>}
-                    <ChevronDown className="chevron" size={14} aria-hidden />
-                  </GroupToggle>
+                  {rail && <GroupRule />}
+                  {!rail && (
+                    <GroupToggle
+                      type="button"
+                      aria-expanded={expanded}
+                      aria-controls={`nav-${group.key}`}
+                      onClick={() => !hasActive && toggleGroup(group.key)}
+                    >
+                      {group.label}
+                      {!expanded && pending > 0 && <span className="badge">{pending}</span>}
+                      <ChevronDown className="chevron" size={14} aria-hidden />
+                    </GroupToggle>
+                  )}
                   {expanded && <GroupItems id={`nav-${group.key}`}>{items.map(renderItem)}</GroupItems>}
                 </div>
               );
@@ -472,26 +580,26 @@ export function AdminLayout() {
           </Nav>
 
           <Footer>
-            <div className="user">
+            <div className="user" title={rail ? `${user.name} · ${user.email}` : undefined}>
               <Avatar key={user.avatarUrl ?? 'none'} src={user.avatarUrl} name={user.name} size={38} />
               <div className="text">
                 <strong>{user.name}</strong>
                 {user.isOwner ? 'Proprietário' : (user.role?.name ?? 'Sem cargo')} · {user.email}
               </div>
             </div>
-            <Item to="/admin/conta">
-              <KeyRound size={19} aria-hidden /> Minha conta
+            <Item to="/admin/conta" title={rail ? 'Minha conta' : undefined} aria-label={rail ? 'Minha conta' : undefined}>
+              <KeyRound size={19} aria-hidden /> <span className="label">Minha conta</span>
             </Item>
-            <a className="ext" href="/" target="_blank" rel="noopener noreferrer">
-              <ExternalLink size={18} aria-hidden /> Ver o site
+            <a className="ext" href="/" target="_blank" rel="noopener noreferrer" title={rail ? 'Ver o site' : undefined} aria-label={rail ? 'Ver o site' : undefined}>
+              <ExternalLink size={18} aria-hidden /> <span className="label">Ver o site</span>
             </a>
-            <button type="button" className="logout" onClick={logout}>
-              <LogOut size={18} aria-hidden /> Sair
+            <button type="button" className="logout" onClick={logout} title={rail ? 'Sair' : undefined} aria-label={rail ? 'Sair' : undefined}>
+              <LogOut size={18} aria-hidden /> <span className="label">Sair</span>
             </button>
           </Footer>
         </Sidebar>
 
-        <Main>
+        <Main $rail={rail}>
           <TopBar>
             <button type="button" onClick={() => setOpen(!open)} aria-label={open ? 'Fechar menu' : 'Abrir menu'}>
               {open ? <X size={20} /> : <Menu size={20} />}
