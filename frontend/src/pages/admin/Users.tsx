@@ -246,7 +246,7 @@ export function Users() {
                 <tr key={person.id}>
                   <td>
                     <CellMain>
-                      <Avatar name={person.name} size={42} />
+                      <Avatar key={person.avatarUrl ?? 'none'} src={person.avatarUrl} name={person.name} size={42} />
                       <div>
                         <strong>
                           {person.name}

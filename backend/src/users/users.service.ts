@@ -17,6 +17,7 @@ const USER_SELECT = {
   id: true,
   name: true,
   email: true,
+  avatarUrl: true,
   isOwner: true,
   active: true,
   createdAt: true,

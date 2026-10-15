@@ -7,7 +7,8 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { ALL_PERMISSIONS } from '../access/permissions';
 import { PrismaService } from '../prisma/prisma.service';
-import { ChangePasswordDto, LoginDto } from './dto/login.dto';
+import { StorageService } from '../storage/storage.service';
+import { ChangePasswordDto, LoginDto, UpdateProfileDto } from './dto/login.dto';
 
 // Hash fictício usado para igualar o tempo de resposta quando o e-mail não existe.
 const DUMMY_HASH = bcrypt.hashSync('picplus-dummy-password', 12);
@@ -16,6 +17,7 @@ const PROFILE_SELECT = {
   id: true,
   name: true,
   email: true,
+  avatarUrl: true,
   isOwner: true,
   role: { select: { id: true, name: true, permissions: true } },
 } as const;
@@ -25,6 +27,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly storage: StorageService,
   ) {}
 
   async login({ email, password }: LoginDto) {
@@ -60,6 +63,7 @@ export class AuthService {
     id: string;
     name: string;
     email: string;
+    avatarUrl: string | null;
     isOwner: boolean;
     role: { id: string; name: string; permissions: string[] } | null;
   }) {
@@ -67,12 +71,50 @@ export class AuthService {
       id: user.id,
       name: user.name,
       email: user.email,
+      avatarUrl: user.avatarUrl,
       isOwner: user.isOwner,
       role: user.role ? { id: user.role.id, name: user.role.name } : null,
       permissions: user.isOwner
         ? ALL_PERMISSIONS
         : (user.role?.permissions ?? []),
     };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { name: dto.name },
+      select: PROFILE_SELECT,
+    });
+    return this.toProfile(user);
+  }
+
+  /** Substitui a foto de perfil e remove o arquivo anterior do storage. */
+  async setAvatar(userId: string, file: Express.Multer.File | undefined) {
+    if (!file) throw new BadRequestException('Nenhum arquivo enviado.');
+    const url = await this.storage.saveAvatar(file);
+    return this.replaceAvatar(userId, url);
+  }
+
+  removeAvatar(userId: string) {
+    return this.replaceAvatar(userId, null);
+  }
+
+  private async replaceAvatar(userId: string, url: string | null) {
+    const previous = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatarUrl: true },
+    });
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl: url },
+      select: PROFILE_SELECT,
+    });
+    // Só depois de gravar a nova: se o update falhar, a foto antiga continua valendo.
+    if (previous?.avatarUrl && previous.avatarUrl !== url) {
+      await this.storage.remove(previous.avatarUrl);
+    }
+    return this.toProfile(user);
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {

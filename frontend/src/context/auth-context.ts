@@ -7,6 +7,8 @@ export interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  /** Substitui o usuário em memória (ex.: depois de editar nome ou foto). */
+  setUser: (user: AuthUser) => void;
   /** O usuário logado possui esta permissão? (o servidor sempre revalida) */
   can: (permission: string) => boolean;
   /** Possui ao menos uma das permissões? */

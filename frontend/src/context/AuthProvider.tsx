@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       login,
       logout,
+      setUser,
       can: (permission: string) => !!user && (user.isOwner || granted.has(permission)),
       canAny: (...permissions: string[]) => !!user && (user.isOwner || permissions.some((p) => granted.has(p))),
     };

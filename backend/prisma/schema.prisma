@@ -17,6 +17,8 @@ model User {
   email             String            @unique
   password          String
   name              String
+  // Foto de perfil (URL do arquivo no storage). Aparece só no painel.
+  avatarUrl         String?
   // Proprietário: tem todas as permissões, independentemente do cargo, e não pode ficar sem ninguém.
   isOwner           Boolean           @default(false)
   // Usuário desativado não consegue entrar e tem a sessão invalidada.

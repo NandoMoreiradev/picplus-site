@@ -167,6 +167,7 @@ export interface AuthUser {
   id: string;
   name: string;
   email: string;
+  avatarUrl: string | null;
   /** Proprietário: tem todas as permissões. */
   isOwner: boolean;
   role: { id: string; name: string } | null;
@@ -198,6 +199,7 @@ export interface AdminUser {
   id: string;
   name: string;
   email: string;
+  avatarUrl: string | null;
   isOwner: boolean;
   active: boolean;
   createdAt: string;

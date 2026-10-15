@@ -23,6 +23,7 @@ import {
   X,
 } from 'lucide-react';
 import { Logo } from '../../components/layout/Logo';
+import { Avatar } from '../../components/ui/Avatar';
 import { PageLoader } from '../../components/ui/Feedback';
 import { ToastProvider } from '../../components/ui/Toast';
 import { useAuth } from '../../context/auth-context';
@@ -186,9 +187,15 @@ const Footer = styled.div`
   border-top: 1px solid ${({ theme }) => theme.colors.border};
 
   .user {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
     padding: 0 0.75rem;
     font-size: 0.85rem;
     color: ${({ theme }) => theme.colors.textSecondary};
+  }
+  .user .text {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -466,8 +473,11 @@ export function AdminLayout() {
 
           <Footer>
             <div className="user">
-              <strong>{user.name}</strong>
-              {user.isOwner ? 'Proprietário' : (user.role?.name ?? 'Sem cargo')} · {user.email}
+              <Avatar key={user.avatarUrl ?? 'none'} src={user.avatarUrl} name={user.name} size={38} />
+              <div className="text">
+                <strong>{user.name}</strong>
+                {user.isOwner ? 'Proprietário' : (user.role?.name ?? 'Sem cargo')} · {user.email}
+              </div>
             </div>
             <Item to="/admin/conta">
               <KeyRound size={19} aria-hidden /> Minha conta

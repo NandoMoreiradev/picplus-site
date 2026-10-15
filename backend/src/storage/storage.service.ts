@@ -140,7 +140,7 @@ export class StorageService {
   async saveAny(
     file: Express.Multer.File,
     allowed: UploadKind[],
-    options: { trim?: boolean } = {},
+    options: { trim?: boolean; square?: number } = {},
   ): Promise<{ url: string; mime: string }> {
     const detected = sniff(file.buffer);
     if (!detected || !allowed.includes(detected.kind)) {
@@ -158,11 +158,27 @@ export class StorageService {
     }
 
     // Logos: remove margens vazias para que o desenho (e não o arquivo) fique centralizado.
-    const body =
+    let body =
       options.trim && expected === 'image'
         ? await this.trimMargins(file.buffer)
         : file.buffer;
-    const filename = `${randomUUID()}.${detected.ext}`;
+    let { ext, mime } = detected;
+
+    // Fotos de perfil: recorte quadrado centralizado, em WebP. Também descarta o EXIF (localização etc.).
+    if (options.square && expected === 'image') {
+      try {
+        body = await sharp(file.buffer)
+          .rotate()
+          .resize(options.square, options.square, { fit: 'cover' })
+          .webp({ quality: 85 })
+          .toBuffer();
+      } catch {
+        throw new BadRequestException(INVALID_FILE_MESSAGE.image);
+      }
+      ext = 'webp';
+      mime = 'image/webp';
+    }
+    const filename = `${randomUUID()}.${ext}`;
 
     if (this.s3) {
       const key = `uploads/${filename}`;
@@ -172,19 +188,21 @@ export class StorageService {
           Key: key,
           Body: body,
           // Tipo definido pelo servidor (nunca o do cliente) e nome aleatório: o arquivo é imutável.
-          ContentType: detected.mime,
+          ContentType: mime,
           CacheControl: 'public, max-age=31536000, immutable',
         }),
       );
-      return { url: `${config.r2.publicUrl}/${key}`, mime: detected.mime };
+      return { url: `${config.r2.publicUrl}/${key}`, mime };
     }
 
     await mkdir(config.uploads.dir, { recursive: true });
     await writeFile(join(config.uploads.dir, filename), body);
-    return {
-      url: `${config.uploads.publicPath}/${filename}`,
-      mime: detected.mime,
-    };
+    return { url: `${config.uploads.publicPath}/${filename}`, mime };
+  }
+
+  /** Foto de perfil: só imagem, recortada em um quadrado de 256 px. */
+  async saveAvatar(file: Express.Multer.File): Promise<string> {
+    return (await this.saveAny(file, ['image'], { square: 256 })).url;
   }
 
   /**
