@@ -155,7 +155,7 @@ export function FilePicker({
   required,
   error,
   hint,
-  maxMB = kind === 'image' ? 5 : 10,
+  maxMB = kind === 'image' ? 15 : 25,
   shape = 'wide',
 }: FilePickerProps) {
   const id = useId();

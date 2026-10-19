@@ -28,7 +28,10 @@ import {
   ShowcaseToggleDto,
   UpdateInfluencerDto,
 } from './dto/influencer.dto';
-import { InfluencersService } from './influencers.service';
+import {
+  InfluencersService,
+  REGISTER_MAX_PDF_BYTES,
+} from './influencers.service';
 import type { RegisterFiles } from './influencers.service';
 
 @Public()
@@ -49,7 +52,7 @@ export class InfluencersController {
       ],
       {
         storage: memoryStorage(),
-        limits: { fileSize: 10 * 1024 * 1024, files: 3 },
+        limits: { fileSize: REGISTER_MAX_PDF_BYTES, files: 3 },
       },
     ),
   )

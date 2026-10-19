@@ -128,7 +128,7 @@ export class StorageService {
   async save(
     file: Express.Multer.File,
     expected: UploadKind,
-    options: { trim?: boolean } = {},
+    options: { trim?: boolean; maxBytes?: number } = {},
   ): Promise<string> {
     return (await this.saveAny(file, [expected], options)).url;
   }
@@ -140,7 +140,7 @@ export class StorageService {
   async saveAny(
     file: Express.Multer.File,
     allowed: UploadKind[],
-    options: { trim?: boolean; square?: number } = {},
+    options: { trim?: boolean; square?: number; maxBytes?: number } = {},
   ): Promise<{ url: string; mime: string }> {
     const detected = sniff(file.buffer);
     if (!detected || !allowed.includes(detected.kind)) {
@@ -151,9 +151,10 @@ export class StorageService {
       );
     }
     const expected = detected.kind;
-    if (file.size > MAX_SIZE[expected]) {
+    const maxBytes = options.maxBytes ?? MAX_SIZE[expected];
+    if (file.size > maxBytes) {
       throw new BadRequestException(
-        `Arquivo muito grande. Limite de ${MAX_SIZE[expected] / 1024 / 1024} MB.`,
+        `Arquivo muito grande. Limite de ${maxBytes / 1024 / 1024} MB.`,
       );
     }
 

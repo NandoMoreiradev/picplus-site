@@ -22,6 +22,10 @@ import {
   UpdateInfluencerDto,
 } from './dto/influencer.dto';
 
+/** Limites de upload do cadastro público (por arquivo). */
+export const REGISTER_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+export const REGISTER_MAX_PDF_BYTES = 25 * 1024 * 1024;
+
 export interface RegisterFiles {
   profileImage?: Express.Multer.File[];
   coverImage?: Express.Multer.File[];
@@ -78,16 +82,22 @@ export class InfluencersService {
 
     const saved: string[] = [];
     try {
-      const profileImage = await this.storage.save(profile, 'image');
+      const profileImage = await this.storage.save(profile, 'image', {
+        maxBytes: REGISTER_MAX_IMAGE_BYTES,
+      });
       saved.push(profileImage);
       const cover = files.coverImage?.[0];
       const coverImage = cover
-        ? await this.storage.save(cover, 'image')
+        ? await this.storage.save(cover, 'image', {
+            maxBytes: REGISTER_MAX_IMAGE_BYTES,
+          })
         : undefined;
       if (coverImage) saved.push(coverImage);
       const pdf = files.presentationPdf?.[0];
       const presentationPdf = pdf
-        ? await this.storage.save(pdf, 'pdf')
+        ? await this.storage.save(pdf, 'pdf', {
+            maxBytes: REGISTER_MAX_PDF_BYTES,
+          })
         : undefined;
       if (presentationPdf) saved.push(presentationPdf);
 
