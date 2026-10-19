@@ -4,6 +4,7 @@ import { Route, Routes } from 'react-router-dom';
 import { RequirePermission } from '../../components/admin/RequirePermission';
 import { PageLoader } from '../../components/ui/Feedback';
 import { Account } from './Account';
+import AcademyAdmin from './AcademyAdmin';
 import { AdminLayout } from './AdminLayout';
 import { ArticleEditor } from './ArticleEditor';
 import { Articles } from './Articles';
@@ -11,6 +12,7 @@ import { Brands } from './Brands';
 import { Cases } from './Cases';
 import { Contacts } from './Contacts';
 import { Dashboard } from './Dashboard';
+import { EmailTemplates } from './EmailTemplates';
 import { Influencers } from './Influencers';
 import { Login } from './Login';
 import { Roles } from './Roles';
@@ -38,6 +40,8 @@ export default function AdminRoutes() {
       <Route path="login" element={<Login />} />
       <Route element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
+        <Route path="academy" element={guard('academy.view', <AcademyAdmin />)} />
+        <Route path="templates-email" element={guard('email_templates.view', <EmailTemplates />)} />
         <Route path="influenciadores" element={guard('influencers.view', <Influencers />)} />
         <Route path="contatos" element={guard('contacts.view', <Contacts />)} />
         <Route path="blog" element={guard('articles.view', <Articles />)} />

@@ -17,6 +17,13 @@ import { PicCast } from './pages/public/PicCast';
 // import { Planos } from './pages/public/Planos'; // Página desativada por enquanto (ver rota abaixo).
 import { Servicos } from './pages/public/Servicos';
 import { Sobre } from './pages/public/Sobre';
+import { AcademyAuth } from './pages/public/academy/AcademyAuth';
+import { AcademyCatalog } from './pages/public/academy/AcademyCatalog';
+import { AcademyCertificate } from './pages/public/academy/AcademyCertificate';
+import { AcademyCheckoutReturn } from './pages/public/academy/AcademyCheckoutReturn';
+import { AcademyClassroom } from './pages/public/academy/AcademyClassroom';
+import { AcademyCourseDetail } from './pages/public/academy/AcademyCourseDetail';
+import { AcademyStudentDashboard } from './pages/public/academy/AcademyStudentDashboard';
 
 // O painel (CMS) é um chunk separado, baixado só quando alguém acessa /admin.
 const AdminRoutes = lazy(() => import('./pages/admin/AdminRoutes'));
@@ -38,6 +45,15 @@ function App() {
         <Route path="blog" element={<Blog />} />
         <Route path="blog/:slug" element={<BlogPost />} />
         <Route path="piccast" element={<PicCast />} />
+        <Route path="academy" element={<AcademyCatalog />} />
+        <Route path="academy/curso/:slug" element={<AcademyCourseDetail />} />
+        <Route path="academy/entrar" element={<AcademyAuth />} />
+        <Route path="academy/cadastro" element={<AcademyAuth />} />
+        <Route path="academy/redefinir-senha" element={<AcademyAuth />} />
+        <Route path="academy/checkout/retorno" element={<AcademyCheckoutReturn />} />
+        <Route path="academy/minha-area" element={<AcademyStudentDashboard />} />
+        <Route path="academy/aula/:slug" element={<AcademyClassroom />} />
+        <Route path="academy/certificado/:code" element={<AcademyCertificate />} />
         <Route path="contato" element={<Contato />} />
         <Route path="orcamento" element={<Orcamento />} />
         <Route path="*" element={<NotFound />} />

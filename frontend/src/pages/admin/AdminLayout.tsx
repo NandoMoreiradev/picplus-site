@@ -4,10 +4,12 @@ import styled, { useTheme } from 'styled-components';
 import {
   Building2,
   ExternalLink,
+  GraduationCap,
   Inbox,
   ChevronDown,
   ClipboardList,
   KeyRound,
+  Mail,
   Settings as SettingsIcon,
   LayoutDashboard,
   LogOut,
@@ -405,7 +407,10 @@ const NAV_GROUPS: NavGroupDef[] = [
   {
     key: 'gestao',
     label: 'Gestão',
-    items: [{ to: '/admin/tarefas', label: 'Gestão de Tarefas', icon: ClipboardList, perm: 'tasks.view' }],
+    items: [
+      { to: '/admin/tarefas', label: 'Gestão de Tarefas', icon: ClipboardList, perm: 'tasks.view' },
+      { to: '/admin/academy', label: 'PicPlus Academy', icon: GraduationCap, perm: 'academy.view' },
+    ],
   },
   {
     key: 'conteudo',
@@ -425,6 +430,7 @@ const NAV_GROUPS: NavGroupDef[] = [
     items: [
       { to: '/admin/usuarios', label: 'Usuários', icon: UserCog, perm: 'users.view' },
       { to: '/admin/cargos', label: 'Cargos e permissões', icon: ShieldCheck, perm: 'roles.view' },
+      { to: '/admin/templates-email', label: 'Templates de e-mail', icon: Mail, perm: 'email_templates.view' },
       { to: '/admin/configuracoes', label: 'Configurações do site', icon: SettingsIcon, perm: 'settings.view' },
     ],
   },

@@ -32,10 +32,13 @@ model User {
   taskCoAssignments TaskAssignee[]    @relation("TaskCoAssignee")
   taskProjects      TaskProject[]     @relation("TaskProjectOwner")
   taskComments      TaskComment[]     @relation("TaskCommentAuthor")
-  taskAttachments   TaskAttachment[]  @relation("TaskAttachmentUploader")
-  taskActivities    TaskActivityLog[] @relation("TaskActivityUser")
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  taskAttachments    TaskAttachment[]  @relation("TaskAttachmentUploader")
+  taskActivities     TaskActivityLog[] @relation("TaskActivityUser")
+  enrollmentsGranted Enrollment[]      @relation("EnrollmentGrantedBy")
+  lessonComments     LessonComment[]   @relation("LessonCommentAdmin")
+  emailTemplates     EmailTemplate[]   @relation("EmailTemplateCreator")
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   @@index([roleId])
 }
@@ -415,3 +418,280 @@ model TaskActivityLog {
 
   @@index([taskId, createdAt])
 }
+
+// ─────────────────────────────────────────────────────────────
+// Templates de E-mail (inspirado no Maskot Edu)
+// ─────────────────────────────────────────────────────────────
+
+enum EmailTriggerType {
+  ACADEMY_WELCOME
+  ACADEMY_PURCHASE_APPROVED
+  ACADEMY_ADMIN_GRANT
+  ACADEMY_CERTIFICATE_ISSUED
+  ACADEMY_COMMENT_REPLY
+  ACADEMY_PASSWORD_RESET
+  INFLUENCER_RECEIVED
+  INFLUENCER_APPROVED
+  INFLUENCER_REJECTED
+  CONTACT_RECEIVED
+}
+
+model EmailTemplate {
+  id          String            @id @default(uuid())
+  name        String
+  subject     String
+  trigger     EmailTriggerType? @unique
+  // HTML renderizado (usado no disparo real ou quando não há designJson).
+  body        String            @db.Text
+  // Estrutura de blocos e configurações visuais do construtor de e-mails.
+  designJson  Json?
+  active      Boolean           @default(true)
+  createdBy   User?             @relation("EmailTemplateCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([trigger])
+}
+
+// ─────────────────────────────────────────────────────────────
+// PicPlus Academy (cursos, alunos, vendas, progresso e certificados)
+// ─────────────────────────────────────────────────────────────
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum LessonVideoProvider {
+  YOUTUBE
+  VIMEO
+  PANDA
+  UPLOAD
+}
+
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED_CENTS
+}
+
+enum CourseOrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REFUNDED
+  CANCELED
+}
+
+enum EnrollmentSource {
+  PURCHASE
+  ADMIN_GRANT
+  FREE_COURSE
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  REVOKED
+}
+
+model Student {
+  id                  String          @id @default(uuid())
+  name                String
+  email               String          @unique
+  password            String
+  cpf                 String?
+  phone               String?
+  avatarUrl           String?
+  active              Boolean         @default(true)
+  resetToken          String?
+  resetTokenExpiresAt DateTime?
+  orders              CourseOrder[]
+  enrollments         Enrollment[]
+  comments            LessonComment[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+}
+
+model Course {
+  id                  String          @id @default(uuid())
+  title               String
+  slug                String          @unique
+  subtitle            String?
+  description         String          @db.Text
+  coverImage          String?
+  promoVideoUrl       String?
+  instructorName      String
+  instructorBio       String?         @db.Text
+  instructorAvatar    String?
+  // Valores monetários em centavos (ex.: 29700 = R$ 297,00).
+  priceCents          Int             @default(0)
+  compareAtPriceCents Int?
+  workloadHours       Int             @default(1)
+  level               CourseLevel     @default(BEGINNER)
+  category            String?
+  features            String[]
+  published           Boolean         @default(false)
+  featured            Boolean         @default(false)
+  order               Int             @default(0)
+  modules             CourseModule[]
+  orders              CourseOrder[]
+  enrollments         Enrollment[]
+  coupons             AcademyCoupon[]
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([published, order])
+}
+
+model CourseModule {
+  id          String         @id @default(uuid())
+  title       String
+  description String?
+  order       Int            @default(0)
+  course      Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  lessons     CourseLesson[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([courseId, order])
+}
+
+model CourseLesson {
+  id              String              @id @default(uuid())
+  title           String
+  description     String?             @db.Text
+  videoProvider   LessonVideoProvider @default(YOUTUBE)
+  videoUrl        String?
+  durationSeconds Int                 @default(0)
+  isFreePreview   Boolean             @default(false)
+  published       Boolean             @default(true)
+  order           Int                 @default(0)
+  module          CourseModule        @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId        String
+  materials       LessonMaterial[]
+  progress        LessonProgress[]
+  comments        LessonComment[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([moduleId, order])
+}
+
+model LessonMaterial {
+  id        String       @id @default(uuid())
+  title     String
+  fileUrl   String
+  fileName  String
+  fileSize  Int          @default(0)
+  fileType  String       @default("application/pdf")
+  order     Int          @default(0)
+  lesson    CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String
+  createdAt DateTime     @default(now())
+
+  @@index([lessonId, order])
+}
+
+model AcademyCoupon {
+  id            String             @id @default(uuid())
+  code          String             @unique
+  discountType  CouponDiscountType @default(PERCENTAGE)
+  // Se PERCENTAGE: 1 a 100. Se FIXED_CENTS: valor em centavos.
+  discountValue Int
+  maxUses       Int?
+  usedCount     Int                @default(0)
+  expiresAt     DateTime?
+  active        Boolean            @default(true)
+  course        Course?            @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId      String?
+  orders        CourseOrder[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([code])
+}
+
+model CourseOrder {
+  id                 String            @id @default(uuid())
+  student            Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId          String
+  course             Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId           String
+  coupon             AcademyCoupon?    @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponId           String?
+  originalPriceCents Int
+  discountCents      Int               @default(0)
+  finalPriceCents    Int
+  status             CourseOrderStatus @default(PENDING)
+  mpPreferenceId     String?
+  mpCheckoutUrl      String?
+  mpPaymentId        String?           @unique
+  mpStatus           String?
+  paymentMethod      String?
+  paidAt             DateTime?
+  enrollment         Enrollment?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([studentId, createdAt])
+  @@index([courseId, status])
+}
+
+model Enrollment {
+  id              String           @id @default(uuid())
+  student         Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId       String
+  course          Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId        String
+  order           CourseOrder?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderId         String?          @unique
+  source          EnrollmentSource @default(PURCHASE)
+  grantedBy       User?            @relation("EnrollmentGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+  grantedById     String?
+  status          EnrollmentStatus @default(ACTIVE)
+  completedAt     DateTime?
+  certificateCode String?          @unique
+  progress        LessonProgress[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([studentId, courseId])
+  @@index([courseId, status])
+}
+
+model LessonProgress {
+  id                  String       @id @default(uuid())
+  enrollment          Enrollment   @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  enrollmentId        String
+  lesson              CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId            String
+  completed           Boolean      @default(false)
+  completedAt         DateTime?
+  lastPositionSeconds Int          @default(0)
+  updatedAt           DateTime     @updatedAt
+
+  @@unique([enrollmentId, lessonId])
+  @@index([lessonId])
+}
+
+model LessonComment {
+  id              String          @id @default(uuid())
+  content         String          @db.Text
+  lesson          CourseLesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId        String
+  student         Student?        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId       String?
+  adminUser       User?           @relation("LessonCommentAdmin", fields: [adminUserId], references: [id], onDelete: SetNull)
+  adminUserId     String?
+  parentComment   LessonComment?  @relation("LessonCommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  parentCommentId String?
+  replies         LessonComment[] @relation("LessonCommentReplies")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([lessonId, createdAt])
+  @@index([parentCommentId])
+}
+

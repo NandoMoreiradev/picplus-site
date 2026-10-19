@@ -12,6 +12,7 @@ const NAV_ITEMS: { to: string; label: string; anchor?: string }[] = [
   // Âncora da página inicial. Fica fora do NavLink, que marcaria o item ativo em toda a home.
   { to: '/#depoimentos', label: 'Depoimentos', anchor: 'depoimentos' },
   { to: '/influenciadores', label: 'Influenciadores' },
+  { to: '/academy', label: 'Academy' },
   { to: '/blog', label: 'Blog' },
   { to: '/piccast', label: 'PicCast' },
   { to: '/contato', label: 'Contato' },

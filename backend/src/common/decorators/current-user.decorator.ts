@@ -14,11 +14,29 @@ export interface AuthUser {
   permissions: ReadonlySet<string>;
 }
 
-export type AuthenticatedRequest = Request & { user: AuthUser };
+export interface AuthStudent {
+  sub: string;
+  email: string;
+  name: string;
+  cpf: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+}
+
+export type AuthenticatedRequest = Request & {
+  user: AuthUser;
+  student: AuthStudent;
+};
 
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): AuthUser => {
     return ctx.switchToHttp().getRequest<AuthenticatedRequest>().user;
+  },
+);
+
+export const CurrentStudent = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): AuthStudent => {
+    return ctx.switchToHttp().getRequest<AuthenticatedRequest>().student;
   },
 );
 

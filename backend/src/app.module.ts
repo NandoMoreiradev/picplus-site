@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AcademyModule } from './academy/academy.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ArticlesModule } from './articles/articles.module';
@@ -8,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { BrandsModule } from './brands/brands.module';
 import { CasesModule } from './cases/cases.module';
 import { ContactsModule } from './contacts/contacts.module';
+import { EmailTemplatesModule } from './email-templates/email-templates.module';
 import { InfluencersModule } from './influencers/influencers.module';
 import { MailModule } from './mail/mail.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -28,7 +30,9 @@ import { UsersModule } from './users/users.module';
     PrismaModule,
     StorageModule,
     MailModule,
+    EmailTemplatesModule,
     AuthModule,
+    AcademyModule,
     InfluencersModule,
     ArticlesModule,
     CasesModule,

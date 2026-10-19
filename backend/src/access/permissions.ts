@@ -99,11 +99,46 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: crud('testimonials', 'depoimentos'),
   },
   {
+    key: 'academy',
+    label: 'PicPlus Academy',
+    permissions: [
+      {
+        key: 'academy.view',
+        label: 'Ver cursos, alunos, vendas e comentários',
+      },
+      {
+        key: 'academy.edit',
+        label:
+          'Criar e editar cursos, módulos, aulas, materiais e responder dúvidas',
+      },
+      {
+        key: 'academy.manage',
+        label:
+          'Gerenciar matrículas (cortesia/revogar), cupons e excluir cursos',
+      },
+    ],
+  },
+  {
+    key: 'email_templates',
+    label: 'Templates de e-mail',
+    permissions: [
+      { key: 'email_templates.view', label: 'Ver templates de e-mail' },
+      {
+        key: 'email_templates.edit',
+        label: 'Criar, editar e testar templates de e-mail',
+      },
+      { key: 'email_templates.delete', label: 'Excluir templates de e-mail' },
+    ],
+  },
+  {
     key: 'settings',
     label: 'Configurações do site',
     permissions: [
       { key: 'settings.view', label: 'Ver configurações do site' },
-      { key: 'settings.edit', label: 'Editar configurações (imagem de compartilhamento)' },
+      {
+        key: 'settings.edit',
+        label: 'Editar configurações (imagem de compartilhamento)',
+      },
     ],
   },
   {

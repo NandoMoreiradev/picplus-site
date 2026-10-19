@@ -4,6 +4,7 @@ export const PERMISSIONS_KEY = 'requiredPermissions';
 export const ANY_PERMISSION_KEY = 'requiredAnyPermission';
 export const RESOURCE_KEY = 'permissionResource';
 export const AUTHENTICATED_KEY = 'authenticatedOnly';
+export const STUDENT_AUTHENTICATED_KEY = 'studentAuthenticatedOnly';
 
 /** Exige TODAS as permissões listadas. Sobrepõe o que for derivado de @Resource. */
 export const RequirePermissions = (...permissions: string[]) =>
@@ -23,3 +24,7 @@ export const Resource = (resource: string) =>
 
 /** Basta estar autenticado (ex.: ver o próprio perfil, trocar a própria senha). */
 export const Authenticated = () => SetMetadata(AUTHENTICATED_KEY, true);
+
+/** Rota exclusiva para alunos autenticados da PicPlus Academy (token com kind='student'). */
+export const StudentAuthenticated = () =>
+  SetMetadata(STUDENT_AUTHENTICATED_KEY, true);

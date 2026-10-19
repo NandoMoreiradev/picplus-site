@@ -31,7 +31,11 @@ export class SettingsService {
     });
     // Apaga do disco a imagem que foi trocada ou removida.
     for (const key of ['ogImage', 'blogOgImage'] as const) {
-      if (dto[key] !== undefined && current[key] && current[key] !== updated[key])
+      if (
+        dto[key] !== undefined &&
+        current[key] &&
+        current[key] !== updated[key]
+      )
         await this.storage.remove(current[key]);
     }
     return updated;

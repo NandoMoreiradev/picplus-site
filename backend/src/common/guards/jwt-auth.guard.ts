@@ -12,6 +12,7 @@ import { ALL_PERMISSIONS } from '../../access/permissions';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   AuthenticatedRequest,
+  AuthStudent,
   AuthUser,
 } from '../decorators/current-user.decorator';
 import {
@@ -19,6 +20,7 @@ import {
   AUTHENTICATED_KEY,
   PERMISSIONS_KEY,
   RESOURCE_KEY,
+  STUDENT_AUTHENTICATED_KEY,
 } from '../decorators/permissions.decorator';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
@@ -35,13 +37,11 @@ const VERB_TO_ACTION: Record<string, string> = {
  * Guard global de autenticação e autorização.
  *
  * 1. Rotas @Public() passam direto.
- * 2. As demais exigem um JWT válido. O usuário é então carregado do BANCO a cada
- *    requisição: assim, trocar o cargo ou desativar alguém vale imediatamente,
- *    sem esperar o token expirar.
- * 3. Autorização NEGADA POR PADRÃO: toda rota protegida precisa declarar
- *    @Authenticated(), @RequirePermissions(), @RequireAnyPermission() ou @Resource().
- *    Uma rota nova esquecida fica inacessível (403) em vez de aberta.
- *    O proprietário passa por todas as verificações.
+ * 2. Rotas @StudentAuthenticated() exigem um JWT de aluno (kind: 'student') e carregam Student do banco.
+ * 3. As demais exigem um JWT de usuário administrativo (sem kind: 'student'). O usuário é carregado do
+ *    BANCO a cada requisição: assim, trocar o cargo ou desativar alguém vale imediatamente.
+ * 4. Autorização NEGADA POR PADRÃO: toda rota protegida precisa declarar
+ *    @Authenticated(), @StudentAuthenticated(), @RequirePermissions(), @RequireAnyPermission() ou @Resource().
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -67,16 +67,61 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Autenticação necessária.');
     }
 
-    let userId: string;
+    let payload: { sub: string; kind?: string };
     try {
-      userId = (await this.jwt.verifyAsync<{ sub: string }>(token)).sub;
+      payload = await this.jwt.verifyAsync<{ sub: string; kind?: string }>(
+        token,
+      );
     } catch {
       throw new UnauthorizedException('Sessão inválida ou expirada.');
     }
 
-    request.user = await this.loadUser(userId);
+    const isStudentRoute = this.reflector.getAllAndOverride<boolean>(
+      STUDENT_AUTHENTICATED_KEY,
+      targets,
+    );
+
+    if (isStudentRoute) {
+      if (payload.kind !== 'student') {
+        throw new UnauthorizedException('Acesso exclusivo para alunos.');
+      }
+      request.student = await this.loadStudent(payload.sub);
+      return true;
+    }
+
+    if (payload.kind === 'student') {
+      throw new UnauthorizedException('Sessão inválida para o painel.');
+    }
+
+    request.user = await this.loadUser(payload.sub);
     this.authorize(context, request);
     return true;
+  }
+
+  private async loadStudent(studentId: string): Promise<AuthStudent> {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        cpf: true,
+        phone: true,
+        avatarUrl: true,
+        active: true,
+      },
+    });
+    if (!student || !student.active) {
+      throw new UnauthorizedException('Sessão inválida ou expirada.');
+    }
+    return {
+      sub: student.id,
+      email: student.email,
+      name: student.name,
+      cpf: student.cpf,
+      phone: student.phone,
+      avatarUrl: student.avatarUrl,
+    };
   }
 
   private async loadUser(userId: string): Promise<AuthUser> {

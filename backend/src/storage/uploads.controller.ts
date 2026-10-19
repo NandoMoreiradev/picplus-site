@@ -31,6 +31,8 @@ import type { UploadKind } from './storage.service';
   'testimonials.create',
   'testimonials.edit',
   'influencers.edit',
+  'academy.edit',
+  'email_templates.edit',
 )
 @Controller('admin/uploads')
 export class UploadsController {

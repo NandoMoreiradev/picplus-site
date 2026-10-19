@@ -9,6 +9,7 @@ import {
   AUTHENTICATED_KEY,
   PERMISSIONS_KEY,
   RESOURCE_KEY,
+  STUDENT_AUTHENTICATED_KEY,
 } from '../src/common/decorators/permissions.decorator';
 import { IS_PUBLIC_KEY } from '../src/common/decorators/public.decorator';
 import { PrismaService } from '../src/prisma/prisma.service';
@@ -442,6 +443,7 @@ describe('Controle de acesso (e2e, Prisma mockado)', () => {
           const covered = [
             IS_PUBLIC_KEY,
             AUTHENTICATED_KEY,
+            STUDENT_AUTHENTICATED_KEY,
             PERMISSIONS_KEY,
             ANY_PERMISSION_KEY,
             RESOURCE_KEY,
