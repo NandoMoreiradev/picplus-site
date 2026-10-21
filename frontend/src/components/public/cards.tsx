@@ -276,7 +276,7 @@ const SocialPill = styled.span`
   font-weight: 700;
   padding: 0.2rem 0.55rem;
   border-radius: ${({ theme }) => theme.radii.pill};
-  background: ${({ theme }) => theme.colors.surfaceAlt};
+  background: ${({ theme }) => theme.colors.surfaceElevated};
   color: ${({ theme }) => theme.colors.textSecondary};
   border: 1px solid ${({ theme }) => theme.colors.border};
 

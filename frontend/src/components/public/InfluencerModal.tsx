@@ -105,7 +105,7 @@ const MetricCard = styled.div`
   gap: 0.85rem;
   padding: 0.85rem 1.1rem;
   border-radius: ${({ theme }) => theme.radii.md};
-  background: ${({ theme }) => theme.colors.surfaceAlt};
+  background: ${({ theme }) => theme.colors.surfaceElevated};
   border: 1px solid ${({ theme }) => theme.colors.border};
 
   .icon {

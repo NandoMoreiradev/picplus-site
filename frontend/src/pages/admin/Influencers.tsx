@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { Check, Download, ExternalLink, Eye, MapPin, Pencil, Trash2, Users, X } from 'lucide-react';
+import { Check, Download, ExternalLink, Eye, MapPin, Pencil, Trash2, X } from 'lucide-react';
 import {
   CellMain,
   DetailList,
