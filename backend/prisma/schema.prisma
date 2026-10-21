@@ -77,6 +77,8 @@ model Influencer {
   presentationPdf String?
   // Ex.: { "instagram": "https://...", "tiktok": "...", "youtube": "..." }
   socialNetworks  Json?
+  totalFollowers  Int?             @default(0)
+  impressions     Int?             @default(0)
   status          InfluencerStatus @default(PENDING)
   showOnShowcase  Boolean          @default(false)
   rejectionReason String?

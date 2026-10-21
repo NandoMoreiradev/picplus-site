@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
-import { ArrowUpRight, Check, MapPin } from 'lucide-react';
+import { ArrowUpRight, Check, MapPin, Users } from 'lucide-react';
 import { assetUrl } from '../../lib/api';
-import { formatShortDate } from '../../lib/format';
+import { formatCompactNumber, formatShortDate, getTotalFollowers, parseSocialNetwork } from '../../lib/format';
 import type {
   ArticleSummary,
   ShowcaseInfluencer,
@@ -252,11 +252,37 @@ const InfluencerBox = styled(Card).attrs({ as: 'button' })`
     align-items: center;
     gap: 0.25rem;
   }
+  .row span.followers {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-weight: 700;
+    color: ${({ theme }) => theme.colors.primary};
+  }
   .socials {
     display: flex;
-    gap: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.45rem;
     margin-top: 1rem;
     color: ${({ theme }) => theme.colors.textSecondary};
+  }
+`;
+
+const SocialPill = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: ${({ theme }) => theme.radii.pill};
+  background: ${({ theme }) => theme.colors.surfaceAlt};
+  color: ${({ theme }) => theme.colors.textSecondary};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+
+  svg {
+    color: ${({ theme }) => theme.colors.text};
+    flex-shrink: 0;
   }
 `;
 
@@ -267,7 +293,11 @@ export function InfluencerCard({
   influencer: ShowcaseInfluencer;
   onSelect: (influencer: ShowcaseInfluencer) => void;
 }) {
-  const networks = Object.keys(influencer.socialNetworks ?? {}) as SocialNetwork[];
+  const totalFollowers = getTotalFollowers(influencer.socialNetworks, influencer.totalFollowers);
+  const networkEntries = Object.entries(influencer.socialNetworks ?? {})
+    .map(([network, value]) => [network as SocialNetwork, parseSocialNetwork(value)] as const)
+    .filter(([, detail]) => Boolean(detail?.url));
+
   return (
     <InfluencerBox $interactive type="button" onClick={() => onSelect(influencer)}>
       <CoverImage src={influencer.coverImage ?? influencer.profileImage} alt="" ratio="16 / 7" />
@@ -278,17 +308,31 @@ export function InfluencerCard({
         <h3>{influencer.name}</h3>
         <div className="row">
           {influencer.niche && <Badge $tone="primary">{influencer.niche}</Badge>}
+          {totalFollowers > 0 && (
+            <span className="followers" title={`${totalFollowers.toLocaleString('pt-BR')} seguidores`}>
+              <Users size={13} aria-hidden /> {formatCompactNumber(totalFollowers)} seguidores
+            </span>
+          )}
           {influencer.location && (
             <span className="loc">
               <MapPin size={13} aria-hidden /> {influencer.location}
             </span>
           )}
         </div>
-        {networks.length > 0 && (
-          <div className="socials" aria-label="Redes sociais">
-            {networks.map((network) => {
+        {networkEntries.length > 0 && (
+          <div className="socials" aria-label="Redes sociais e seguidores">
+            {networkEntries.map(([network, detail]) => {
+              if (!detail) return null;
               const { Icon, label } = SOCIAL_META[network];
-              return <Icon key={network} size={18} aria-label={label} />;
+              const hasCount = detail.followers !== undefined && detail.followers > 0;
+              return hasCount ? (
+                <SocialPill key={network} title={`${label}: ${detail.followers!.toLocaleString('pt-BR')} seguidores`}>
+                  <Icon size={14} aria-hidden />
+                  <span>{formatCompactNumber(detail.followers)}</span>
+                </SocialPill>
+              ) : (
+                <Icon key={network} size={18} aria-label={label} />
+              );
             })}
           </div>
         )}

@@ -8,11 +8,13 @@ import {
   IsEmail,
   IsEnum,
   IsIn,
+  IsInt,
   IsObject,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 import { InfluencerStatus } from '@prisma/client';
@@ -23,6 +25,13 @@ const trim = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 const toBool = ({ value }: { value: unknown }) =>
   value === true || value === 'true';
+const toIntOrUndefined = ({ value }: { value: unknown }) => {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'number')
+    return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : undefined;
+  const digits = String(value).replace(/\D/g, '');
+  return digits ? parseInt(digits, 10) : undefined;
+};
 
 /** Corpo (multipart) do formulário público de cadastro. */
 export class RegisterInfluencerDto {
@@ -63,10 +72,45 @@ export class RegisterInfluencerDto {
   description?: string;
 
   @IsOptional() @Transform(trim) @IsString() @MaxLength(200) instagram?: string;
+  @IsOptional()
+  @Transform(toIntOrUndefined)
+  @IsInt()
+  @Min(0)
+  instagramFollowers?: number;
+
   @IsOptional() @Transform(trim) @IsString() @MaxLength(200) tiktok?: string;
+  @IsOptional()
+  @Transform(toIntOrUndefined)
+  @IsInt()
+  @Min(0)
+  tiktokFollowers?: number;
+
   @IsOptional() @Transform(trim) @IsString() @MaxLength(200) youtube?: string;
+  @IsOptional()
+  @Transform(toIntOrUndefined)
+  @IsInt()
+  @Min(0)
+  youtubeFollowers?: number;
+
   @IsOptional() @Transform(trim) @IsString() @MaxLength(200) twitter?: string;
+  @IsOptional()
+  @Transform(toIntOrUndefined)
+  @IsInt()
+  @Min(0)
+  twitterFollowers?: number;
+
   @IsOptional() @Transform(trim) @IsString() @MaxLength(200) twitch?: string;
+  @IsOptional()
+  @Transform(toIntOrUndefined)
+  @IsInt()
+  @Min(0)
+  twitchFollowers?: number;
+
+  @IsOptional()
+  @Transform(toIntOrUndefined)
+  @IsInt()
+  @Min(0)
+  impressions?: number;
 
   @Transform(toBool)
   @Equals(true, { message: 'É necessário aceitar os termos para continuar.' })
@@ -104,7 +148,19 @@ export class UpdateInfluencerDto extends PartialType(
 
   @IsOptional()
   @IsObject()
-  socialNetworks?: Record<string, string>;
+  socialNetworks?: Record<string, unknown>;
+
+  @IsOptional()
+  @Transform(toIntOrUndefined)
+  @IsInt()
+  @Min(0)
+  totalFollowers?: number;
+
+  @IsOptional()
+  @Transform(toIntOrUndefined)
+  @IsInt()
+  @Min(0)
+  impressions?: number;
 }
 
 export class ApproveInfluencerDto {

@@ -31,10 +31,16 @@ interface FormValues {
   niche: string;
   description: string;
   instagram: string;
+  instagramFollowers: string;
   tiktok: string;
+  tiktokFollowers: string;
   youtube: string;
+  youtubeFollowers: string;
   twitter: string;
+  twitterFollowers: string;
   twitch: string;
+  twitchFollowers: string;
+  impressions: string;
   website: string; // honeypot
   acceptTerms: boolean;
 }
@@ -47,21 +53,33 @@ const INITIAL: FormValues = {
   niche: '',
   description: '',
   instagram: '',
+  instagramFollowers: '',
   tiktok: '',
+  tiktokFollowers: '',
   youtube: '',
+  youtubeFollowers: '',
   twitter: '',
+  twitterFollowers: '',
   twitch: '',
+  twitchFollowers: '',
+  impressions: '',
   website: '',
   acceptTerms: false,
 };
 
 const SOCIAL_FIELDS = [
-  { key: 'instagram', label: 'Instagram', placeholder: '@seuperfil' },
-  { key: 'tiktok', label: 'TikTok', placeholder: '@seuperfil' },
-  { key: 'youtube', label: 'YouTube', placeholder: '@seucanal ou link do canal' },
-  { key: 'twitter', label: 'X (Twitter)', placeholder: '@seuperfil' },
-  { key: 'twitch', label: 'Twitch', placeholder: 'seucanal' },
+  { key: 'instagram', followersKey: 'instagramFollowers', label: 'Instagram', placeholder: '@seuperfil' },
+  { key: 'tiktok', followersKey: 'tiktokFollowers', label: 'TikTok', placeholder: '@seuperfil' },
+  { key: 'youtube', followersKey: 'youtubeFollowers', label: 'YouTube', placeholder: '@seucanal ou link do canal' },
+  { key: 'twitter', followersKey: 'twitterFollowers', label: 'X (Twitter)', placeholder: '@seuperfil' },
+  { key: 'twitch', followersKey: 'twitchFollowers', label: 'Twitch', placeholder: 'seucanal' },
 ] as const;
+
+const formatFollowerInput = (val: string) => {
+  const digits = val.replace(/\D/g, '');
+  if (!digits) return '';
+  return parseInt(digits, 10).toLocaleString('pt-BR');
+};
 
 const Layout = styled.div`
   display: grid;
@@ -154,6 +172,29 @@ const Success = styled(Card)`
 const TermsLink = styled(Link)`
   color: ${({ theme }) => theme.colors.primary};
   text-decoration: underline;
+`;
+
+const SocialGrid = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+`;
+
+const SocialFieldRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+`;
+
+const ImpressionsBox = styled.div`
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
 `;
 
 export function CadastroInfluenciador() {
@@ -346,22 +387,41 @@ export function CadastroInfluenciador() {
                 </FormSection>
 
                 <FormSection>
-                  <legend>3. Redes sociais</legend>
-                  <p className="legend-hint">Informe o @ ou o link. Preencha ao menos uma.</p>
-                  <FormGrid>
-                    {SOCIAL_FIELDS.map(({ key, label, placeholder }) => (
-                      <TextField
-                        key={key}
-                        label={label}
-                        placeholder={placeholder}
-                        autoCapitalize="none"
-                        value={values[key]}
-                        onChange={(e) => set(key, e.target.value)}
-                        error={errors[key]}
-                      />
+                  <legend>3. Redes sociais e audiência</legend>
+                  <p className="legend-hint">Informe o @ ou link e a quantidade de seguidores. Preencha ao menos uma rede.</p>
+                  <SocialGrid>
+                    {SOCIAL_FIELDS.map(({ key, followersKey, label, placeholder }) => (
+                      <SocialFieldRow key={key}>
+                        <TextField
+                          label={label}
+                          placeholder={placeholder}
+                          autoCapitalize="none"
+                          value={values[key]}
+                          onChange={(e) => set(key, e.target.value)}
+                          error={errors[key]}
+                        />
+                        <TextField
+                          label={`Seguidores no ${label}`}
+                          placeholder="Ex.: 50.000"
+                          inputMode="numeric"
+                          value={values[followersKey]}
+                          onChange={(e) => set(followersKey, formatFollowerInput(e.target.value))}
+                        />
+                      </SocialFieldRow>
                     ))}
-                  </FormGrid>
+                  </SocialGrid>
                   {errors.social && <Alert tone="danger">{errors.social}</Alert>}
+
+                  <ImpressionsBox>
+                    <TextField
+                      label="Média de impressões mensais (opcional)"
+                      placeholder="Ex.: 250.000"
+                      inputMode="numeric"
+                      value={values.impressions}
+                      onChange={(e) => set('impressions', formatFollowerInput(e.target.value))}
+                      hint="Média estimada de impressões/visualizações que seus conteúdos geram por mês."
+                    />
+                  </ImpressionsBox>
                 </FormSection>
 
                 <FormSection>

@@ -8,7 +8,12 @@ export const SOCIAL_NETWORKS = [
   'twitch',
 ] as const;
 export type SocialNetwork = (typeof SOCIAL_NETWORKS)[number];
-export type SocialLinks = Partial<Record<SocialNetwork, string>>;
+export interface SocialNetworkDetail {
+  url: string;
+  followers?: number;
+  [key: string]: unknown;
+}
+export type SocialLinks = Partial<Record<SocialNetwork, SocialNetworkDetail>>;
 
 const BASE_URL: Record<SocialNetwork, string> = {
   instagram: 'https://instagram.com/',
@@ -76,17 +81,57 @@ export function normalizeSocial(network: SocialNetwork, raw: string): string {
   return BASE_URL[network] + handle;
 }
 
-/** Normaliza um objeto de redes sociais, descartando valores vazios e chaves desconhecidas. */
+/** Normaliza um objeto de redes sociais, aceitando URLs ou usuários e contagem de seguidores. */
 export function normalizeSocialLinks(
   input: Record<string, unknown> | undefined | null,
 ): SocialLinks {
   const result: SocialLinks = {};
   if (!input) return result;
+
   for (const network of SOCIAL_NETWORKS) {
     const raw = input[network];
+    let rawUrl: string | undefined;
+    let followers: number | undefined;
+
     if (typeof raw === 'string' && raw.trim()) {
-      result[network] = normalizeSocial(network, raw);
+      rawUrl = raw;
+      const followersKey = `${network}Followers`;
+      const rawFollowers = input[followersKey];
+      if (rawFollowers !== undefined && rawFollowers !== null && rawFollowers !== '') {
+        const cleaned = String(rawFollowers).replace(/\D/g, '');
+        if (cleaned) followers = parseInt(cleaned, 10);
+      }
+    } else if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const obj = raw as Record<string, unknown>;
+      if (typeof obj.url === 'string' && obj.url.trim()) {
+        rawUrl = obj.url;
+        if (obj.followers !== undefined && obj.followers !== null && obj.followers !== '') {
+          const cleaned = String(obj.followers).replace(/\D/g, '');
+          if (cleaned) followers = parseInt(cleaned, 10);
+        }
+      }
+    }
+
+    if (rawUrl) {
+      result[network] = {
+        url: normalizeSocial(network, rawUrl),
+        followers:
+          typeof followers === 'number' && !isNaN(followers) && followers >= 0
+            ? followers
+            : undefined,
+      };
     }
   }
   return result;
+}
+
+export function calculateTotalFollowers(socialNetworks?: SocialLinks | null): number {
+  if (!socialNetworks) return 0;
+  let total = 0;
+  for (const detail of Object.values(socialNetworks)) {
+    if (detail && typeof detail === 'object' && typeof detail.followers === 'number') {
+      total += detail.followers;
+    }
+  }
+  return total;
 }

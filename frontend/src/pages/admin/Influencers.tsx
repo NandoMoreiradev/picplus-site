@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { Check, Download, ExternalLink, Eye, MapPin, Pencil, Trash2, X } from 'lucide-react';
+import { Check, Download, ExternalLink, Eye, MapPin, Pencil, Trash2, Users, X } from 'lucide-react';
 import {
   CellMain,
   DetailList,
@@ -34,7 +34,15 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useFetch } from '../../hooks/useFetch';
 import { usePage } from '../../hooks/usePage';
 import { api, assetUrl } from '../../lib/api';
-import { formatDateTime, formatShortDate, maskPhone } from '../../lib/format';
+import {
+  formatCompactNumber,
+  formatDateTime,
+  formatNumber,
+  formatShortDate,
+  getTotalFollowers,
+  maskPhone,
+  parseSocialNetwork,
+} from '../../lib/format';
 import type { AdminInfluencer, InfluencerList, InfluencerStatus, SocialNetwork } from '../../lib/types';
 import { errorMessage } from '../../lib/validation';
 
@@ -313,10 +321,19 @@ function EditForm({
     profileImage: influencer.profileImage,
     coverImage: influencer.coverImage,
     presentationPdf: influencer.presentationPdf,
-    socials: Object.fromEntries(SOCIAL_KEYS.map((key) => [key, influencer.socialNetworks?.[key] ?? ''])) as Record<
-      SocialNetwork,
-      string
-    >,
+    socials: Object.fromEntries(
+      SOCIAL_KEYS.map((key) => {
+        const parsed = parseSocialNetwork(influencer.socialNetworks?.[key]);
+        return [
+          key,
+          {
+            url: parsed?.url ?? (typeof influencer.socialNetworks?.[key] === 'string' ? (influencer.socialNetworks[key] as string) : ''),
+            followers: parsed?.followers !== undefined ? parsed.followers.toLocaleString('pt-BR') : '',
+          },
+        ];
+      }),
+    ) as Record<SocialNetwork, { url: string; followers: string }>,
+    impressions: influencer.impressions ? influencer.impressions.toLocaleString('pt-BR') : '',
   }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -326,6 +343,17 @@ function EditForm({
     setBusy(true);
     setError('');
     try {
+      const socialNetworks: Record<string, { url: string; followers?: number }> = {};
+      for (const [key, val] of Object.entries(form.socials)) {
+        if (val.url.trim()) {
+          const numDigits = val.followers.replace(/\D/g, '');
+          socialNetworks[key] = {
+            url: val.url.trim(),
+            followers: numDigits ? parseInt(numDigits, 10) : undefined,
+          };
+        }
+      }
+      const impDigits = form.impressions.replace(/\D/g, '');
       const body: Record<string, unknown> = {
         name: form.name.trim(),
         location: form.location.trim(),
@@ -333,7 +361,8 @@ function EditForm({
         profileImage: form.profileImage,
         coverImage: form.coverImage,
         presentationPdf: form.presentationPdf,
-        socialNetworks: Object.fromEntries(Object.entries(form.socials).filter(([, v]) => v.trim())),
+        socialNetworks,
+        impressions: impDigits ? parseInt(impDigits, 10) : 0,
       };
       if (form.whatsapp.trim()) body.whatsapp = form.whatsapp.trim();
       if (form.niche.trim()) body.niche = form.niche.trim();
@@ -376,17 +405,62 @@ function EditForm({
         value={form.description}
         onChange={(e) => setForm({ ...form, description: e.target.value })}
       />
-      <FormGrid>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        <h4 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: '#999', margin: 0 }}>
+          Redes sociais e seguidores
+        </h4>
         {SOCIAL_KEYS.map((key) => (
-          <TextField
-            key={key}
-            label={SOCIAL_META[key].label}
-            value={form.socials[key]}
-            onChange={(e) => setForm({ ...form, socials: { ...form.socials, [key]: e.target.value } })}
-            placeholder="@usuario ou link"
-          />
+          <FormGrid key={key}>
+            <TextField
+              label={SOCIAL_META[key].label}
+              value={form.socials[key].url}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  socials: {
+                    ...form.socials,
+                    [key]: { ...form.socials[key], url: e.target.value },
+                  },
+                })
+              }
+              placeholder="@usuario ou link"
+            />
+            <TextField
+              label={`Seguidores no ${SOCIAL_META[key].label}`}
+              inputMode="numeric"
+              value={form.socials[key].followers}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '');
+                setForm({
+                  ...form,
+                  socials: {
+                    ...form.socials,
+                    [key]: {
+                      ...form.socials[key],
+                      followers: digits ? parseInt(digits, 10).toLocaleString('pt-BR') : '',
+                    },
+                  },
+                });
+              }}
+              placeholder="Ex.: 50.000"
+            />
+          </FormGrid>
         ))}
-      </FormGrid>
+      </div>
+      <TextField
+        label="Número de impressões mensais"
+        inputMode="numeric"
+        value={form.impressions}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, '');
+          setForm({
+            ...form,
+            impressions: digits ? parseInt(digits, 10).toLocaleString('pt-BR') : '',
+          });
+        }}
+        placeholder="Ex.: 250.000"
+        hint="Média estimada de impressões/visualizações no mês."
+      />
       <FormGrid>
         <UploadField label="Foto de perfil" shape="square" value={form.profileImage} onChange={(url) => setForm({ ...form, profileImage: url })} />
         <UploadField label="Imagem de capa" value={form.coverImage} onChange={(url) => setForm({ ...form, coverImage: url })} />
@@ -429,7 +503,10 @@ function InfluencerDrawer({
   const [busy, setBusy] = useState(false);
 
   const status = STATUS[influencer.status];
-  const socials = Object.entries(influencer.socialNetworks ?? {}) as [SocialNetwork, string][];
+  const totalFollowers = getTotalFollowers(influencer.socialNetworks, influencer.totalFollowers);
+  const socials = Object.entries(influencer.socialNetworks ?? {})
+    .map(([network, value]) => [network as SocialNetwork, parseSocialNetwork(value)] as const)
+    .filter(([, detail]) => Boolean(detail?.url));
   const whatsappLink = influencer.whatsapp
     ? `https://wa.me/${influencer.whatsapp.replace(/\D/g, '').replace(/^(\d{10,11})$/, '55$1')}`
     : null;
@@ -564,6 +641,18 @@ function InfluencerDrawer({
                       '—'
                     )}
                   </dd>
+                  <dt>Seguidores totais</dt>
+                  <dd>
+                    {totalFollowers > 0
+                      ? `${formatNumber(totalFollowers)} (${formatCompactNumber(totalFollowers)})`
+                      : 'Não informado'}
+                  </dd>
+                  <dt>Impressões</dt>
+                  <dd>
+                    {influencer.impressions
+                      ? `${formatNumber(influencer.impressions)} (${formatCompactNumber(influencer.impressions)})`
+                      : 'Não informado'}
+                  </dd>
                   <dt>Cadastro em</dt>
                   <dd>{formatDateTime(influencer.createdAt)}</dd>
                   {influencer.reviewedAt && (
@@ -586,11 +675,19 @@ function InfluencerDrawer({
                 <div>
                   <h4>Redes sociais</h4>
                   <div className="socials">
-                    {socials.map(([network, url]) => {
+                    {socials.map(([network, detail]) => {
+                      if (!detail) return null;
                       const { Icon, label } = SOCIAL_META[network];
+                      const hasCount = detail.followers !== undefined && detail.followers > 0;
                       return (
-                        <a key={network} href={url} target="_blank" rel="noopener noreferrer">
-                          <Icon size={16} /> {label}
+                        <a key={network} href={detail.url} target="_blank" rel="noopener noreferrer">
+                          <Icon size={16} /> <span>{label}</span>
+                          {hasCount && (
+                            <span style={{ opacity: 0.75, fontSize: '0.82rem', fontWeight: 600 }}>
+                              · {formatCompactNumber(detail.followers)} seg.
+                            </span>
+                          )}
+                          <ExternalLink size={12} aria-hidden />
                         </a>
                       );
                     })}
@@ -750,7 +847,11 @@ export function Influencers() {
                         <Avatar src={item.profileImage} name={item.name} size={42} />
                         <div>
                           <strong>{item.name}</strong>
-                          <small>{item.email}</small>
+                          <small>
+                            {item.email}
+                            {item.totalFollowers ? ` · ${formatCompactNumber(item.totalFollowers)} seg.` : ''}
+                            {item.impressions ? ` · ${formatCompactNumber(item.impressions)} imp.` : ''}
+                          </small>
                         </div>
                       </CellMain>
                     </td>

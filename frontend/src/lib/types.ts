@@ -4,7 +4,11 @@ export interface Paginated<T> {
 }
 
 export type SocialNetwork = 'instagram' | 'tiktok' | 'youtube' | 'twitter' | 'twitch';
-export type SocialLinks = Partial<Record<SocialNetwork, string>>;
+export interface SocialNetworkDetail {
+  url: string;
+  followers?: number;
+}
+export type SocialLinks = Partial<Record<SocialNetwork, SocialNetworkDetail | string>>;
 
 export type InfluencerStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -19,6 +23,8 @@ export interface ShowcaseInfluencer {
   coverImage: string | null;
   presentationPdf: string | null;
   socialNetworks: SocialLinks | null;
+  totalFollowers?: number | null;
+  impressions?: number | null;
 }
 
 export interface AdminInfluencer extends ShowcaseInfluencer {

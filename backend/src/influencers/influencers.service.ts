@@ -7,7 +7,10 @@ import {
 import { InfluencerStatus, Prisma } from '@prisma/client';
 import { config } from '../config/configuration';
 import { paginated, pageArgs } from '../common/utils/paginate';
-import { normalizeSocialLinks } from '../common/utils/social';
+import {
+  calculateTotalFollowers,
+  normalizeSocialLinks,
+} from '../common/utils/social';
 import { buildWhatsAppLink } from '../common/utils/whatsapp';
 import { MailService } from '../mail/mail.service';
 import { templates } from '../mail/templates';
@@ -43,6 +46,8 @@ const SHOWCASE_SELECT = {
   coverImage: true,
   presentationPdf: true,
   socialNetworks: true,
+  totalFollowers: true,
+  impressions: true,
 } satisfies Prisma.InfluencerSelect;
 
 const showcaseWhere = (): Prisma.InfluencerWhereInput => ({
@@ -101,6 +106,8 @@ export class InfluencersService {
         : undefined;
       if (presentationPdf) saved.push(presentationPdf);
 
+      const totalFollowers = calculateTotalFollowers(socialNetworks);
+
       const influencer = await this.prisma.influencer.create({
         data: {
           name: dto.name,
@@ -109,7 +116,9 @@ export class InfluencersService {
           niche: dto.niche,
           location: dto.location,
           description: dto.description,
-          socialNetworks,
+          socialNetworks: socialNetworks as unknown as Prisma.InputJsonValue,
+          totalFollowers,
+          impressions: dto.impressions ?? 0,
           profileImage,
           coverImage,
           presentationPdf,
@@ -242,10 +251,20 @@ export class InfluencersService {
 
   async update(id: string, dto: UpdateInfluencerDto) {
     const current = await this.findOne(id);
-    const { socialNetworks, ...rest } = dto;
+    const { socialNetworks, totalFollowers, impressions, ...rest } = dto;
     const data: Prisma.InfluencerUpdateInput = { ...rest };
     if (socialNetworks !== undefined) {
-      data.socialNetworks = normalizeSocialLinks(socialNetworks);
+      const normalized = normalizeSocialLinks(socialNetworks);
+      data.socialNetworks = normalized as unknown as Prisma.InputJsonValue;
+      data.totalFollowers =
+        totalFollowers !== undefined
+          ? totalFollowers
+          : calculateTotalFollowers(normalized);
+    } else if (totalFollowers !== undefined) {
+      data.totalFollowers = totalFollowers;
+    }
+    if (impressions !== undefined) {
+      data.impressions = impressions;
     }
 
     const updated = await this.prisma.influencer.update({
