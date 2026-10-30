@@ -70,6 +70,58 @@ const Orb = styled.div<{ $top: string; $left: string; $size: string; $delay?: st
   animation-delay: ${({ $delay = '0s' }) => $delay};
 `;
 
+/** Vídeo de fundo: fica atrás da grade e dos orbs, coberto por um véu escuro para manter o tom e a leitura. */
+const HeroVideoBox = styled.div<{ $ready: boolean }>`
+  position: absolute;
+  inset: 0;
+  z-index: -4;
+  overflow: hidden;
+  opacity: ${({ $ready }) => ($ready ? 1 : 0)};
+  transition: opacity 0.8s ease;
+
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, ${({ theme }) => theme.colors.background}cc 0%, ${({ theme }) => theme.colors.background}b3 60%, ${({ theme }) => theme.colors.background} 100%);
+  }
+`;
+
+const HERO_VIDEO = `${import.meta.env.BASE_URL}videos/hero.mp4`;
+
+function HeroVideo() {
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  // Sem vídeo para quem prefere menos movimento ou economiza dados: o fundo atual continua.
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+  const skip = window.matchMedia('(prefers-reduced-motion: reduce)').matches || connection?.saveData;
+  if (skip || failed) return null;
+
+  return (
+    <HeroVideoBox $ready={ready} aria-hidden>
+      <video
+        src={HERO_VIDEO}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        disablePictureInPicture
+        tabIndex={-1}
+        onCanPlay={() => setReady(true)}
+        onError={() => setFailed(true)}
+      />
+    </HeroVideoBox>
+  );
+}
+
 const HeroContent = styled.div`
   display: flex;
   flex-direction: column;
@@ -162,6 +214,7 @@ function Hero({ stats }: { stats: PublicStats | null }) {
 
   return (
     <HeroSection>
+      <HeroVideo />
       <Orb $top="-120px" $left="55%" $size="520px" />
       <Orb $top="260px" $left="-8%" $size="380px" $delay="-6s" />
       <Container>
