@@ -18,6 +18,9 @@ const MAX_SIZE: Record<UploadKind, number> = {
   video: 50 * 1024 * 1024,
 };
 
+/** Lado maior, em px, das imagens do site (telas 4K já ficam nítidas; fotos de celular têm 4000+). */
+const IMAGE_MAX_SIDE = 2000;
+
 /**
  * Marcas ("brands") da caixa ftyp que identificam vídeo MP4/MOV. HEIC, AVIF e similares
  * também começam com ftyp, mas são imagens — por isso a lista é explícita.
@@ -130,7 +133,9 @@ export class StorageService {
     expected: UploadKind,
     options: { trim?: boolean; maxBytes?: number } = {},
   ): Promise<string> {
-    return (await this.saveAny(file, [expected], options)).url;
+    return (
+      await this.saveAny(file, [expected], { ...options, optimize: true })
+    ).url;
   }
 
   /**
@@ -140,7 +145,12 @@ export class StorageService {
   async saveAny(
     file: Express.Multer.File,
     allowed: UploadKind[],
-    options: { trim?: boolean; square?: number; maxBytes?: number } = {},
+    options: {
+      trim?: boolean;
+      square?: number;
+      maxBytes?: number;
+      optimize?: boolean;
+    } = {},
   ): Promise<{ url: string; mime: string }> {
     const detected = sniff(file.buffer);
     if (!detected || !allowed.includes(detected.kind)) {
@@ -178,6 +188,8 @@ export class StorageService {
       }
       ext = 'webp';
       mime = 'image/webp';
+    } else if (options.optimize && expected === 'image') {
+      body = await this.optimizeImage(body, ext);
     }
     const filename = `${randomUUID()}.${ext}`;
 
@@ -204,6 +216,32 @@ export class StorageService {
   /** Foto de perfil: só imagem, recortada em um quadrado de 256 px. */
   async saveAvatar(file: Express.Multer.File): Promise<string> {
     return (await this.saveAny(file, ['image'], { square: 256 })).url;
+  }
+
+  /**
+   * Reduz o peso de fotos enviadas pelo painel: limita o lado maior, recomprime e descarta
+   * metadados (EXIF, localização). Mantém o formato (o og:image de alguns rastreadores não
+   * aceita WebP) e nunca amplia. Se o resultado não ficar menor, devolve o original.
+   */
+  private async optimizeImage(buffer: Buffer, ext: string): Promise<Buffer> {
+    try {
+      const pipeline = sharp(buffer).rotate().resize({
+        width: IMAGE_MAX_SIDE,
+        height: IMAGE_MAX_SIDE,
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
+      const output =
+        ext === 'jpg'
+          ? pipeline.jpeg({ quality: 82, mozjpeg: true })
+          : ext === 'webp'
+            ? pipeline.webp({ quality: 82 })
+            : pipeline.png({ compressionLevel: 9 });
+      const optimized = await output.toBuffer();
+      return optimized.length < buffer.length ? optimized : buffer;
+    } catch {
+      throw new BadRequestException(INVALID_FILE_MESSAGE.image);
+    }
   }
 
   /**
