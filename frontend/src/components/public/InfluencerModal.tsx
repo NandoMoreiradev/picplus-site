@@ -167,7 +167,7 @@ export function InfluencerModal({
   return (
     <Modal open onClose={onClose} title={influencer.name} width="620px">
       <Hero>
-        <CoverImage src={influencer.coverImage ?? influencer.profileImage} alt="" ratio="16 / 6" />
+        <CoverImage src={influencer.coverImage ?? influencer.profileImage} alt="" ratio="16 / 6" full />
         <div className="avatar">
           <Avatar src={influencer.profileImage} name={influencer.name} size={88} />
         </div>

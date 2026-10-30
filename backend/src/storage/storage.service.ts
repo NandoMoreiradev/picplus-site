@@ -18,6 +18,15 @@ const MAX_SIZE: Record<UploadKind, number> = {
   video: 50 * 1024 * 1024,
 };
 
+/** Largura, em px, da miniatura (cards e grades; ~2x do maior uso, para telas retina). */
+const THUMB_WIDTH = 800;
+
+/** `<uuid>.jpg` → `<uuid>-thumb.webp`. O site monta o mesmo nome (ver thumbUrl no frontend). */
+const thumbFilename = (filename: string) =>
+  filename.replace(/\.(jpe?g|png|webp)$/i, '-thumb.webp');
+const thumbUrl = thumbFilename;
+const IMAGE_URL = /\/[0-9a-f-]{36}\.(jpe?g|png|webp)$/i;
+
 /** Lado maior, em px, das imagens do site (telas 4K já ficam nítidas; fotos de celular têm 4000+). */
 const IMAGE_MAX_SIDE = 2000;
 
@@ -192,7 +201,31 @@ export class StorageService {
       body = await this.optimizeImage(body, ext);
     }
     const filename = `${randomUUID()}.${ext}`;
+    const url = await this.put(filename, body, mime);
 
+    // Miniatura para grades e cards: o site carrega esta e só abre a original ao ampliar.
+    if (options.optimize && expected === 'image') {
+      try {
+        const thumb = await sharp(body)
+          .rotate()
+          .resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+          .webp({ quality: 78 })
+          .toBuffer();
+        await this.put(thumbFilename(filename), thumb, 'image/webp');
+      } catch (error) {
+        // Sem miniatura o site apenas usa a imagem original: não vale falhar o envio.
+        this.logger.warn(`Miniatura não gerada: ${(error as Error).message}`);
+      }
+    }
+    return { url, mime };
+  }
+
+  /** Grava o arquivo (R2 ou disco) e devolve a URL que vai para o banco. */
+  private async put(
+    filename: string,
+    body: Buffer,
+    mime: string,
+  ): Promise<string> {
     if (this.s3) {
       const key = `uploads/${filename}`;
       await this.s3.send(
@@ -205,12 +238,12 @@ export class StorageService {
           CacheControl: 'public, max-age=31536000, immutable',
         }),
       );
-      return { url: `${config.r2.publicUrl}/${key}`, mime };
+      return `${config.r2.publicUrl}/${key}`;
     }
 
     await mkdir(config.uploads.dir, { recursive: true });
     await writeFile(join(config.uploads.dir, filename), body);
-    return { url: `${config.uploads.publicPath}/${filename}`, mime };
+    return `${config.uploads.publicPath}/${filename}`;
   }
 
   /** Foto de perfil: só imagem, recortada em um quadrado de 256 px. */
@@ -265,9 +298,14 @@ export class StorageService {
     return url.startsWith(prefix);
   }
 
-  /** Remove um arquivo previamente salvo. Silencioso se não existir ou for de outra origem. */
+  /** Remove um arquivo previamente salvo (e a miniatura, se houver). Silencioso se não existir ou for de outra origem. */
   async remove(url?: string | null): Promise<void> {
     if (!url) return;
+    await this.removeOne(url);
+    if (IMAGE_URL.test(url)) await this.removeOne(thumbUrl(url));
+  }
+
+  private async removeOne(url: string): Promise<void> {
 
     // Arquivo no R2: a chave é o que vem depois da URL pública.
     if (this.s3 && url.startsWith(`${config.r2.publicUrl}/uploads/`)) {

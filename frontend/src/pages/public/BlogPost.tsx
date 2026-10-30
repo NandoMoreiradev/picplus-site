@@ -152,7 +152,7 @@ export function BlogPost() {
 
           {data.coverImage && (
             <CoverWrap>
-              <CoverImage src={data.coverImage} alt={data.title} ratio="16 / 9" />
+              <CoverImage src={data.coverImage} alt={data.title} ratio="16 / 9" full />
             </CoverWrap>
           )}
 

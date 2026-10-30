@@ -1,9 +1,10 @@
 import { useId, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { ImagePlus, X } from 'lucide-react';
-import { api, assetUrl, withQuery } from '../../lib/api';
+import { api, withQuery } from '../../lib/api';
 import { errorMessage } from '../../lib/validation';
 import { Spinner } from '../ui/Feedback';
+import { ThumbImage } from '../ui/ThumbImage';
 import { useToast } from '../ui/Toast';
 
 const Wrap = styled.div`
@@ -142,7 +143,7 @@ export function GalleryField({
       <Grid>
         {value.map((url) => (
           <Thumb key={url}>
-            <img src={assetUrl(url)} alt="" />
+            <ThumbImage src={url} alt="" />
             <button type="button" aria-label="Remover imagem" onClick={() => remove(url)}>
               <X size={13} />
             </button>

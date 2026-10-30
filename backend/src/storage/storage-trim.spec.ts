@@ -47,8 +47,8 @@ const asFile = (buffer: Buffer) =>
   ({ buffer, size: buffer.length }) as Express.Multer.File;
 
 const savedSize = async () => {
-  const [name] = readdirSync(dir);
-  return sharp(readFileSync(join(dir, name))).metadata();
+  const name = readdirSync(dir).find((file) => !file.includes('-thumb'));
+  return sharp(readFileSync(join(dir, name as string))).metadata();
 };
 
 describe('StorageService: recorte de margens', () => {
@@ -65,11 +65,23 @@ describe('StorageService: recorte de margens', () => {
   it('não altera a imagem quando trim não é pedido', async () => {
     const before = new Set(readdirSync(dir));
     await new StorageService().save(asFile(await paddedLogo()), 'image');
-    const created = readdirSync(dir).find((name) => !before.has(name));
+    const created = readdirSync(dir).find(
+      (name) => !before.has(name) && !name.includes('-thumb'),
+    );
     const meta = await sharp(
       readFileSync(join(dir, created as string)),
     ).metadata();
     expect(meta.width).toBe(200);
     expect(meta.height).toBe(120);
+  });
+
+  it('gera a miniatura webp ao lado da imagem original', async () => {
+    const before = new Set(readdirSync(dir));
+    await new StorageService().save(asFile(await paddedLogo()), 'image');
+    const created = readdirSync(dir).filter((name) => !before.has(name));
+    const original = created.find((name) => !name.includes('-thumb'));
+    expect(created).toContain(
+      (original as string).replace(/\.png$/, '-thumb.webp'),
+    );
   });
 });

@@ -9,6 +9,7 @@ import { Badge, ErrorState, PageLoader } from '../../components/ui/Feedback';
 import { Card, Container, Eyebrow, Grid, Section } from '../../components/ui/Layout';
 import { Modal } from '../../components/ui/Modal';
 import { Reveal } from '../../components/ui/Reveal';
+import { ThumbImage } from '../../components/ui/ThumbImage';
 import { useFetch } from '../../hooks/useFetch';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { assetUrl } from '../../lib/api';
@@ -202,7 +203,7 @@ export function CaseDetail() {
 
           {cover && (
             <Cover>
-              <CoverImage src={cover} alt={data.title} ratio="21 / 9" />
+              <CoverImage src={cover} alt={data.title} ratio="21 / 9" full />
             </Cover>
           )}
 
@@ -261,7 +262,7 @@ export function CaseDetail() {
               <Gallery>
                 {gallery.map((image) => (
                   <button key={image} type="button" onClick={() => setZoom(image)} aria-label="Ampliar imagem">
-                    <img src={assetUrl(image)} alt="" loading="lazy" />
+                    <ThumbImage src={image} alt="" />
                   </button>
                 ))}
               </Gallery>

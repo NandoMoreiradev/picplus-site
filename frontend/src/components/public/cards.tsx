@@ -15,6 +15,7 @@ import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Feedback';
 import { InstagramIcon, LinkedInIcon, ServiceIcon, SOCIAL_META } from '../ui/icons';
 import { Card } from '../ui/Layout';
+import { ThumbImage } from '../ui/ThumbImage';
 
 /* ── Capa de imagem com degradê quando não há foto ───── */
 
@@ -34,9 +35,14 @@ const Cover = styled.div<{ $ratio?: string }>`
   }
 `;
 
-export function CoverImage({ src, alt, ratio }: { src?: string | null; alt: string; ratio?: string }) {
+/** `full`: imagem original, para destaques de página (a miniatura tem 800 px). */
+export function CoverImage({ src, alt, ratio, full }: { src?: string | null; alt: string; ratio?: string; full?: boolean }) {
   const url = assetUrl(src);
-  return <Cover $ratio={ratio}>{url && <img src={url} alt={alt} loading="lazy" />}</Cover>;
+  return (
+    <Cover $ratio={ratio}>
+      {url && (full ? <img src={url} alt={alt} loading="lazy" decoding="async" /> : <ThumbImage src={src} alt={alt} />)}
+    </Cover>
+  );
 }
 
 /* ── Serviço ─────────────────────────────────────────── */
