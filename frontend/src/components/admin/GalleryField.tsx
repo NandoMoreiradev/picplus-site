@@ -93,7 +93,7 @@ export function GalleryField({
   label,
   value,
   onChange,
-  max = 12,
+  max = 24,
   hint,
 }: {
   label: string;

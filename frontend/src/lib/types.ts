@@ -70,6 +70,9 @@ export interface SuccessCase {
   description: string;
   coverImage: string | null;
   images: string[];
+  /** Vídeo opcional: só uma das duas fontes vem preenchida (ou nenhuma). */
+  youtubeId: string | null;
+  videoFile: string | null;
   results: string | null;
   metrics: CaseMetric[] | null;
   featured: boolean;

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
-import { Pencil, Plus, Star, Trash2, X } from 'lucide-react';
+import { CheckCircle2, Pencil, Plus, Star, Trash2, X } from 'lucide-react';
 import {
   CellMain,
   FormStack,
@@ -15,8 +15,10 @@ import {
 } from '../../components/admin/AdminUI';
 import { GalleryField } from '../../components/admin/GalleryField';
 import { UploadField } from '../../components/admin/UploadField';
+import { VideoUploadField } from '../../components/admin/VideoUploadField';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
+import { Chip, Chips } from '../../components/ui/Chips';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
 import { FormGrid, Switch, TextArea, TextField } from '../../components/ui/Form';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
@@ -24,6 +26,52 @@ import { useAuth } from '../../context/auth-context';
 import { useCrud } from '../../hooks/useCrud';
 import { formatShortDate } from '../../lib/format';
 import type { CaseMetric, SuccessCase } from '../../lib/types';
+import { parseYoutubeId, youtubeThumbnail } from '../../lib/youtube';
+
+const SourceBox = styled.fieldset`
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  border: none;
+
+  legend {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+  }
+  legend span {
+    margin-left: 0.4rem;
+    color: ${({ theme }) => theme.colors.textMuted};
+    font-weight: 400;
+    font-size: 0.8rem;
+  }
+`;
+
+const VideoPreview = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.75rem;
+  border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
+  border-radius: ${({ theme }) => theme.radii.md};
+  background: ${({ theme }) => theme.colors.background};
+  font-size: 0.88rem;
+  color: ${({ theme }) => theme.colors.textSecondary};
+
+  img {
+    width: 96px;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: ${({ theme }) => theme.radii.sm};
+    background: #000;
+  }
+  strong {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: ${({ theme }) => theme.colors.primary};
+  }
+`;
 
 const MetricsBox = styled.fieldset`
   display: flex;
@@ -73,7 +121,12 @@ const MetricsBox = styled.fieldset`
   }
 `;
 
+type VideoSource = 'none' | 'youtube' | 'file';
+
 interface FormState {
+  videoSource: VideoSource;
+  videoUrl: string;
+  videoFile: string | null;
   title: string;
   clientName: string;
   segment: string;
@@ -88,6 +141,9 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
+  videoSource: 'none',
+  videoUrl: '',
+  videoFile: null,
   title: '',
   clientName: '',
   segment: '',
@@ -102,6 +158,9 @@ const EMPTY: FormState = {
 };
 
 const toForm = (item: SuccessCase): FormState => ({
+  videoSource: item.videoFile ? 'file' : item.youtubeId ? 'youtube' : 'none',
+  videoUrl: item.youtubeId ? `https://youtu.be/${item.youtubeId}` : '',
+  videoFile: item.videoFile,
   title: item.title,
   clientName: item.clientName,
   segment: item.segment ?? '',
@@ -131,6 +190,15 @@ function CaseForm({
   const [form, setForm] = useState(initial);
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
+  const videoId = form.videoUrl.trim() ? parseYoutubeId(form.videoUrl) : null;
+  const videoError =
+    form.videoSource === 'youtube' && form.videoUrl.trim() && !videoId
+      ? 'Cole o link de um vídeo do YouTube (ex.: https://youtu.be/…).'
+      : undefined;
+  // Sem vídeo é válido; escolhida uma fonte, ela precisa estar preenchida.
+  const videoReady =
+    form.videoSource === 'none' || (form.videoSource === 'youtube' ? !!videoId : !!form.videoFile);
+
   const setMetric = (index: number, patch: Partial<CaseMetric>) =>
     set(
       'metrics',
@@ -149,7 +217,7 @@ function CaseForm({
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>
-          <Button type="submit" form="case-form" loading={saving}>
+          <Button type="submit" form="case-form" loading={saving} disabled={!videoReady}>
             Salvar
           </Button>
         </>
@@ -159,7 +227,7 @@ function CaseForm({
         id="case-form"
         onSubmit={(event: FormEvent) => {
           event.preventDefault();
-          onSubmit(form);
+          if (videoReady) onSubmit(form);
         }}
       >
         <TextField label="Título do case" required minLength={3} value={form.title} onChange={(e) => set('title', e.target.value)} />
@@ -244,6 +312,57 @@ function CaseForm({
         <UploadField label="Imagem de capa" value={form.coverImage} onChange={(url) => set('coverImage', url)} />
         <GalleryField label="Galeria de imagens" value={form.images} onChange={(urls) => set('images', urls)} />
 
+        <SourceBox>
+          <legend>
+            Vídeo<span>(opcional, apenas um)</span>
+          </legend>
+          <Chips role="group" aria-label="Fonte do vídeo">
+            <Chip type="button" $active={form.videoSource === 'none'} onClick={() => set('videoSource', 'none')}>
+              Sem vídeo
+            </Chip>
+            <Chip type="button" $active={form.videoSource === 'youtube'} onClick={() => set('videoSource', 'youtube')}>
+              Link do YouTube
+            </Chip>
+            <Chip type="button" $active={form.videoSource === 'file'} onClick={() => set('videoSource', 'file')}>
+              Enviar vídeo
+            </Chip>
+          </Chips>
+
+          {form.videoSource === 'youtube' && (
+            <>
+              <TextField
+                label="Link do vídeo no YouTube"
+                required
+                placeholder="https://youtu.be/…"
+                value={form.videoUrl}
+                onChange={(e) => set('videoUrl', e.target.value)}
+                error={videoError}
+                hint="Aceita link normal, curto (youtu.be) ou de Shorts. O vídeo pode estar como Não listado."
+              />
+              {videoId && (
+                <VideoPreview>
+                  <img src={youtubeThumbnail(videoId)} alt="" />
+                  <div>
+                    <strong>
+                      <CheckCircle2 size={16} aria-hidden /> Vídeo reconhecido
+                    </strong>
+                    ID: {videoId}
+                  </div>
+                </VideoPreview>
+              )}
+            </>
+          )}
+          {form.videoSource === 'file' && (
+            <VideoUploadField
+              label="Arquivo de vídeo"
+              required
+              value={form.videoFile}
+              onChange={(url) => set('videoFile', url)}
+              hint="Dica: MP4 (H.264). Vídeos pesados demoram para abrir em conexão fraca."
+            />
+          )}
+        </SourceBox>
+
         <FormGrid>
           <Switch
             checked={form.featured}
@@ -290,6 +409,8 @@ export function Cases() {
       results: form.results.trim() || null,
       coverImage: form.coverImage,
       images: form.images,
+      videoUrl: form.videoSource === 'youtube' ? form.videoUrl.trim() : null,
+      videoFile: form.videoSource === 'file' ? form.videoFile : null,
       metrics: form.metrics.filter((m) => m.label.trim() && m.value.trim()),
       featured: form.featured,
       published: form.published,
@@ -381,7 +502,7 @@ export function Cases() {
         title="Excluir case"
         message={
           <>
-            Excluir <strong>{deleting?.title}</strong>? As imagens enviadas também serão apagadas.
+            Excluir <strong>{deleting?.title}</strong>? As imagens e o vídeo enviados também serão apagados.
           </>
         }
         loading={saving}

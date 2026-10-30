@@ -13,6 +13,7 @@ import { useFetch } from '../../hooks/useFetch';
 import { usePageMeta } from '../../hooks/usePageMeta';
 import { assetUrl } from '../../lib/api';
 import type { SuccessCase } from '../../lib/types';
+import { youtubeEmbedUrl } from '../../lib/youtube';
 
 const Back = styled(Link)`
   display: inline-flex;
@@ -122,6 +123,27 @@ const Gallery = styled.div`
   }
 `;
 
+const Player = styled.div`
+  margin-top: 1rem;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  overflow: hidden;
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  background: #000;
+
+  iframe {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+  }
+  video {
+    display: block;
+    width: 100%;
+    max-height: 75vh;
+    object-fit: contain;
+  }
+`;
+
 const Lightbox = styled.img`
   width: 100%;
   max-height: 70vh;
@@ -205,6 +227,33 @@ export function CaseDetail() {
               </>
             )}
           </Prose>
+
+          {(data.videoFile || data.youtubeId) && (
+            <Prose style={{ maxWidth: 'none' }}>
+              <h2>Vídeo</h2>
+              <Player>
+                {data.videoFile ? (
+                  <video
+                    src={assetUrl(data.videoFile)}
+                    poster={assetUrl(cover)}
+                    title={`Vídeo do case ${data.title}`}
+                    controls
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : data.youtubeId ? (
+                  <iframe
+                    src={youtubeEmbedUrl(data.youtubeId)}
+                    title={`Vídeo do case ${data.title}`}
+                    loading="lazy"
+                    allow="encrypted-media; picture-in-picture; fullscreen"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                ) : null}
+              </Player>
+            </Prose>
+          )}
 
           {gallery.length > 0 && (
             <Prose style={{ maxWidth: 'none' }}>

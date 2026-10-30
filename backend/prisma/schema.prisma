@@ -121,6 +121,9 @@ model SuccessCase {
   description String   @db.Text
   coverImage  String?
   images      String[]
+  // Vídeo opcional: UMA das duas fontes (ou nenhuma). YouTube (só o ID) ou arquivo enviado.
+  youtubeId   String?
+  videoFile   String?
   results     String?  @db.Text
   // Ex.: [{ "label": "Alcance", "value": "2,4M" }]
   metrics     Json?

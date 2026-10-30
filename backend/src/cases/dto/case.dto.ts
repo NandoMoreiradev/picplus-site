@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -10,6 +10,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { IsYoutubeUrl } from '../../common/validators/is-youtube-url';
 
 export class CaseMetricDto {
   @IsString()
@@ -56,9 +57,27 @@ export class CreateCaseDto {
 
   @IsOptional()
   @IsArray()
-  @ArrayMaxSize(12)
+  @ArrayMaxSize(24)
   @IsString({ each: true })
   images?: string[];
+
+  /**
+   * Vídeo opcional, fonte A — link do YouTube (qualquer formato) ou o ID de 11 caracteres.
+   * Informe este OU o videoFile; null remove o vídeo.
+   */
+  @IsOptional()
+  // Campo vazio equivale a "não informado" (o formulário pode mandar "" ao trocar de fonte).
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() || undefined : (value as unknown),
+  )
+  @IsYoutubeUrl()
+  videoUrl?: string | null;
+
+  /** Vídeo opcional, fonte B — URL de um vídeo enviado pelo painel (upload kind=video). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  videoFile?: string | null;
 
   @IsOptional()
   @IsString()
