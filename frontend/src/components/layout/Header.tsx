@@ -11,6 +11,7 @@ const NAV_ITEMS: { to: string; label: string; anchor?: string }[] = [
   // { to: '/planos', label: 'Planos' }, // desativado por enquanto
   // Âncora da página inicial. Fica fora do NavLink, que marcaria o item ativo em toda a home.
   { to: '/#depoimentos', label: 'Depoimentos', anchor: 'depoimentos' },
+  { to: '/cases', label: 'Cases' },
   { to: '/influenciadores', label: 'Influenciadores' },
   { to: '/academy', label: 'Academy' },
   { to: '/blog', label: 'Blog' },
@@ -18,7 +19,7 @@ const NAV_ITEMS: { to: string; label: string; anchor?: string }[] = [
   { to: '/contato', label: 'Contato' },
 ];
 
-// Abaixo disso os 8 itens + botão não cabem em uma linha: troca pelo menu hambúrguer.
+// Abaixo disso os 9 itens + botão não cabem em uma linha: troca pelo menu hambúrguer.
 const NAV_BREAKPOINT = '1180px';
 
 const HeaderContainer = styled.header<{ $scrolled: boolean }>`
