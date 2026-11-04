@@ -44,6 +44,16 @@ export class ClientsController {
     return this.clients.getStats();
   }
 
+  @Get('lookup/cnpj/:cnpj')
+  lookupCnpj(@Param('cnpj') cnpj: string) {
+    return this.clients.lookupCnpj(cnpj);
+  }
+
+  @Get('lookup/cep/:cep')
+  lookupCep(@Param('cep') cep: string) {
+    return this.clients.lookupCep(cep);
+  }
+
   @Get(':id')
   getById(@Param('id') id: string) {
     return this.clients.getById(id);

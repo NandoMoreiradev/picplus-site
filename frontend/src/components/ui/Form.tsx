@@ -152,6 +152,60 @@ export function TextField({ label, error, hint, required, ...rest }: TextFieldPr
   );
 }
 
+export interface CurrencyFieldProps extends BaseProps {
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+}
+
+export function CurrencyField({
+  label,
+  value,
+  onChange,
+  error,
+  hint,
+  required,
+  placeholder = 'R$ 0,00',
+  disabled,
+}: CurrencyFieldProps) {
+  const id = useId();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) {
+      onChange('');
+      return;
+    }
+    const cents = parseInt(digits, 10);
+    const formatted = (cents / 100).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    });
+    onChange(formatted);
+  };
+
+  return (
+    <FieldShell id={id} label={label} error={error} hint={hint} required={required}>
+      <Input
+        id={id}
+        type="text"
+        inputMode="numeric"
+        required={required}
+        disabled={disabled}
+        placeholder={placeholder}
+        value={value}
+        onChange={handleChange}
+        $invalid={!!error}
+        aria-invalid={!!error || undefined}
+        aria-describedby={describedBy(id, error, hint)}
+      />
+    </FieldShell>
+  );
+}
+
 type TextAreaProps = BaseProps & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'id'>;
 
 export function TextArea({ label, error, hint, required, maxLength, value, ...rest }: TextAreaProps) {

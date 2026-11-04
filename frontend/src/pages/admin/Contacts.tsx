@@ -17,7 +17,7 @@ import {
 import { Button, ButtonAnchor } from '../../components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
 import type { Tone } from '../../components/ui/Feedback';
-import { SelectField, TextField } from '../../components/ui/Form';
+import { CurrencyField, SelectField, TextField } from '../../components/ui/Form';
 import { WhatsAppIcon } from '../../components/ui/icons';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { Pagination } from '../../components/ui/Pagination';
@@ -28,7 +28,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useFetch } from '../../hooks/useFetch';
 import { usePage } from '../../hooks/usePage';
 import { api } from '../../lib/api';
-import { formatDateTime, formatShortDate } from '../../lib/format';
+import { formatDateTime, formatShortDate, maskCnpjCpf, parseBRLToCents } from '../../lib/format';
 import type { ContactRequest, ContactStatus, ContactType, Paginated } from '../../lib/types';
 import { errorMessage } from '../../lib/validation';
 
@@ -129,7 +129,7 @@ function ContactDrawer({
     }
     setBusy(true);
     try {
-      const cleanFee = Math.round((parseFloat(convertFee.replace(',', '.')) || 0) * 100);
+      const cleanFee = parseBRLToCents(convertFee);
       const newClient = await api.post<{ id: string }>(`/admin/clients/convert-from-contact/${contact.id}`, {
         tradeName: convertTradeName,
         cnpjCpf: convertCnpj,
@@ -305,13 +305,13 @@ function ContactDrawer({
               required
               placeholder="00.000.000/0001-00"
               value={convertCnpj}
-              onChange={(e) => setConvertCnpj(e.target.value)}
+              onChange={(e) => setConvertCnpj(maskCnpjCpf(e.target.value))}
             />
-            <TextField
-              label="Valor Acordado / Fee Mensal (R$)"
-              placeholder="Ex: 4500,00"
+            <CurrencyField
+              label="Valor Acordado / Fee Mensal"
+              placeholder="R$ 0,00"
               value={convertFee}
-              onChange={(e) => setConvertFee(e.target.value)}
+              onChange={setConvertFee}
             />
           </div>
 

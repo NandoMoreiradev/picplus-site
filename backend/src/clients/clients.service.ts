@@ -148,6 +148,145 @@ export class ClientsService {
   }
 
   /**
+   * Consulta pública de dados de CNPJ na Receita Federal (via BrasilAPI).
+   */
+  async lookupCnpj(rawCnpj: string) {
+    const cleanCnpj = rawCnpj.replace(/\D/g, '');
+    if (cleanCnpj.length !== 14) {
+      throw new BadRequestException('CNPJ deve conter 14 dígitos.');
+    }
+
+    try {
+      const response = await fetch(
+        `https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; PicPlusAgency/1.0)',
+            Accept: 'application/json',
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new NotFoundException('CNPJ não encontrado na base da Receita.');
+      }
+
+      const data = (await response.json()) as {
+        razao_social?: string;
+        nome_fantasia?: string;
+        cnae_fiscal_descricao?: string;
+        cep?: string;
+        logradouro?: string;
+        numero?: string;
+        complemento?: string;
+        bairro?: string;
+        municipio?: string;
+        uf?: string;
+        ddd_telefone_1?: string;
+        email?: string;
+      };
+
+      return {
+        cnpj: cleanCnpj,
+        corporateName: data.razao_social || '',
+        tradeName: data.nome_fantasia || data.razao_social || '',
+        segment: data.cnae_fiscal_descricao || null,
+        postalCode: data.cep || null,
+        address: data.logradouro || null,
+        addressNumber: data.numero || null,
+        complement: data.complemento || null,
+        neighborhood: data.bairro || null,
+        city: data.municipio || null,
+        state: data.uf || null,
+        phone: data.ddd_telefone_1 || null,
+        email: data.email || null,
+      };
+    } catch (err) {
+      if (
+        err instanceof NotFoundException ||
+        err instanceof BadRequestException
+      ) {
+        throw err;
+      }
+      this.logger.error(`Erro na consulta de CNPJ ${cleanCnpj}: ${err}`);
+      throw new BadRequestException(
+        'Não foi possível consultar os dados do CNPJ no momento.',
+      );
+    }
+  }
+
+  /**
+   * Consulta pública de endereço por CEP (BrasilAPI com fallback para ViaCEP).
+   */
+  async lookupCep(rawCep: string) {
+    const cleanCep = rawCep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) {
+      throw new BadRequestException('CEP deve conter 8 dígitos.');
+    }
+
+    // 1. Tenta BrasilAPI
+    try {
+      const res = await fetch(
+        `https://brasilapi.com.br/api/cep/v2/${cleanCep}`,
+        {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; PicPlusAgency/1.0)',
+            Accept: 'application/json',
+          },
+        },
+      );
+      if (res.ok) {
+        const d = (await res.json()) as {
+          cep?: string;
+          street?: string;
+          neighborhood?: string;
+          city?: string;
+          state?: string;
+        };
+        return {
+          postalCode: d.cep || cleanCep,
+          address: d.street || '',
+          neighborhood: d.neighborhood || '',
+          city: d.city || '',
+          state: d.state || '',
+        };
+      }
+    } catch {
+      // Ignora erro e parte para o fallback
+    }
+
+    // 2. Fallback ViaCEP
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      if (res.ok) {
+        const d = (await res.json()) as {
+          erro?: boolean;
+          cep?: string;
+          logradouro?: string;
+          bairro?: string;
+          localidade?: string;
+          uf?: string;
+          complemento?: string;
+        };
+        if (!d.erro) {
+          return {
+            postalCode: (d.cep || cleanCep).replace(/\D/g, ''),
+            address: d.logradouro || '',
+            neighborhood: d.bairro || '',
+            city: d.localidade || '',
+            state: d.uf || '',
+            complement: d.complemento || undefined,
+          };
+        }
+      }
+    } catch {
+      // Falhou fallback
+    }
+
+    throw new NotFoundException('CEP não encontrado.');
+  }
+
+  /**
    * Detalhes completos do cliente (Visão 360°).
    */
   async getById(id: string) {

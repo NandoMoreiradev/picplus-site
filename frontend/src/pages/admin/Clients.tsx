@@ -8,6 +8,7 @@ import {
   DollarSign,
   Eye,
   Plus,
+  Search,
   Trash2,
 } from 'lucide-react';
 import {
@@ -25,7 +26,7 @@ import {
 import { Button } from '../../components/ui/Button';
 import { EmptyState, ErrorState, PageLoader } from '../../components/ui/Feedback';
 import type { Tone } from '../../components/ui/Feedback';
-import { SelectField, TextField } from '../../components/ui/Form';
+import { CurrencyField, SelectField, TextField } from '../../components/ui/Form';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { Pagination } from '../../components/ui/Pagination';
 import { SearchInput } from '../../components/ui/SearchInput';
@@ -35,7 +36,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useFetch } from '../../hooks/useFetch';
 import { usePage } from '../../hooks/usePage';
 import { api } from '../../lib/api';
-import { formatCents, maskCnpjCpf, maskPhone } from '../../lib/format';
+import { formatCents, maskCnpjCpf, maskPhone, parseBRLToCents } from '../../lib/format';
 import type {
   ClientStats,
   ClientStatus,
@@ -181,7 +182,87 @@ export function Clients() {
   const [form, setForm] = useState<ClientFormState>(INITIAL_FORM);
   const [monthlyFeeInput, setMonthlyFeeInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [searchingCnpj, setSearchingCnpj] = useState(false);
+  const [searchingCep, setSearchingCep] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<ClientSummary | null>(null);
+
+  const handleLookupCnpj = async () => {
+    const clean = form.cnpjCpf.replace(/\D/g, '');
+    if (clean.length !== 14) {
+      toast.error('Informe um CNPJ válido com 14 dígitos para consultar.');
+      return;
+    }
+    try {
+      setSearchingCnpj(true);
+      const data = await api.get<{
+        corporateName: string;
+        tradeName: string;
+        segment: string | null;
+        postalCode: string | null;
+        address: string | null;
+        addressNumber: string | null;
+        complement: string | null;
+        neighborhood: string | null;
+        city: string | null;
+        state: string | null;
+        phone: string | null;
+        email: string | null;
+      }>(`/admin/clients/lookup/cnpj/${clean}`);
+
+      setForm((prev) => ({
+        ...prev,
+        corporateName: data.corporateName || prev.corporateName,
+        tradeName: data.tradeName || prev.tradeName,
+        segment: data.segment || prev.segment,
+        postalCode: data.postalCode || prev.postalCode,
+        address: data.address || prev.address,
+        addressNumber: data.addressNumber || prev.addressNumber,
+        complement: data.complement || prev.complement,
+        neighborhood: data.neighborhood || prev.neighborhood,
+        city: data.city || prev.city,
+        state: data.state || prev.state,
+        primaryContactPhone: data.phone ? maskPhone(data.phone) : prev.primaryContactPhone,
+        primaryContactEmail: data.email || prev.primaryContactEmail,
+      }));
+
+      toast.success('Dados da empresa e endereço preenchidos via Receita Federal!');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Não foi possível buscar dados deste CNPJ.'));
+    } finally {
+      setSearchingCnpj(false);
+    }
+  };
+
+  const handleLookupCep = async () => {
+    const clean = form.postalCode.replace(/\D/g, '');
+    if (clean.length !== 8) {
+      toast.error('Informe um CEP com 8 dígitos.');
+      return;
+    }
+    try {
+      setSearchingCep(true);
+      const data = await api.get<{
+        address: string;
+        neighborhood: string;
+        city: string;
+        state: string;
+      }>(`/admin/clients/lookup/cep/${clean}`);
+
+      setForm((prev) => ({
+        ...prev,
+        address: data.address || prev.address,
+        neighborhood: data.neighborhood || prev.neighborhood,
+        city: data.city || prev.city,
+        state: data.state || prev.state,
+      }));
+
+      toast.success('Endereço preenchido com sucesso!');
+    } catch (err) {
+      toast.error(errorMessage(err, 'CEP não encontrado.'));
+    } finally {
+      setSearchingCep(false);
+    }
+  };
 
   // Filtros de listagem
   const query = useMemo(
@@ -218,7 +299,7 @@ export function Clients() {
 
     try {
       setSaving(true);
-      const cleanFee = Math.round((parseFloat(monthlyFeeInput.replace(',', '.')) || 0) * 100);
+      const cleanFee = parseBRLToCents(monthlyFeeInput);
 
       await api.post('/admin/clients', {
         ...form,
@@ -491,13 +572,28 @@ export function Clients() {
               onChange={(e) => setForm({ ...form, corporateName: e.target.value })}
               placeholder="Ex: Fisia Comércio de Artigos Esportivos Ltda"
             />
-            <TextField
-              label="CNPJ ou CPF"
-              required
-              value={form.cnpjCpf}
-              onChange={(e) => setForm({ ...form, cnpjCpf: e.target.value })}
-              placeholder="00.000.000/0001-00"
-            />
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <TextField
+                  label="CNPJ ou CPF"
+                  required
+                  value={form.cnpjCpf}
+                  onChange={(e) => setForm({ ...form, cnpjCpf: maskCnpjCpf(e.target.value) })}
+                  placeholder="00.000.000/0001-00"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                style={{ height: '42px', marginBottom: '2px', whiteSpace: 'nowrap' }}
+                disabled={searchingCnpj || form.cnpjCpf.replace(/\D/g, '').length !== 14}
+                onClick={handleLookupCnpj}
+                title="Consultar dados da empresa na Receita Federal"
+              >
+                <Search size={14} /> {searchingCnpj ? 'Buscando…' : 'Buscar CNPJ'}
+              </Button>
+            </div>
             <TextField
               label="Segmento / Nicho"
               value={form.segment}
@@ -532,11 +628,11 @@ export function Clients() {
                 { value: 'ON_DEMAND', label: 'Por Demanda / Horas' },
               ]}
             />
-            <TextField
-              label="Valor Mensal / Job (R$)"
+            <CurrencyField
+              label="Valor Mensal / Job"
               value={monthlyFeeInput}
-              onChange={(e) => setMonthlyFeeInput(e.target.value)}
-              placeholder="Ex: 5000,00"
+              onChange={setMonthlyFeeInput}
+              placeholder="R$ 0,00"
             />
             <TextField
               label="Dia do Vencimento"
@@ -575,12 +671,27 @@ export function Clients() {
             />
 
             <SectionTitle>Endereço Fiscal (Obrigatório para Emissão no Asaas)</SectionTitle>
-            <TextField
-              label="CEP"
-              value={form.postalCode}
-              onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
-              placeholder="00000-000"
-            />
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <TextField
+                  label="CEP"
+                  value={form.postalCode}
+                  onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
+                  placeholder="00000-000"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                style={{ height: '42px', marginBottom: '2px', whiteSpace: 'nowrap' }}
+                disabled={searchingCep || form.postalCode.replace(/\D/g, '').length !== 8}
+                onClick={handleLookupCep}
+                title="Buscar endereço por CEP"
+              >
+                <Search size={14} /> {searchingCep ? 'Buscando…' : 'Buscar CEP'}
+              </Button>
+            </div>
             <TextField
               label="Logradouro"
               value={form.address}

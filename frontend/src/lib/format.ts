@@ -130,3 +130,20 @@ export function maskCnpjCpf(value?: string | null): string {
     .replace(/\.(\d{3})(\d)/, '.$1/$2')
     .replace(/(\d{4})(\d)/, '$1-$2');
 }
+
+export function maskCurrencyBRL(value: string | number): string {
+  if (value === '' || value === undefined || value === null) return '';
+  const digits = String(value).replace(/\D/g, '');
+  if (!digits) return '';
+  const cents = parseInt(digits, 10);
+  return (cents / 100).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  });
+}
+
+export function parseBRLToCents(raw: string | number): number {
+  if (typeof raw === 'number') return Math.round(raw);
+  const digits = raw.replace(/\D/g, '');
+  return digits ? parseInt(digits, 10) : 0;
+}

@@ -25,7 +25,7 @@ import {
 import { Button, ButtonAnchor } from '../../components/ui/Button';
 import { EmptyState, ErrorState, PageLoader } from '../../components/ui/Feedback';
 import type { Tone } from '../../components/ui/Feedback';
-import { SelectField, TextArea, TextField } from '../../components/ui/Form';
+import { CurrencyField, SelectField, TextArea, TextField } from '../../components/ui/Form';
 import { WhatsAppIcon } from '../../components/ui/icons';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
@@ -38,6 +38,7 @@ import {
   formatShortDate,
   maskCnpjCpf,
   maskPhone,
+  parseBRLToCents,
 } from '../../lib/format';
 import type {
   ChargeBillingType,
@@ -225,7 +226,7 @@ export function ClientDetail() {
   // Gerar Nova Cobrança no Asaas
   const handleCreateCharge = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanValue = Math.round((parseFloat(chargeValueInput.replace(',', '.')) || 0) * 100);
+    const cleanValue = parseBRLToCents(chargeValueInput);
     if (cleanValue <= 0 || !chargeDueDate || !chargeDescription.trim()) {
       toast.error('Preencha a descrição, valor e data de vencimento.');
       return;
@@ -716,12 +717,12 @@ export function ClientDetail() {
               value={chargeDescription}
               onChange={(e) => setChargeDescription(e.target.value)}
             />
-            <TextField
-              label="Valor da Cobrança (R$)"
+            <CurrencyField
+              label="Valor da Cobrança"
               required
-              placeholder="Ex: 3500,00"
+              placeholder="R$ 0,00"
               value={chargeValueInput}
-              onChange={(e) => setChargeValueInput(e.target.value)}
+              onChange={setChargeValueInput}
             />
             <TextField
               label="Data de Vencimento"
