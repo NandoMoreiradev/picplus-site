@@ -45,6 +45,20 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     ],
   },
   {
+    key: 'clients',
+    label: 'Gestão de clientes',
+    permissions: [
+      { key: 'clients.view', label: 'Ver clientes, contatos e projetos' },
+      { key: 'clients.create', label: 'Cadastrar novos clientes' },
+      { key: 'clients.edit', label: 'Editar cadastros, contatos e notas' },
+      {
+        key: 'clients.financial',
+        label: 'Gerenciar financeiro, contratos e cobranças (Asaas)',
+      },
+      { key: 'clients.delete', label: 'Excluir clientes' },
+    ],
+  },
+  {
     key: 'tasks',
     label: 'Gestão de tarefas',
     permissions: [

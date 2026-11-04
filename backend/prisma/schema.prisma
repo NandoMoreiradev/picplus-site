@@ -37,6 +37,8 @@ model User {
   enrollmentsGranted Enrollment[]      @relation("EnrollmentGrantedBy")
   lessonComments     LessonComment[]   @relation("LessonCommentAdmin")
   emailTemplates     EmailTemplate[]   @relation("EmailTemplateCreator")
+  clientsManaged     Client[]          @relation("ClientAccountManager")
+  clientNotes        ClientNote[]      @relation("ClientNoteAuthor")
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -284,6 +286,8 @@ model TaskProject {
   displayOrder Int           @default(0)
   owner        User?         @relation("TaskProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   ownerId      String?
+  client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId     String?
   stages       TaskStage[]
   tasks        Task[]
   deletedAt    DateTime?
@@ -292,6 +296,7 @@ model TaskProject {
 
   @@index([deletedAt])
   @@index([ownerId])
+  @@index([clientId])
 }
 
 model TaskStage {
@@ -700,3 +705,139 @@ model LessonComment {
   @@index([parentCommentId])
 }
 
+
+// ─────────────────────────────────────────────────────────────
+// Gestão de Clientes da Agência & Integração Asaas v3
+// ─────────────────────────────────────────────────────────────
+
+enum ClientStatus {
+  PROSPECT
+  ONBOARDING
+  ACTIVE
+  PAUSED
+  CHURNED
+}
+
+enum ContractType {
+  RETAINER_FEE
+  FIXED_SCOPE
+  ON_DEMAND
+}
+
+enum ChargeBillingType {
+  BOLETO
+  PIX
+  CREDIT_CARD
+  UNDEFINED
+}
+
+enum ChargeStatus {
+  PENDING
+  RECEIVED
+  CONFIRMED
+  OVERDUE
+  REFUNDED
+  CANCELED
+}
+
+model Client {
+  id                String          @id @default(uuid())
+  corporateName     String
+  tradeName         String
+  cnpjCpf           String          @unique
+  stateRegistration String?
+  segment           String?
+  website           String?
+  status            ClientStatus    @default(ACTIVE)
+
+  // Endereço fiscal completo (exigido pelo Asaas para emissão de boleto/NF)
+  postalCode        String?
+  address           String?
+  addressNumber     String?
+  complement        String?
+  neighborhood      String?
+  city              String?
+  state             String?
+
+  // Dados Financeiros & Parâmetros do Contrato
+  contractType      ContractType    @default(RETAINER_FEE)
+  monthlyFeeCents   Int?            @default(0)
+  dueDay            Int?            @default(10)
+  contractStart     DateTime?
+  contractEnd       DateTime?
+
+  // Chaves de Integração Externa (Asaas v3)
+  asaasCustomerId   String?         @unique
+
+  // Responsável na Agência (Account Manager / Atendimento)
+  accountManager    User?           @relation("ClientAccountManager", fields: [accountManagerId], references: [id], onDelete: SetNull)
+  accountManagerId  String?
+
+  // Relacionamentos operacionais
+  contacts          ClientContact[]
+  projects          TaskProject[]
+  charges           ClientCharge[]
+  notes             ClientNote[]
+
+  deletedAt         DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([status])
+  @@index([accountManagerId])
+  @@index([deletedAt])
+}
+
+model ClientContact {
+  id          String   @id @default(uuid())
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId    String
+  name        String
+  role        String?
+  email       String
+  phone       String?
+  whatsapp    String?
+  isFinancial Boolean  @default(false)
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+model ClientCharge {
+  id             String            @id @default(uuid())
+  client         Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId       String
+  description    String
+  valueCents     Int
+  dueDate        DateTime
+  billingType    ChargeBillingType @default(UNDEFINED)
+  status         ChargeStatus      @default(PENDING)
+
+  // Integração Asaas v3
+  asaasPaymentId String?           @unique
+  invoiceUrl     String?
+  bankSlipUrl    String?
+  pixQrCodeUrl   String?
+  pixPayload     String?           @db.Text
+  paidAt         DateTime?
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([clientId, status])
+  @@index([dueDate])
+}
+
+model ClientNote {
+  id        String   @id @default(uuid())
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId  String
+  author    User?    @relation("ClientNoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  authorId  String?
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+}

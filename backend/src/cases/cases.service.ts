@@ -67,10 +67,7 @@ export class CasesService {
     if (metrics !== undefined)
       data.metrics = metrics as unknown as Prisma.InputJsonValue;
     if (videoUrl !== undefined || videoFile !== undefined)
-      Object.assign(
-        data,
-        this.resolveVideo({ videoUrl, videoFile }, current),
-      );
+      Object.assign(data, this.resolveVideo({ videoUrl, videoFile }, current));
     if (dto.title && dto.title !== current.title) {
       data.slug = await uniqueSlug(dto.title, async (s) => {
         const found = await this.prisma.successCase.findUnique({

@@ -306,7 +306,6 @@ export class StorageService {
   }
 
   private async removeOne(url: string): Promise<void> {
-
     // Arquivo no R2: a chave é o que vem depois da URL pública.
     if (this.s3 && url.startsWith(`${config.r2.publicUrl}/uploads/`)) {
       const key = url.slice(config.r2.publicUrl.length + 1);

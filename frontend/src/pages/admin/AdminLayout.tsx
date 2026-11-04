@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
 import {
+  Briefcase,
   Building2,
   ExternalLink,
   GraduationCap,
@@ -400,6 +401,7 @@ const NAV_GROUPS: NavGroupDef[] = [
     key: 'relacionamento',
     label: 'Relacionamento',
     items: [
+      { to: '/admin/clientes', label: 'Clientes (CRM)', icon: Briefcase, perm: 'clients.view' },
       { to: '/admin/influenciadores', label: 'Influenciadores', icon: Users, perm: 'influencers.view', badge: 'pendingInfluencers' },
       { to: '/admin/contatos', label: 'Contatos e orçamentos', icon: Inbox, perm: 'contacts.view', badge: 'inbox' },
     ],

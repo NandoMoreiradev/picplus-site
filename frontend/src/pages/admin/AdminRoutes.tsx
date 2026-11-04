@@ -10,6 +10,8 @@ import { ArticleEditor } from './ArticleEditor';
 import { Articles } from './Articles';
 import { Brands } from './Brands';
 import { Cases } from './Cases';
+import { Clients } from './Clients';
+import { ClientDetail } from './ClientDetail';
 import { Contacts } from './Contacts';
 import { Dashboard } from './Dashboard';
 import { EmailTemplates } from './EmailTemplates';
@@ -40,6 +42,8 @@ export default function AdminRoutes() {
       <Route path="login" element={<Login />} />
       <Route element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
+        <Route path="clientes" element={guard('clients.view', <Clients />)} />
+        <Route path="clientes/:id" element={guard('clients.view', <ClientDetail />)} />
         <Route path="academy" element={guard('academy.view', <AcademyAdmin />)} />
         <Route path="templates-email" element={guard('email_templates.view', <EmailTemplates />)} />
         <Route path="influenciadores" element={guard('influencers.view', <Influencers />)} />

@@ -46,6 +46,12 @@ export const config = {
     accessToken: process.env.MP_ACCESS_TOKEN ?? '',
     webhookSecret: process.env.MP_WEBHOOK_SECRET ?? '',
   },
+  asaas: {
+    apiKey: process.env.ASAAS_API_KEY ?? '',
+    isSandbox:
+      process.env.ASAAS_SANDBOX === 'true' || !process.env.ASAAS_API_KEY,
+    webhookSecret: process.env.ASAAS_WEBHOOK_SECRET ?? '',
+  },
 };
 
 const R2_VARS = [

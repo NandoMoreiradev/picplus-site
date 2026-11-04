@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { Building2, Eye, Mail, Phone, Trash2 } from 'lucide-react';
+import { Briefcase, Building2, Eye, Mail, Phone, Trash2 } from 'lucide-react';
 import {
   CellMain,
   DetailList,
@@ -16,7 +17,7 @@ import {
 import { Button, ButtonAnchor } from '../../components/ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/Feedback';
 import type { Tone } from '../../components/ui/Feedback';
-import { SelectField } from '../../components/ui/Form';
+import { SelectField, TextField } from '../../components/ui/Form';
 import { WhatsAppIcon } from '../../components/ui/icons';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { Pagination } from '../../components/ui/Pagination';
@@ -111,9 +112,37 @@ function ContactDrawer({
   onDeleted: () => void;
 }) {
   const toast = useToast();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const { can } = useAuth();
   const [confirming, setConfirming] = useState(false);
+  const [converting, setConverting] = useState(false);
+  const [convertCnpj, setConvertCnpj] = useState('');
+  const [convertTradeName, setConvertTradeName] = useState(contact.company || contact.name);
+  const [convertFee, setConvertFee] = useState('');
+
+  const handleConvert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!convertCnpj.trim()) {
+      toast.error('Informe o CNPJ ou CPF para converter em cliente.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const cleanFee = Math.round((parseFloat(convertFee.replace(',', '.')) || 0) * 100);
+      const newClient = await api.post<{ id: string }>(`/admin/clients/convert-from-contact/${contact.id}`, {
+        tradeName: convertTradeName,
+        cnpjCpf: convertCnpj,
+        monthlyFeeCents: cleanFee,
+      });
+      toast.success('Lead convertido em Cliente com sucesso!');
+      onClose();
+      navigate(`/admin/clientes/${newClient.id}`);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao converter em cliente.'));
+      setBusy(false);
+    }
+  };
 
   const setStatus = async (status: ContactStatus) => {
     if (status === contact.status) return;
@@ -166,6 +195,11 @@ function ContactDrawer({
               >
                 <WhatsAppIcon size={16} aria-hidden /> WhatsApp
               </ButtonAnchor>
+            )}
+            {can('clients.create') && contact.status !== 'DONE' && (
+              <Button variant="secondary" size="sm" onClick={() => setConverting(true)}>
+                <Briefcase size={16} aria-hidden /> Converter em Cliente
+              </Button>
             )}
           </div>
 
@@ -250,6 +284,61 @@ function ContactDrawer({
         onConfirm={remove}
         onCancel={() => setConfirming(false)}
       />
+
+      <Modal
+        open={converting}
+        title="Converter Lead em Cliente"
+        description="Transforme este pedido de orçamento em um cliente ativo com contrato e sincronização no Asaas."
+        onClose={() => setConverting(false)}
+        width="480px"
+      >
+        <form onSubmit={handleConvert}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <TextField
+              label="Nome da Empresa / Cliente"
+              required
+              value={convertTradeName}
+              onChange={(e) => setConvertTradeName(e.target.value)}
+            />
+            <TextField
+              label="CNPJ ou CPF (Obrigatório para Asaas)"
+              required
+              placeholder="00.000.000/0001-00"
+              value={convertCnpj}
+              onChange={(e) => setConvertCnpj(e.target.value)}
+            />
+            <TextField
+              label="Valor Acordado / Fee Mensal (R$)"
+              placeholder="Ex: 4500,00"
+              value={convertFee}
+              onChange={(e) => setConvertFee(e.target.value)}
+            />
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              marginTop: '1.5rem',
+              borderTop: '1px solid #262626',
+              paddingTop: '1rem',
+            }}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setConverting(false)}
+              disabled={busy}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? 'Convertendo…' : 'Confirmar e Abrir Cliente'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </>
   );
 }

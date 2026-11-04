@@ -25,6 +25,7 @@ const DEFAULT_STAGES = [
 
 const PROJECT_INCLUDE = {
   owner: { select: { id: true, name: true } },
+  client: { select: { id: true, tradeName: true, corporateName: true } },
   stages: {
     orderBy: { order: 'asc' },
     select: {
@@ -67,6 +68,7 @@ export class TaskProjectsService {
         status: dto.status,
         startDate: dto.startDate ? new Date(dto.startDate) : null,
         endDate: dto.endDate ? new Date(dto.endDate) : null,
+        clientId: dto.clientId || null,
         ownerId: userId,
         stages: {
           create: DEFAULT_STAGES.map((stage, order) => ({ ...stage, order })),
@@ -89,6 +91,7 @@ export class TaskProjectsService {
           dto.description === undefined ? undefined : dto.description || null,
         color: dto.color,
         status: dto.status,
+        clientId: dto.clientId === undefined ? undefined : dto.clientId || null,
         startDate:
           dto.startDate === undefined
             ? undefined
@@ -134,6 +137,7 @@ export class TaskProjectsService {
         color: original.color,
         startDate: original.startDate,
         endDate: original.endDate,
+        clientId: original.clientId,
         ownerId: userId,
         stages: {
           create: original.stages.map((s) => ({
@@ -173,6 +177,7 @@ export class TaskProjectsService {
         name: true,
         color: true,
         deletedAt: true,
+        client: { select: { id: true, tradeName: true } },
         owner: { select: { id: true, name: true } },
         _count: { select: { tasks: true } },
       },

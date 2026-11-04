@@ -5,9 +5,11 @@ import { AcademyModule } from './academy/academy.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ArticlesModule } from './articles/articles.module';
+import { AsaasModule } from './asaas/asaas.module';
 import { AuthModule } from './auth/auth.module';
 import { BrandsModule } from './brands/brands.module';
 import { CasesModule } from './cases/cases.module';
+import { ClientsModule } from './clients/clients.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { EmailTemplatesModule } from './email-templates/email-templates.module';
 import { InfluencersModule } from './influencers/influencers.module';
@@ -33,6 +35,8 @@ import { UsersModule } from './users/users.module';
     EmailTemplatesModule,
     AuthModule,
     AcademyModule,
+    AsaasModule,
+    ClientsModule,
     InfluencersModule,
     ArticlesModule,
     CasesModule,

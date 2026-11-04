@@ -97,7 +97,11 @@ export function normalizeSocialLinks(
       rawUrl = raw;
       const followersKey = `${network}Followers`;
       const rawFollowers = input[followersKey];
-      if (rawFollowers !== undefined && rawFollowers !== null && rawFollowers !== '') {
+      if (
+        rawFollowers !== undefined &&
+        rawFollowers !== null &&
+        rawFollowers !== ''
+      ) {
         const cleaned = String(rawFollowers).replace(/\D/g, '');
         if (cleaned) followers = parseInt(cleaned, 10);
       }
@@ -105,7 +109,11 @@ export function normalizeSocialLinks(
       const obj = raw as Record<string, unknown>;
       if (typeof obj.url === 'string' && obj.url.trim()) {
         rawUrl = obj.url;
-        if (obj.followers !== undefined && obj.followers !== null && obj.followers !== '') {
+        if (
+          obj.followers !== undefined &&
+          obj.followers !== null &&
+          obj.followers !== ''
+        ) {
           const cleaned = String(obj.followers).replace(/\D/g, '');
           if (cleaned) followers = parseInt(cleaned, 10);
         }
@@ -125,11 +133,17 @@ export function normalizeSocialLinks(
   return result;
 }
 
-export function calculateTotalFollowers(socialNetworks?: SocialLinks | null): number {
+export function calculateTotalFollowers(
+  socialNetworks?: SocialLinks | null,
+): number {
   if (!socialNetworks) return 0;
   let total = 0;
   for (const detail of Object.values(socialNetworks)) {
-    if (detail && typeof detail === 'object' && typeof detail.followers === 'number') {
+    if (
+      detail &&
+      typeof detail === 'object' &&
+      typeof detail.followers === 'number'
+    ) {
       total += detail.followers;
     }
   }

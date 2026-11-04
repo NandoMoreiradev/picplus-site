@@ -219,3 +219,98 @@ export interface SiteSettings {
   ogImage: string | null;
   blogOgImage: string | null;
 }
+
+export type ClientStatus = 'PROSPECT' | 'ONBOARDING' | 'ACTIVE' | 'PAUSED' | 'CHURNED';
+export type ContractType = 'RETAINER_FEE' | 'FIXED_SCOPE' | 'ON_DEMAND';
+export type ChargeBillingType = 'BOLETO' | 'PIX' | 'CREDIT_CARD' | 'UNDEFINED';
+export type ChargeStatus = 'PENDING' | 'RECEIVED' | 'CONFIRMED' | 'OVERDUE' | 'REFUNDED' | 'CANCELED';
+
+export interface ClientContact {
+  id: string;
+  clientId: string;
+  name: string;
+  role: string | null;
+  email: string;
+  phone: string | null;
+  whatsapp: string | null;
+  isFinancial: boolean;
+  isPrimary: boolean;
+  createdAt: string;
+}
+
+export interface ClientCharge {
+  id: string;
+  clientId: string;
+  description: string;
+  valueCents: number;
+  dueDate: string;
+  billingType: ChargeBillingType;
+  status: ChargeStatus;
+  asaasPaymentId: string | null;
+  invoiceUrl: string | null;
+  bankSlipUrl: string | null;
+  pixQrCodeUrl: string | null;
+  pixPayload: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface ClientNote {
+  id: string;
+  clientId: string;
+  content: string;
+  author?: { id: string; name: string; avatarUrl: string | null } | null;
+  createdAt: string;
+}
+
+export interface ClientSummary {
+  id: string;
+  corporateName: string;
+  tradeName: string;
+  cnpjCpf: string;
+  segment: string | null;
+  website: string | null;
+  status: ClientStatus;
+  contractType: ContractType;
+  monthlyFeeCents: number | null;
+  dueDay: number | null;
+  asaasCustomerId: string | null;
+  accountManager?: { id: string; name: string; email: string; avatarUrl: string | null } | null;
+  _count?: {
+    contacts: number;
+    projects: number;
+    charges: number;
+  };
+  createdAt: string;
+}
+
+export interface ClientDetail extends ClientSummary {
+  stateRegistration: string | null;
+  postalCode: string | null;
+  address: string | null;
+  addressNumber: string | null;
+  complement: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  contractStart: string | null;
+  contractEnd: string | null;
+  contacts: ClientContact[];
+  projects: Array<{
+    id: string;
+    name: string;
+    color: string;
+    status: string;
+    _count?: { tasks: number };
+  }>;
+  charges: ClientCharge[];
+  notes: ClientNote[];
+}
+
+export interface ClientStats {
+  activeClients: number;
+  prospectClients: number;
+  totalMrrCents: number;
+  pendingTotalCents: number;
+  overdueTotalCents: number;
+}

@@ -52,6 +52,10 @@ export class CreateProjectDto {
   @IsOptional()
   @IsDateString()
   endDate?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  clientId?: string | null;
 }
 
 export class UpdateProjectDto extends PartialType(CreateProjectDto) {}
