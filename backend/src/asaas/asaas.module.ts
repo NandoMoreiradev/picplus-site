@@ -6,4 +6,3 @@ import { AsaasService } from './asaas.service';
   exports: [AsaasService],
 })
 export class AsaasModule {}
-

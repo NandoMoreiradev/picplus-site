@@ -4,9 +4,11 @@ import styled, { useTheme } from 'styled-components';
 import {
   Briefcase,
   Building2,
+  Bot,
   ExternalLink,
   GraduationCap,
   Inbox,
+  MessageSquare,
   ChevronDown,
   ClipboardList,
   KeyRound,
@@ -402,6 +404,7 @@ const NAV_GROUPS: NavGroupDef[] = [
     label: 'Relacionamento',
     items: [
       { to: '/admin/clientes', label: 'Clientes (CRM)', icon: Briefcase, perm: 'clients.view' },
+      { to: '/admin/whatsapp', label: 'WhatsApp & Atendimento', icon: MessageSquare, perm: 'whatsapp.view' },
       { to: '/admin/influenciadores', label: 'Influenciadores', icon: Users, perm: 'influencers.view', badge: 'pendingInfluencers' },
       { to: '/admin/contatos', label: 'Contatos e orçamentos', icon: Inbox, perm: 'contacts.view', badge: 'inbox' },
     ],
@@ -434,6 +437,7 @@ const NAV_GROUPS: NavGroupDef[] = [
       { to: '/admin/cargos', label: 'Cargos e permissões', icon: ShieldCheck, perm: 'roles.view' },
       { to: '/admin/templates-email', label: 'Templates de e-mail', icon: Mail, perm: 'email_templates.view' },
       { to: '/admin/configuracoes', label: 'Configurações do site', icon: SettingsIcon, perm: 'settings.view' },
+      { to: '/admin/whatsapp/configuracoes', label: 'WhatsApp & IA (Sofia)', icon: Bot, perm: 'whatsapp.manage' },
     ],
   },
 ];

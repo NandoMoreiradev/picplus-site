@@ -39,6 +39,10 @@ model User {
   emailTemplates     EmailTemplate[]   @relation("EmailTemplateCreator")
   clientsManaged     Client[]          @relation("ClientAccountManager")
   clientNotes        ClientNote[]      @relation("ClientNoteAuthor")
+  // WhatsApp e Atendimento
+  whatsappConversationsAssigned WhatsappConversation[] @relation("ConversationAssignedTo")
+  whatsappMessagesSent          WhatsappMessage[]      @relation("SentByUser")
+  whatsappNotesCreated          WhatsappConversationNote[] @relation("NoteAuthor")
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -204,6 +208,7 @@ model ContactRequest {
   status          ContactStatus @default(NEW)
   serviceInterest String?
   budgetRange     String?
+  whatsappContacts WhatsappContact[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -778,6 +783,7 @@ model Client {
   projects          TaskProject[]
   charges           ClientCharge[]
   notes             ClientNote[]
+  whatsappContacts  WhatsappContact[]
 
   deletedAt         DateTime?
   createdAt         DateTime        @default(now())
@@ -841,3 +847,163 @@ model ClientNote {
 
   @@index([clientId])
 }
+
+// ─────────────────────────────────────────────────────────────
+// WhatsApp & Chatbot com IA
+// ─────────────────────────────────────────────────────────────
+
+enum WhatsappConversationStatus {
+  BOT_HANDLING
+  OPEN
+  RESOLVED
+}
+
+enum WhatsappMessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WhatsappMessageType {
+  TEXT
+  IMAGE
+  DOCUMENT
+  AUDIO
+  VIDEO
+  STICKER
+  TEMPLATE
+  INTERACTIVE
+  SYSTEM
+}
+
+enum WhatsappMessageStatus {
+  SENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model WhatsappChannel {
+  id              String    @id @default(uuid())
+  phoneNumberId   String    @unique
+  wabaId          String
+  phoneNumber     String
+  accessToken     String    @db.Text
+  verifyToken     String    @default("picplus_secret_verify_token")
+  isActive        Boolean   @default(true)
+  qualityRating   String?   @default("GREEN")
+  aboutText       String?
+  profilePhotoUrl String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model WhatsappContact {
+  id               String                 @id @default(uuid())
+  waId             String                 @unique // Telefone E.164 sem "+" (ex: 5511999999999)
+  phoneNumber      String?
+  profileName      String
+  isBlocked        Boolean                @default(false)
+  
+  clientId         String?
+  client           Client?                @relation(fields: [clientId], references: [id], onDelete: SetNull)
+
+  contactRequestId String?
+  contactRequest   ContactRequest?        @relation(fields: [contactRequestId], references: [id], onDelete: SetNull)
+
+  conversations    WhatsappConversation[]
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  @@index([waId])
+  @@index([clientId])
+  @@index([contactRequestId])
+}
+
+model WhatsappConversation {
+  id               String                     @id @default(uuid())
+  status           WhatsappConversationStatus @default(BOT_HANDLING)
+  lastMessageAt    DateTime                   @default(now())
+  lastSeq          Int                        @default(0)
+  resolutionReason String?
+  
+  contactId        String
+  contact          WhatsappContact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  assignedUserId   String?
+  assignedUser     User?                      @relation("ConversationAssignedTo", fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  notes            WhatsappConversationNote[]
+  messages         WhatsappMessage[]
+
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+
+  @@index([status])
+  @@index([contactId])
+  @@index([assignedUserId])
+  @@index([lastMessageAt])
+}
+
+model WhatsappMessage {
+  id               String                   @id @default(uuid())
+  wamid            String?                  @unique // ID da mensagem no WhatsApp (wamid.HBgL...)
+  direction        WhatsappMessageDirection
+  type             WhatsappMessageType      @default(TEXT)
+  content          String?                  @db.Text
+  status           WhatsappMessageStatus    @default(SENT)
+  sentAt           DateTime                 @default(now())
+  deliveredAt      DateTime?
+  readAt           DateTime?
+  errorMessage     String?
+  mediaUrl         String?
+  mimeType         String?
+  fileName         String?
+  
+  conversationId   String
+  conversation     WhatsappConversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  sentByUserId     String?
+  sentByUser       User?                    @relation("SentByUser", fields: [sentByUserId], references: [id], onDelete: SetNull)
+
+  replyToMessageId String?
+  replyToMessage   WhatsappMessage?         @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies          WhatsappMessage[]        @relation("MessageReplies")
+
+  createdAt        DateTime                 @default(now())
+
+  @@index([conversationId])
+  @@index([conversationId, sentAt])
+  @@index([wamid])
+}
+
+model WhatsappConversationNote {
+  id             String               @id @default(uuid())
+  content        String               @db.Text
+  conversationId String
+  conversation   WhatsappConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  authorId       String?
+  author         User?                @relation("NoteAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  isAiGenerated  Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@index([conversationId])
+}
+
+model AiChatbotConfig {
+  id                         String   @id @default("default")
+  isActive                   Boolean  @default(true)
+  personaName                String   @default("Sofia")
+  systemPrompt               String   @db.Text
+  geminiModel                String   @default("gemini-2.5-flash")
+  geminiApiKey               String?  @db.Text
+  temperature                Float    @default(0.7)
+  autoHandoff                Boolean  @default(true)
+  autoHandoffKeywords        String[] @default(["atendente", "humano", "atendimento", "pessoa", "falar com"])
+  maxMessagesBeforeHandoff   Int      @default(15)
+  businessHoursOnly          Boolean  @default(false)
+  updatedAt                  DateTime @updatedAt
+  createdAt                  DateTime @default(now())
+}
+

@@ -24,6 +24,8 @@ import { TasksModule } from './tasks/tasks.module';
 import { TeamModule } from './team/team.module';
 import { TestimonialsModule } from './testimonials/testimonials.module';
 import { UsersModule } from './users/users.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { AiChatbotModule } from './ai-chatbot/ai-chatbot.module';
 
 @Module({
   imports: [
@@ -50,6 +52,8 @@ import { UsersModule } from './users/users.module';
     StatsModule,
     RolesModule,
     UsersModule,
+    WhatsappModule,
+    AiChatbotModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

@@ -26,6 +26,8 @@ import { Users } from './Users';
 
 // A gestão de tarefas traz calendário e editor de texto: só baixa quando alguém abre a tela.
 const Tasks = lazy(() => import('./Tasks'));
+const Inbox = lazy(() => import('./Inbox'));
+const WhatsappSettings = lazy(() => import('./WhatsappSettings'));
 
 /** Protege a tela com a permissão de "ver" do módulo (o servidor revalida cada chamada). */
 const guard = (permission: string, page: ReactNode) => (
@@ -59,6 +61,24 @@ export default function AdminRoutes() {
             'tasks.view',
             <Suspense fallback={<PageLoader label="Carregando tarefas…" />}>
               <Tasks />
+            </Suspense>,
+          )}
+        />
+        <Route
+          path="whatsapp"
+          element={guard(
+            'whatsapp.view',
+            <Suspense fallback={<PageLoader label="Carregando WhatsApp…" />}>
+              <Inbox />
+            </Suspense>,
+          )}
+        />
+        <Route
+          path="whatsapp/configuracoes"
+          element={guard(
+            'whatsapp.manage',
+            <Suspense fallback={<PageLoader label="Carregando configurações…" />}>
+              <WhatsappSettings />
             </Suspense>,
           )}
         />

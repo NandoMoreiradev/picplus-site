@@ -161,6 +161,21 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     permissions: crud('users', 'usuários'),
   },
   {
+    key: 'whatsapp',
+    label: 'WhatsApp & Atendimento IA',
+    permissions: [
+      { key: 'whatsapp.view', label: 'Ver conversas e mensagens' },
+      {
+        key: 'whatsapp.reply',
+        label: 'Enviar mensagens e assumir atendimento',
+      },
+      {
+        key: 'whatsapp.manage',
+        label: 'Gerenciar conexão e configurações da IA',
+      },
+    ],
+  },
+  {
     key: 'roles',
     label: 'Cargos e permissões',
     permissions: crud('roles', 'cargos'),
