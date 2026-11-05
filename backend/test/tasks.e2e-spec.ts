@@ -67,7 +67,7 @@ describe('Gestão de tarefas (integração, PGlite)', () => {
     const files = storage as unknown as StorageService;
     tasks = new TasksService(service, files);
     projects = new TaskProjectsService(service, files);
-    comments = new TaskCommentsService(service);
+    comments = new TaskCommentsService(service, files);
     attachments = new TaskAttachmentsService(service, files);
 
     const user = (name: string, active = true) =>
@@ -354,6 +354,33 @@ describe('Gestão de tarefas (integração, PGlite)', () => {
     expect(tree[0].replies).toHaveLength(0);
     const listed = (await tasks.list({}, ana.id)).find((t) => t.id === t1.id);
     expect(listed?._count.comments).toBe(1);
+  });
+
+  it('comentário com áudio: guarda o arquivo, aceita só áudio e apaga o arquivo ao excluir', async () => {
+    const audio = {
+      originalname: 'voz.webm',
+      size: 4000,
+      buffer: Buffer.alloc(4000),
+    } as Express.Multer.File;
+
+    await expect(comments.create(t1.id, {}, asUser(ana.id))).rejects.toThrow(
+      /grave um áudio/,
+    );
+
+    const c = await comments.create(
+      t1.id,
+      { audioDuration: 12 },
+      asUser(ana.id),
+      audio,
+    );
+    expect(c.audioUrl).toBe('/uploads/voz.webm');
+    expect(c.audioDuration).toBe(12);
+    expect(c.content).toBe('');
+
+    await comments.remove(c.id, asUser(ana.id));
+    expect(removedFiles).toContain('/uploads/voz.webm');
+    const tree = await comments.list(t1.id);
+    expect(tree.some((n) => n.id === c.id)).toBe(false);
   });
 
   it('anexos: envio, listagem e remoção apaga o arquivo', async () => {

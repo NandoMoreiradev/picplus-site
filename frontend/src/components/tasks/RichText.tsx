@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import styled, { css } from 'styled-components';
 import DOMPurify from 'dompurify';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -22,6 +23,25 @@ import {
 /** Texto sem formatação: o editor devolve "<p></p>" quando vazio. */
 export const isEmptyHtml = (html?: string | null) =>
   !html || !html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+
+const escapeHtml = (text: string) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * Texto simples (transcrição, resposta da IA) → HTML do editor: parágrafos separados por
+ * linha em branco; linhas iniciadas por "- " ou "* " viram lista.
+ */
+export function plainTextToHtml(text: string): string {
+  const blocks = text.replace(/\r\n/g, '\n').trim().split(/\n{2,}/);
+  return blocks
+    .map((block) => {
+      const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+      if (lines.length > 0 && lines.every((line) => /^[-*•]\s+/.test(line))) {
+        return `<ul>${lines.map((line) => `<li>${escapeHtml(line.replace(/^[-*•]\s+/, ''))}</li>`).join('')}</ul>`;
+      }
+      return `<p>${lines.map(escapeHtml).join('<br>')}</p>`;
+    })
+    .join('');
+}
 
 /* ── Estilo do texto (editor e leitura) ──────────────── */
 
@@ -259,6 +279,7 @@ export function RichTextEditor({
   autoFocus,
   compact,
   label,
+  onReady,
 }: {
   initialValue?: string;
   onChange?: (html: string) => void;
@@ -267,6 +288,8 @@ export function RichTextEditor({
   autoFocus?: boolean;
   compact?: boolean;
   label: string;
+  /** Entrega a instância do editor (para inserir texto de fora, como a transcrição). */
+  onReady?: (editor: Editor) => void;
 }) {
   const editor = useEditor({
     extensions: [
@@ -289,6 +312,11 @@ export function RichTextEditor({
     },
     onUpdate: ({ editor: current }) => onChange?.(current.isEmpty ? '' : current.getHTML()),
   });
+
+  useEffect(() => {
+    if (editor) onReady?.(editor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
 
   if (!editor) return null;
   return (

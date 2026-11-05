@@ -19,6 +19,7 @@ export const DEFAULT_ROLES: {
     description:
       'Atende contatos e orçamentos e acompanha os cadastros de influenciadores.',
     permissions: [
+      'dashboard.view',
       'contacts.view',
       'contacts.edit',
       'influencers.view',
@@ -35,6 +36,7 @@ export const DEFAULT_ROLES: {
     name: 'Conteúdo',
     description: 'Cria e edita blog, cases, serviços, marcas e equipe do site.',
     permissions: [
+      'dashboard.view',
       'articles.view',
       'articles.create',
       'articles.edit',

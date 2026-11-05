@@ -26,6 +26,13 @@ const crud = (resource: string, noun: string): PermissionDef[] => [
 
 export const PERMISSION_GROUPS: PermissionGroup[] = [
   {
+    key: 'dashboard',
+    label: 'Visão geral',
+    permissions: [
+      { key: 'dashboard.view', label: 'Ver a visão geral (página inicial)' },
+    ],
+  },
+  {
     key: 'influencers',
     label: 'Influenciadores',
     permissions: [

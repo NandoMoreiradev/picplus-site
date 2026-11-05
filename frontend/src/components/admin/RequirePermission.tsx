@@ -35,7 +35,7 @@ export function NoAccess() {
         cargo.
       </p>
       <ButtonLink to="/admin" $variant="secondary">
-        Voltar à visão geral
+        Voltar ao início
       </ButtonLink>
     </Wrap>
   );

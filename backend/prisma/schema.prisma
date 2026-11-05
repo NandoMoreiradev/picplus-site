@@ -389,6 +389,10 @@ model TaskComment {
   id              String        @id @default(uuid())
   // HTML gerado pelo editor de texto.
   content         String        @db.Text
+  // Áudio gravado no comentário (opcional): arquivo no armazenamento, tipo e duração em segundos.
+  audioUrl        String?
+  audioMime       String?
+  audioDuration   Int?
   task            Task          @relation(fields: [taskId], references: [id], onDelete: Cascade)
   taskId          String
   user            User?         @relation("TaskCommentAuthor", fields: [userId], references: [id], onDelete: SetNull)

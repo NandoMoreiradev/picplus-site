@@ -138,6 +138,13 @@ com o visual do PicPlus. As telas ficam em `frontend/src/components/tasks` e a A
 - **Tarefa:** descrição em texto rico, responsável e colaboradores, início/prazo, prioridade, tags, checklist (cada item é
   uma subtarefa), comentários em fio, anexos (imagem, PDF ou vídeo, mesmos limites de tamanho do envio do painel) e histórico
   de alterações. Seleção em massa muda estágio, prioridade, responsável ou prazo de várias tarefas de uma vez.
+- **Áudio e IA nos comentários:** o botão **Gravar áudio** (microfone, até 5 min) permite **Transcrever** com o Gemini (o texto
+  entra no editor para revisão), **Melhorar texto** (revisão/organização pelo Gemini) e **anexar o arquivo do áudio** ao
+  comentário (player no fio). Usa a mesma chave e o mesmo modelo de *WhatsApp & IA* (`/admin/whatsapp/configuracoes` ou
+  `GEMINI_API_KEY`) e a permissão `tasks.comment`. A gravação precisa de HTTPS (ou localhost).
+- **Página inicial por permissão:** a visão geral exige `dashboard.view`. Quem não a tem é levado, após o login, à primeira
+  página do menu que o cargo permite. A migração concede `dashboard.view` a todos os cargos existentes (nada muda para
+  ninguém até o administrador desmarcar em `/admin/cargos`).
 - **Lixeira:** excluir tarefas e projetos é reversível (`/admin/tarefas` → 🗑). Restaurar um projeto devolve as tarefas que
   caíram com ele; a exclusão definitiva apaga também os arquivos anexados.
 - **Permissões** (`tasks.*`): `view`, `create`, `edit` (editar e mover; também remove itens de checklist), `comment`

@@ -106,6 +106,9 @@ export interface TrashedProject {
 export interface TaskComment {
   id: string;
   content: string;
+  /** Áudio gravado no comentário (opcional). */
+  audioUrl?: string | null;
+  audioDuration?: number | null;
   parentCommentId: string | null;
   isEdited: boolean;
   isDeleted: boolean;

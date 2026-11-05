@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import type { Editor as TiptapEditor } from '@tiptap/react';
 import styled from 'styled-components';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { CornerDownRight, Pencil, Trash2 } from 'lucide-react';
 import { useFetch } from '../../hooks/useFetch';
-import { api } from '../../lib/api';
+import type { RecordedClip } from '../../hooks/useAudioRecorder';
+import { api, assetUrl } from '../../lib/api';
+import { audioExtension } from '../../lib/audio';
 import type { TaskComment } from '../../lib/tasks';
 import { errorMessage } from '../../lib/validation';
 import { useAuth } from '../../context/auth-context';
@@ -13,6 +16,7 @@ import { Button } from '../ui/Button';
 import { EmptyState, ErrorState, Skeleton } from '../ui/Feedback';
 import { ConfirmDialog } from '../ui/Modal';
 import { useToast } from '../ui/Toast';
+import { CommentVoiceTools } from './CommentVoiceTools';
 import { RichTextEditor, RichTextView, isEmptyHtml } from './RichText';
 
 const Thread = styled.ul`
@@ -53,6 +57,13 @@ const Item = styled.li`
   .head span {
     font-size: 0.78rem;
     color: ${({ theme }) => theme.colors.textMuted};
+  }
+  .voice {
+    display: block;
+    width: 100%;
+    max-width: 380px;
+    height: 38px;
+    margin-top: 0.5rem;
   }
   .removed {
     font-style: italic;
@@ -105,35 +116,46 @@ function Editor({
   label: string;
   initial?: string;
   submitLabel: string;
-  onSubmit: (html: string) => Promise<boolean>;
+  onSubmit: (html: string, audio?: { clip: RecordedClip }) => Promise<boolean>;
   onCancel?: () => void;
 }) {
   const [html, setHtml] = useState(initial ?? '');
+  const [tiptap, setTiptap] = useState<TiptapEditor | null>(null);
+  const [clip, setClip] = useState<RecordedClip | null>(null);
+  const [keepAudio, setKeepAudio] = useState(true);
+  // Só comentários novos (e respostas) gravam áudio; editar mexe apenas no texto.
+  const voice = !initial;
+  const attached = voice && keepAudio ? clip : null;
+  const empty = isEmptyHtml(html) && !attached;
   const [saving, setSaving] = useState(false);
   // Trocar a key limpa o editor (ele é "não controlado") depois de enviar.
   const [version, setVersion] = useState(0);
 
   const send = async () => {
-    if (isEmptyHtml(html) || saving) return;
+    if (empty || saving) return;
     setSaving(true);
-    const ok = await onSubmit(html);
+    const ok = await onSubmit(isEmptyHtml(html) ? '' : html, attached ? { clip: attached } : undefined);
     setSaving(false);
     if (ok && initial === undefined) {
       setHtml('');
+      setClip(null);
       setVersion((v) => v + 1);
     }
   };
 
   return (
     <Composer>
-      <RichTextEditor key={version} label={label} compact autoFocus={initial !== undefined} initialValue={initial} onChange={setHtml} onSubmit={() => void send()} placeholder="Escreva um comentário… (Ctrl + Enter envia)" />
+      <RichTextEditor key={version} label={label} compact autoFocus={initial !== undefined} initialValue={initial} onChange={setHtml} onReady={setTiptap} onSubmit={() => void send()} placeholder="Escreva um comentário… (Ctrl + Enter envia)" />
+      {voice && (
+        <CommentVoiceTools editor={tiptap} hasText={!isEmptyHtml(html)} clip={clip} onClip={setClip} keepAudio={keepAudio} onKeepAudio={setKeepAudio} disabled={saving} />
+      )}
       <div className="row">
         {onCancel && (
           <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
             Cancelar
           </Button>
         )}
-        <Button size="sm" onClick={() => void send()} loading={saving} disabled={isEmptyHtml(html)}>
+        <Button size="sm" onClick={() => void send()} loading={saving} disabled={empty}>
           {submitLabel}
         </Button>
       </div>
@@ -167,9 +189,19 @@ export function TaskComments({
     onChanged();
   };
 
-  const create = async (content: string, parentCommentId?: string) => {
+  const create = async (content: string, parentCommentId?: string, clip?: RecordedClip) => {
     try {
-      await api.post(`/admin/tasks/${taskId}/comments`, { content, parentCommentId });
+      if (clip) {
+        // Com áudio o envio é multipart: texto (opcional) + arquivo gravado.
+        const form = new FormData();
+        if (content) form.append('content', content);
+        if (parentCommentId) form.append('parentCommentId', parentCommentId);
+        form.append('audioDuration', String(clip.duration));
+        form.append('audio', clip.blob, `voz.${audioExtension(clip.mime)}`);
+        await api.postForm(`/admin/tasks/${taskId}/comments`, form);
+      } else {
+        await api.post(`/admin/tasks/${taskId}/comments`, { content, parentCommentId });
+      }
       setReplyTo(null);
       done();
       return true;
@@ -225,7 +257,10 @@ export function TaskComments({
           ) : editing === comment.id ? (
             <Editor label="Editar comentário" initial={comment.content} submitLabel="Salvar" onSubmit={(html) => edit(comment.id, html)} onCancel={() => setEditing(null)} />
           ) : (
-            <RichTextView html={comment.content} />
+            <>
+              {!isEmptyHtml(comment.content) && <RichTextView html={comment.content} />}
+              {comment.audioUrl && <audio className="voice" controls preload="none" src={assetUrl(comment.audioUrl)} aria-label="Áudio do comentário" />}
+            </>
           )}
 
           {!removed && editing !== comment.id && (
@@ -249,7 +284,7 @@ export function TaskComments({
           )}
 
           {replyTo === comment.id && (
-            <Editor label="Responder ao comentário" initial="" submitLabel="Responder" onSubmit={(html) => create(html, comment.id)} onCancel={() => setReplyTo(null)} />
+            <Editor label="Responder ao comentário" initial="" submitLabel="Responder" onSubmit={(html, audio) => create(html, comment.id, audio?.clip)} onCancel={() => setReplyTo(null)} />
           )}
 
           {comment.replies.length > 0 && <Replies>{comment.replies.map((reply) => render(reply, depth + 1))}</Replies>}
@@ -260,7 +295,7 @@ export function TaskComments({
 
   return (
     <div>
-      {canComment && <Editor label="Novo comentário" submitLabel="Comentar" onSubmit={(html) => create(html)} />}
+      {canComment && <Editor label="Novo comentário" submitLabel="Comentar" onSubmit={(html, audio) => create(html, undefined, audio?.clip)} />}
 
       {comments.error ? (
         <ErrorState message={comments.error.message} onRetry={comments.reload} />

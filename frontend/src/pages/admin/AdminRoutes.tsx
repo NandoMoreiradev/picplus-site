@@ -1,11 +1,13 @@
 import { lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { RequirePermission } from '../../components/admin/RequirePermission';
 import { PageLoader } from '../../components/ui/Feedback';
+import { useAuth } from '../../context/auth-context';
 import { Account } from './Account';
 import AcademyAdmin from './AcademyAdmin';
 import { AdminLayout } from './AdminLayout';
+import { firstAllowedAdminPath } from './adminNav';
 import { ArticleEditor } from './ArticleEditor';
 import { Articles } from './Articles';
 import { Brands } from './Brands';
@@ -36,6 +38,15 @@ const guard = (permission: string, page: ReactNode) => (
 );
 
 /**
+ * Página inicial do painel (/admin). Quem não tem a permissão da visão geral não vê uma tela
+ * de "sem acesso": é levado à primeira página do menu que o cargo permite abrir.
+ */
+function Home() {
+  const { can } = useAuth();
+  return can('dashboard.view') ? <Dashboard /> : <Navigate to={firstAllowedAdminPath(can)} replace />;
+}
+
+/**
  * Todas as rotas do painel (relativas a /admin/*).
  * Carregado sob demanda: visitantes do site público não baixam o código do CMS.
  */
@@ -46,7 +57,7 @@ export default function AdminRoutes() {
       <Route path="esqueci-senha" element={<ForgotPassword />} />
       <Route path="redefinir-senha" element={<ResetPassword />} />
       <Route element={<AdminLayout />}>
-        <Route index element={<Dashboard />} />
+        <Route index element={<Home />} />
         <Route path="clientes" element={guard('clients.view', <Clients />)} />
         <Route path="clientes/:id" element={guard('clients.view', <ClientDetail />)} />
         <Route path="academy" element={guard('academy.view', <AcademyAdmin />)} />

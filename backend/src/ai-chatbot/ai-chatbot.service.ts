@@ -86,6 +86,18 @@ export class AiChatbotService {
   }
 
   /**
+   * Cliente Gemini + modelo configurados no painel (WhatsApp & IA), para outros módulos
+   * reaproveitarem a mesma chave e o mesmo modelo.
+   */
+  async getClient(): Promise<{ ai: GoogleGenAI; model: string }> {
+    const config = await this.getConfig();
+    return {
+      ai: this.getGenAIClient(config),
+      model: config.geminiModel || DEFAULT_AI_MODEL,
+    };
+  }
+
+  /**
    * Processa uma mensagem recebida do usuário e gera a resposta da IA.
    */
   async processInboundMessage(

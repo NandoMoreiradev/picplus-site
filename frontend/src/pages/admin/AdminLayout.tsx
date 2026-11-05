@@ -2,31 +2,13 @@ import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
 import {
-  Briefcase,
-  Building2,
-  Bot,
   ExternalLink,
-  GraduationCap,
-  Inbox,
-  MessageSquare,
   ChevronDown,
-  ClipboardList,
   KeyRound,
-  Mail,
-  Settings as SettingsIcon,
-  LayoutDashboard,
   LogOut,
   Menu,
-  Newspaper,
   PanelLeftClose,
   PanelLeftOpen,
-  Quote,
-  ShieldCheck,
-  Sparkles,
-  Trophy,
-  UserCog,
-  UserSquare2,
-  Users,
   X,
 } from 'lucide-react';
 import { Logo } from '../../components/layout/Logo';
@@ -37,6 +19,8 @@ import { useAuth } from '../../context/auth-context';
 import { useFetch } from '../../hooks/useFetch';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import type { AdminStats } from '../../lib/types';
+import { NAV_GROUPS, NAV_TOP } from './adminNav';
+import type { NavItemDef } from './adminNav';
 
 const SIDEBAR_WIDTH = '264px';
 const RAIL_WIDTH = '76px';
@@ -373,75 +357,6 @@ const Scrim = styled.div`
   background: ${({ theme }) => theme.colors.overlay};
 `;
 
-interface NavItemDef {
-  to: string;
-  label: string;
-  icon: typeof Users;
-  /** Permissão necessária para ver o item (sem ela, o item some do menu). */
-  perm?: string;
-  end?: boolean;
-  badge?: 'pendingInfluencers' | 'inbox';
-  /** Módulo ainda não implementado: aparece no menu, sem link. */
-  soon?: boolean;
-}
-
-interface NavGroupDef {
-  key: string;
-  label: string;
-  items: NavItemDef[];
-}
-
-/** Itens soltos no topo do menu (sempre visíveis). */
-const NAV_TOP: NavItemDef[] = [{ to: '/admin', label: 'Visão geral', icon: LayoutDashboard, end: true }];
-
-/**
- * Grupos recolhíveis do menu. Para um módulo novo (ex.: tarefas), acrescente um item a um
- * grupo existente ou um grupo novo aqui, e proteja a rota com a permissão correspondente.
- */
-const NAV_GROUPS: NavGroupDef[] = [
-  {
-    key: 'relacionamento',
-    label: 'Relacionamento',
-    items: [
-      { to: '/admin/clientes', label: 'Clientes (CRM)', icon: Briefcase, perm: 'clients.view' },
-      { to: '/admin/whatsapp', label: 'WhatsApp & Atendimento', icon: MessageSquare, perm: 'whatsapp.view' },
-      { to: '/admin/influenciadores', label: 'Influenciadores', icon: Users, perm: 'influencers.view', badge: 'pendingInfluencers' },
-      { to: '/admin/contatos', label: 'Contatos e orçamentos', icon: Inbox, perm: 'contacts.view', badge: 'inbox' },
-    ],
-  },
-  {
-    key: 'gestao',
-    label: 'Gestão',
-    items: [
-      { to: '/admin/tarefas', label: 'Gestão de Tarefas', icon: ClipboardList, perm: 'tasks.view' },
-      { to: '/admin/academy', label: 'PicPlus Academy', icon: GraduationCap, perm: 'academy.view' },
-    ],
-  },
-  {
-    key: 'conteudo',
-    label: 'Conteúdo do site',
-    items: [
-      { to: '/admin/blog', label: 'Blog', icon: Newspaper, perm: 'articles.view' },
-      { to: '/admin/cases', label: 'Cases de sucesso', icon: Trophy, perm: 'cases.view' },
-      { to: '/admin/depoimentos', label: 'Depoimentos', icon: Quote, perm: 'testimonials.view' },
-      { to: '/admin/servicos', label: 'Serviços', icon: Sparkles, perm: 'services.view' },
-      { to: '/admin/marcas', label: 'Marcas parceiras', icon: Building2, perm: 'brands.view' },
-      { to: '/admin/equipe', label: 'Equipe do site', icon: UserSquare2, perm: 'team.view' },
-    ],
-  },
-  {
-    key: 'administracao',
-    label: 'Administração',
-    items: [
-      { to: '/admin/usuarios', label: 'Usuários', icon: UserCog, perm: 'users.view' },
-      { to: '/admin/cargos', label: 'Cargos e permissões', icon: ShieldCheck, perm: 'roles.view' },
-      { to: '/admin/templates-email', label: 'Templates de e-mail', icon: Mail, perm: 'email_templates.view' },
-      { to: '/admin/configuracoes', label: 'Configurações do site', icon: SettingsIcon, perm: 'settings.view' },
-      { to: '/admin/whatsapp/configuracoes', label: 'WhatsApp & IA (Cloe)', icon: Bot, perm: 'whatsapp.manage' },
-    ],
-  },
-];
-
 const NAV_STATE_KEY = 'picplus_admin_nav_closed';
 const NAV_COLLAPSED_KEY = 'picplus_admin_nav_collapsed';
 
@@ -562,7 +477,7 @@ export function AdminLayout() {
           </Brand>
 
           <Nav>
-            {NAV_TOP.map(renderItem)}
+            {NAV_TOP.filter((item) => !item.perm || can(item.perm)).map(renderItem)}
             {NAV_GROUPS.map((group) => {
               const items = group.items.filter((item) => !item.perm || can(item.perm));
               if (items.length === 0) return null;

@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { CreateCommentDto, UpdateCommentDto } from './dto/task.dto';
 
 const AUTHOR = {
@@ -16,6 +18,7 @@ interface CommentNode {
   parentCommentId: string | null;
   isDeleted: boolean;
   content: string;
+  audioUrl: string | null;
   replies: CommentNode[];
 }
 
@@ -45,6 +48,7 @@ function prune<N extends CommentNode>(nodes: N[]): N[] {
     .map((node) => ({
       ...node,
       content: node.isDeleted ? '' : node.content,
+      audioUrl: node.isDeleted ? null : node.audioUrl,
       replies: prune(node.replies as N[]),
     }))
     .filter((node) => !node.isDeleted || node.replies.length > 0);
@@ -52,7 +56,10 @@ function prune<N extends CommentNode>(nodes: N[]): N[] {
 
 @Injectable()
 export class TaskCommentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   async list(taskId: string) {
     await this.requireTask(taskId);
@@ -64,8 +71,17 @@ export class TaskCommentsService {
     return prune(toTree(rows));
   }
 
-  async create(taskId: string, dto: CreateCommentDto, user: AuthUser) {
+  async create(
+    taskId: string,
+    dto: CreateCommentDto,
+    user: AuthUser,
+    audio?: Express.Multer.File,
+  ) {
     await this.requireTask(taskId);
+    const content = dto.content ?? '';
+    if (!content && !audio) {
+      throw new BadRequestException('Escreva um comentário ou grave um áudio.');
+    }
     if (dto.parentCommentId) {
       const parent = await this.prisma.taskComment.findFirst({
         where: { id: dto.parentCommentId, taskId },
@@ -73,12 +89,19 @@ export class TaskCommentsService {
       });
       if (!parent) throw new NotFoundException('Comentário não encontrado.');
     }
+    // O tipo real do áudio é conferido pelos bytes (WebM/MP4 do MediaRecorder, OGG, MP3, WAV).
+    const saved = audio
+      ? await this.storage.saveAny(audio, ['audio'])
+      : undefined;
     const comment = await this.prisma.taskComment.create({
       data: {
         taskId,
         userId: user.sub,
-        content: dto.content,
+        content,
         parentCommentId: dto.parentCommentId,
+        audioUrl: saved?.url,
+        audioMime: saved?.mime,
+        audioDuration: saved ? dto.audioDuration : undefined,
       },
       include: { user: AUTHOR },
     });
@@ -114,8 +137,10 @@ export class TaskCommentsService {
     }
     await this.prisma.taskComment.update({
       where: { id: commentId },
-      data: { isDeleted: true },
+      data: { isDeleted: true, audioUrl: null, audioMime: null },
     });
+    // O texto de um comentário apagado não sai da API; o áudio também não fica guardado.
+    await this.storage.remove(comment.audioUrl);
     return { ok: true };
   }
 

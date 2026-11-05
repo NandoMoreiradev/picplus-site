@@ -37,10 +37,12 @@ import {
   CreateCommentDto,
   CreateTaskDto,
   FilterTasksDto,
+  ImproveTextDto,
   ReorderDto,
   UpdateCommentDto,
   UpdateTaskDto,
 } from './dto/task.dto';
+import { TaskAiService } from './task-ai.service';
 import { TaskAttachmentsService } from './task-attachments.service';
 import { TaskCommentsService } from './task-comments.service';
 import { TaskProjectsService } from './task-projects.service';
@@ -59,7 +61,31 @@ export class TasksController {
     private readonly projects: TaskProjectsService,
     private readonly comments: TaskCommentsService,
     private readonly attachments: TaskAttachmentsService,
+    private readonly ai: TaskAiService,
   ) {}
+
+  /* ── IA (Gemini) ───────────────────────────────────── */
+
+  /** Transcreve um áudio gravado no navegador. Não guarda o arquivo. */
+  @Post('ai/transcribe')
+  @RequirePermissions('tasks.comment')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 15 * 1024 * 1024, files: 1 },
+    }),
+  )
+  transcribe(@UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('Nenhum áudio enviado.');
+    return this.ai.transcribe(file);
+  }
+
+  /** Revisa e organiza um texto (ex.: logo após a transcrição). */
+  @Post('ai/improve')
+  @RequirePermissions('tasks.comment')
+  improve(@Body() dto: ImproveTextDto) {
+    return this.ai.improve(dto.text);
+  }
 
   /* ── Apoio ─────────────────────────────────────────── */
 
@@ -299,12 +325,19 @@ export class TasksController {
 
   @Post(':id/comments')
   @RequirePermissions('tasks.comment')
+  @UseInterceptors(
+    FileInterceptor('audio', {
+      storage: memoryStorage(),
+      limits: { fileSize: 20 * 1024 * 1024, files: 1 },
+    }),
+  )
   createComment(
     @Param('id') id: string,
     @Body() dto: CreateCommentDto,
     @CurrentUser() user: AuthUser,
+    @UploadedFile() audio?: Express.Multer.File,
   ) {
-    return this.comments.create(id, dto, user);
+    return this.comments.create(id, dto, user, audio);
   }
 
   @Get(':id/attachments')

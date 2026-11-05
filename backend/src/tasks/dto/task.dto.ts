@@ -190,16 +190,32 @@ export class BulkUpdateDto extends BulkIdsDto {
 }
 
 export class CreateCommentDto {
-  /** HTML do editor de texto. */
+  /** HTML do editor de texto. Pode ficar vazio quando o comentário é só um áudio (validado no serviço). */
+  @IsOptional()
   @Transform(trim)
   @IsString()
-  @MinLength(1)
   @MaxLength(20_000)
-  content: string;
+  content?: string;
 
   @IsOptional()
   @IsUUID()
   parentCommentId?: string;
+
+  /** Duração do áudio gravado, em segundos (vem junto do arquivo, em multipart). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(3600)
+  audioDuration?: number;
+}
+
+export class ImproveTextDto {
+  @Transform(trim)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(20_000)
+  text: string;
 }
 
 export class UpdateCommentDto {

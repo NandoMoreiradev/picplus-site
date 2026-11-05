@@ -10,12 +10,13 @@ import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { config, isR2Enabled } from '../config/configuration';
 
-export type UploadKind = 'image' | 'pdf' | 'video';
+export type UploadKind = 'image' | 'pdf' | 'video' | 'audio';
 
 const MAX_SIZE: Record<UploadKind, number> = {
   image: 5 * 1024 * 1024,
   pdf: 10 * 1024 * 1024,
   video: 50 * 1024 * 1024,
+  audio: 20 * 1024 * 1024,
 };
 
 /** Largura, em px, da miniatura (cards e grades; ~2x do maior uso, para telas retina). */
@@ -46,12 +47,14 @@ const VIDEO_BRANDS = new Set([
   'dash',
   'M4V ',
   'qt  ',
+  'M4A ',
 ]);
 
 const INVALID_FILE_MESSAGE: Record<UploadKind, string> = {
   image: 'Envie uma imagem válida (JPG, PNG ou WebP).',
   pdf: 'Envie um arquivo PDF válido.',
   video: 'Envie um vídeo válido (MP4, WebM ou MOV).',
+  audio: 'Envie um áudio válido (WebM, OGG, MP4/M4A, MP3 ou WAV).',
 };
 
 interface Detected {
@@ -98,6 +101,22 @@ function sniff(buffer: Buffer): Detected | null {
     buffer[3] === 0xa3
   ) {
     return { kind: 'video', ext: 'webm', mime: 'video/webm' };
+  }
+  // OGG (Opus/Vorbis), WAV e MP3: só existem aqui como áudio.
+  if (buffer.subarray(0, 4).toString('ascii') === 'OggS') {
+    return { kind: 'audio', ext: 'ogg', mime: 'audio/ogg' };
+  }
+  if (
+    buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    buffer.subarray(8, 12).toString('ascii') === 'WAVE'
+  ) {
+    return { kind: 'audio', ext: 'wav', mime: 'audio/wav' };
+  }
+  if (
+    buffer.subarray(0, 3).toString('ascii') === 'ID3' ||
+    (buffer[0] === 0xff && (buffer[1] & 0xe0) === 0xe0)
+  ) {
+    return { kind: 'audio', ext: 'mp3', mime: 'audio/mpeg' };
   }
   return null;
 }
@@ -161,7 +180,20 @@ export class StorageService {
       optimize?: boolean;
     } = {},
   ): Promise<{ url: string; mime: string }> {
-    const detected = sniff(file.buffer);
+    let detected = sniff(file.buffer);
+    // WebM e MP4 servem para vídeo e para áudio (o MediaRecorder grava áudio nesses
+    // contêineres). Quando só áudio é aceito, o contêiner é tratado como áudio.
+    if (
+      detected?.kind === 'video' &&
+      allowed.includes('audio') &&
+      !allowed.includes('video')
+    ) {
+      detected = {
+        kind: 'audio',
+        ext: detected.ext === 'webm' ? 'webm' : 'm4a',
+        mime: detected.ext === 'webm' ? 'audio/webm' : 'audio/mp4',
+      };
+    }
     if (!detected || !allowed.includes(detected.kind)) {
       throw new BadRequestException(
         allowed.length === 1
