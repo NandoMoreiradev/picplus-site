@@ -54,6 +54,15 @@ const Card = styled.div`
     color: ${({ theme }) => theme.colors.textMuted};
     font-size: 0.9rem;
   }
+  .forgot {
+    align-self: flex-end;
+    margin-top: -0.5rem;
+    color: ${({ theme }) => theme.colors.textSecondary};
+    font-size: 0.875rem;
+  }
+  .forgot:hover {
+    color: ${({ theme }) => theme.colors.text};
+  }
 `;
 
 const PasswordRow = styled.div`
@@ -145,6 +154,9 @@ export function Login() {
               {show ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </PasswordRow>
+          <Link className="forgot" to="/admin/esqueci-senha">
+            Esqueci minha senha
+          </Link>
           <Button type="submit" size="lg" block loading={submitting}>
             {!submitting && <LogIn size={18} aria-hidden />}
             Entrar

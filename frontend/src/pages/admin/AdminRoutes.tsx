@@ -17,6 +17,7 @@ import { Dashboard } from './Dashboard';
 import { EmailTemplates } from './EmailTemplates';
 import { Influencers } from './Influencers';
 import { Login } from './Login';
+import { ForgotPassword, ResetPassword } from './PasswordRecovery';
 import { Roles } from './Roles';
 import { Settings } from './Settings';
 import { Services } from './Services';
@@ -42,6 +43,8 @@ export default function AdminRoutes() {
   return (
     <Routes>
       <Route path="login" element={<Login />} />
+      <Route path="esqueci-senha" element={<ForgotPassword />} />
+      <Route path="redefinir-senha" element={<ResetPassword />} />
       <Route element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="clientes" element={guard('clients.view', <Clients />)} />

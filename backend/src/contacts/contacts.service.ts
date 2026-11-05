@@ -1,6 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ContactStatus, ContactType, Prisma } from '@prisma/client';
+import {
+  ContactStatus,
+  ContactType,
+  EmailTriggerType,
+  Prisma,
+} from '@prisma/client';
 import { paginated, pageArgs } from '../common/utils/paginate';
+import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { MailService } from '../mail/mail.service';
 import { templates } from '../mail/templates';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,6 +17,7 @@ export class ContactsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
+    private readonly emailTemplates: EmailTemplatesService,
   ) {}
 
   async submit(dto: SubmitContactDto) {
@@ -25,13 +32,16 @@ export class ContactsService {
     });
 
     const isBudget = type === ContactType.BUDGET;
-    void this.mail.send({
-      to: contact.email,
-      subject: isBudget
-        ? 'Recebemos o seu pedido de orçamento — PicPlus'
-        : 'Recebemos a sua mensagem — PicPlus',
-      html: templates.contactReceived(contact.name, isBudget),
-    });
+    void this.emailTemplates.sendByTrigger(
+      EmailTriggerType.CONTACT_RECEIVED,
+      contact.email,
+      {
+        contact: { name: contact.name },
+        reply_content: isBudget
+          ? 'Já estamos analisando o seu pedido de orçamento. Nossa equipe retornará em breve com uma proposta alinhada ao seu objetivo.'
+          : 'Obrigado por entrar em contato. Nossa equipe responderá o mais breve possível.',
+      },
+    );
     void this.mail.send({
       to: this.mail.adminRecipients,
       subject: `${isBudget ? 'Novo orçamento' : 'Novo contato'}: ${contact.name}`,

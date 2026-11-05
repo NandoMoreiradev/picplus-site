@@ -44,55 +44,6 @@ const button = (href: string, label: string) =>
   `<p style="margin:24px 0 0;"><a href="${esc(href)}" style="display:inline-block;background:#B6E829;color:#0a0a0a;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:8px;">${esc(label)}</a></p>`;
 
 export const templates = {
-  influencerReceived: (name: string) =>
-    layout(
-      'Recebemos o seu cadastro!',
-      `<p>Olá, ${esc(name)}!</p>
-       <p>Obrigado por querer fazer parte da vitrine de parceiros da PicPlus. Nossa equipe vai analisar o seu perfil e você receberá uma resposta por aqui assim que a avaliação for concluída.</p>`,
-    ),
-
-  influencerApproved: (
-    name: string,
-    showcaseUrl: string,
-    onShowcase: boolean,
-  ) =>
-    layout(
-      'Seu cadastro foi aprovado 🎉',
-      `<p>Olá, ${esc(name)}!</p>
-       <p>Temos ótimas notícias: o seu perfil foi <strong style="color:#B6E829;">aprovado</strong> pela equipe PicPlus.</p>
-       ${
-         onShowcase
-           ? `<p>Seu perfil já está disponível na nossa vitrine de parceiros.</p>${button(showcaseUrl, 'Ver a vitrine')}`
-           : '<p>Entraremos em contato assim que surgirem campanhas alinhadas ao seu perfil.</p>'
-       }`,
-    ),
-
-  influencerRejected: (name: string, reason?: string | null) =>
-    layout(
-      'Atualização sobre o seu cadastro',
-      `<p>Olá, ${esc(name)}!</p>
-       <p>Agradecemos o seu interesse na PicPlus. Após a análise, não conseguiremos seguir com o seu cadastro neste momento.</p>
-       ${
-         reason
-           ? `<p style="margin:20px 0;padding:14px 16px;background:#0a0a0a;border-left:3px solid #B6E829;border-radius:4px;"><strong style="color:#ffffff;">Motivo:</strong><br />${nl2br(reason)}</p>`
-           : ''
-       }
-       <p>Você pode atualizar suas informações e se cadastrar novamente no futuro. Desejamos sucesso na sua jornada!</p>`,
-    ),
-
-  contactReceived: (name: string, isBudget: boolean) =>
-    layout(
-      isBudget
-        ? 'Recebemos o seu pedido de orçamento'
-        : 'Recebemos a sua mensagem',
-      `<p>Olá, ${esc(name)}!</p>
-       <p>${
-         isBudget
-           ? 'Já estamos analisando o seu pedido de orçamento. Nossa equipe retornará em breve com uma proposta alinhada ao seu objetivo.'
-           : 'Obrigado por entrar em contato. Nossa equipe responderá o mais breve possível.'
-       }</p>`,
-    ),
-
   adminNewContact: (data: {
     type: string;
     name: string;

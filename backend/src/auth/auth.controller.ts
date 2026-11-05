@@ -17,7 +17,13 @@ import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { Authenticated } from '../common/decorators/permissions.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
-import { ChangePasswordDto, LoginDto, UpdateProfileDto } from './dto/login.dto';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  LoginDto,
+  ResetPasswordDto,
+  UpdateProfileDto,
+} from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -30,6 +36,23 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.auth.login(dto);
+  }
+
+  // Anti-abuso: poucos pedidos por minuto, já que cada um dispara um e-mail.
+  @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.auth.forgotPassword(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto);
   }
 
   @Authenticated()

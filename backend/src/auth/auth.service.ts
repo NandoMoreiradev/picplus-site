@@ -5,13 +5,28 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { createHash, randomBytes } from 'node:crypto';
+import { EmailTriggerType } from '@prisma/client';
 import { ALL_PERMISSIONS } from '../access/permissions';
+import { config } from '../config/configuration';
+import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
-import { ChangePasswordDto, LoginDto, UpdateProfileDto } from './dto/login.dto';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  LoginDto,
+  ResetPasswordDto,
+  UpdateProfileDto,
+} from './dto/login.dto';
 
 // Hash fictício usado para igualar o tempo de resposta quando o e-mail não existe.
 const DUMMY_HASH = bcrypt.hashSync('picplus-dummy-password', 12);
+
+const RESET_TTL_MS = 60 * 60 * 1000; // 1 hora
+
+const hashToken = (token: string) =>
+  createHash('sha256').update(token).digest('hex');
 
 const PROFILE_SELECT = {
   id: true,
@@ -28,6 +43,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly storage: StorageService,
+    private readonly emailTemplates: EmailTemplatesService,
   ) {}
 
   async login({ email, password }: LoginDto) {
@@ -129,5 +145,70 @@ export class AuthService {
       data: { password: await bcrypt.hash(dto.newPassword, 12) },
     });
     return { ok: true };
+  }
+
+  /**
+   * Envia o link de redefinição. Responde sempre igual para não revelar quais
+   * e-mails existem. Só o hash do token fica no banco.
+   */
+  async forgotPassword({ email }: ForgotPasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      select: { id: true, name: true, email: true, active: true },
+    });
+
+    if (user?.active) {
+      const token = randomBytes(32).toString('hex');
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          resetTokenHash: hashToken(token),
+          resetTokenExpiresAt: new Date(Date.now() + RESET_TTL_MS),
+        },
+      });
+      void this.emailTemplates.sendByTrigger(
+        EmailTriggerType.ADMIN_PASSWORD_RESET,
+        user.email,
+        {
+          user: {
+            name: user.name,
+            first_name: user.name.trim().split(/\s+/)[0],
+            email: user.email,
+          },
+          action_url: `${config.frontendUrl}/admin/redefinir-senha?token=${token}`,
+        },
+      );
+    }
+
+    return {
+      ok: true,
+      message:
+        'Se este e-mail estiver cadastrado, enviaremos um link para redefinir a senha.',
+    };
+  }
+
+  async resetPassword({ token, newPassword }: ResetPasswordDto) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetTokenHash: hashToken(token.trim()),
+        resetTokenExpiresAt: { gt: new Date() },
+        active: true,
+      },
+      select: { id: true },
+    });
+    if (!user) {
+      throw new BadRequestException(
+        'Link de recuperação inválido ou expirado. Solicite um novo link.',
+      );
+    }
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: await bcrypt.hash(newPassword, 12),
+        resetTokenHash: null,
+        resetTokenExpiresAt: null,
+      },
+    });
+    return { ok: true, message: 'Senha atualizada com sucesso!' };
   }
 }

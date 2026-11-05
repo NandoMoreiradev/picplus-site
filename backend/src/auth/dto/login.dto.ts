@@ -31,3 +31,20 @@ export class ChangePasswordDto {
   @MaxLength(128)
   newPassword: string;
 }
+
+export class ForgotPasswordDto {
+  @IsEmail({}, { message: 'Informe um e-mail válido.' })
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(256)
+  token: string;
+
+  @IsString()
+  @MinLength(8, { message: 'A nova senha deve ter ao menos 8 caracteres.' })
+  @MaxLength(128)
+  newPassword: string;
+}

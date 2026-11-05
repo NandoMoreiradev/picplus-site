@@ -4,7 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InfluencerStatus, Prisma } from '@prisma/client';
+import { EmailTriggerType, InfluencerStatus, Prisma } from '@prisma/client';
+import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { config } from '../config/configuration';
 import { paginated, pageArgs } from '../common/utils/paginate';
 import {
@@ -61,6 +62,7 @@ export class InfluencersService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly mail: MailService,
+    private readonly emailTemplates: EmailTemplatesService,
   ) {}
 
   // ── Público ────────────────────────────────────────────────
@@ -126,11 +128,11 @@ export class InfluencersService {
       });
 
       // Notificações não bloqueiam a resposta; MailService nunca lança.
-      void this.mail.send({
-        to: influencer.email,
-        subject: 'Recebemos o seu cadastro — PicPlus',
-        html: templates.influencerReceived(influencer.name),
-      });
+      void this.emailTemplates.sendByTrigger(
+        EmailTriggerType.INFLUENCER_RECEIVED,
+        influencer.email,
+        { influencer: { name: influencer.name } },
+      );
       void this.mail.send({
         to: this.mail.adminRecipients,
         subject: `Novo influenciador: ${influencer.name}`,
@@ -300,15 +302,19 @@ export class InfluencersService {
 
     let emailSent = false;
     if (dto.notify !== false) {
-      emailSent = await this.mail.send({
-        to: influencer.email,
-        subject: 'Seu cadastro foi aprovado — PicPlus',
-        html: templates.influencerApproved(
-          influencer.name,
-          `${config.frontendUrl}/influenciadores`,
-          showOnShowcase,
-        ),
-      });
+      emailSent = await this.emailTemplates.sendByTrigger(
+        EmailTriggerType.INFLUENCER_APPROVED,
+        influencer.email,
+        {
+          influencer: { name: influencer.name },
+          action_url: showOnShowcase
+            ? `${config.frontendUrl}/influenciadores`
+            : config.frontendUrl,
+          reply_content: showOnShowcase
+            ? 'Seu perfil já está disponível na nossa vitrine de parceiros.'
+            : 'Entraremos em contato assim que surgirem campanhas alinhadas ao seu perfil.',
+        },
+      );
     }
     return { influencer, emailSent };
   }
@@ -330,11 +336,14 @@ export class InfluencersService {
 
     let emailSent = false;
     if (channels.includes('email')) {
-      emailSent = await this.mail.send({
-        to: influencer.email,
-        subject: 'Atualização sobre o seu cadastro — PicPlus',
-        html: templates.influencerRejected(influencer.name, reason),
-      });
+      emailSent = await this.emailTemplates.sendByTrigger(
+        EmailTriggerType.INFLUENCER_REJECTED,
+        influencer.email,
+        {
+          influencer: { name: influencer.name },
+          reply_content: reason ? `Motivo: ${reason}` : '',
+        },
+      );
     }
 
     // WhatsApp: devolvemos um link wa.me já com o texto; o admin confirma o envio no próprio app.

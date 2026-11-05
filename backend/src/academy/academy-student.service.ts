@@ -291,6 +291,22 @@ export class AcademyStudentService {
       },
     });
 
+    if (preference.checkoutUrl) {
+      void this.emailTemplates.sendByTrigger(
+        EmailTriggerType.ACADEMY_PAYMENT_PENDING,
+        student.email,
+        {
+          ...this.orderMailContext(
+            { name: student.name, email: student.email },
+            course,
+            order.id,
+            finalPriceCents,
+          ),
+          action_url: preference.checkoutUrl,
+        },
+      );
+    }
+
     return {
       orderId: order.id,
       freeEnrollment: false,
@@ -390,6 +406,55 @@ export class AcademyStudentService {
     return updatedOrder;
   }
 
+  private orderMailContext(
+    student: { name: string; email: string },
+    course: { title: string; slug: string; instructorName?: string | null },
+    orderId: string,
+    amountCents: number,
+  ) {
+    return {
+      student: {
+        name: student.name,
+        first_name: this.getFirstName(student.name),
+        email: student.email,
+      },
+      course: {
+        title: course.title,
+        instructor: course.instructorName ?? '',
+        url: `${config.frontendUrl}/academy/aula/${course.slug}`,
+      },
+      order: {
+        id: orderId.slice(0, 8).toUpperCase(),
+        amount: this.formatCentsBRL(amountCents),
+      },
+    };
+  }
+
+  /** Avisa o aluno sobre uma mudança de status do pedido (nunca interrompe o webhook). */
+  private async notifyOrder(orderId: string, trigger: EmailTriggerType) {
+    try {
+      const order = await this.prisma.courseOrder.findUnique({
+        where: { id: orderId },
+        include: { student: true, course: true },
+      });
+      if (!order) return;
+      void this.emailTemplates.sendByTrigger(
+        trigger,
+        order.student.email,
+        this.orderMailContext(
+          order.student,
+          order.course,
+          order.id,
+          order.finalPriceCents,
+        ),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Aviso de pedido ${orderId} não enviado: ${(error as Error).message}`,
+      );
+    }
+  }
+
   /**
    * Processa notificações de webhook do Mercado Pago.
    */
@@ -442,7 +507,7 @@ export class AcademyStudentService {
       payment.status === 'rejected' ||
       payment.status === 'cancelled'
     ) {
-      await this.prisma.courseOrder.updateMany({
+      const changed = await this.prisma.courseOrder.updateMany({
         where: { id: orderId, status: CourseOrderStatus.PENDING },
         data: {
           status:
@@ -453,12 +518,18 @@ export class AcademyStudentService {
           mpStatus: payment.status,
         },
       });
+      if (changed.count > 0) {
+        await this.notifyOrder(
+          orderId,
+          EmailTriggerType.ACADEMY_PAYMENT_REJECTED,
+        );
+      }
     } else if (
       payment.status === 'refunded' ||
       payment.status === 'charged_back'
     ) {
-      await this.prisma.courseOrder.updateMany({
-        where: { id: orderId },
+      const changed = await this.prisma.courseOrder.updateMany({
+        where: { id: orderId, status: { not: CourseOrderStatus.REFUNDED } },
         data: {
           status: CourseOrderStatus.REFUNDED,
           mpPaymentId: payment.id,
@@ -469,6 +540,9 @@ export class AcademyStudentService {
         where: { orderId },
         data: { status: EnrollmentStatus.REVOKED },
       });
+      if (changed.count > 0) {
+        await this.notifyOrder(orderId, EmailTriggerType.ACADEMY_REFUNDED);
+      }
     }
 
     return { received: true };

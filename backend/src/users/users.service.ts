@@ -5,10 +5,12 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { EmailTriggerType, Prisma } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { assertCanGrant, assertCanManage } from '../access/access.utils';
 import type { AuthUser } from '../common/decorators/current-user.decorator';
+import { config } from '../config/configuration';
+import { EmailTemplatesService } from '../email-templates/email-templates.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 
@@ -33,7 +35,10 @@ const present = ({ role, ...user }: UserRow) => ({
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailTemplates: EmailTemplatesService,
+  ) {}
 
   async list() {
     const users = await this.prisma.user.findMany({
@@ -71,6 +76,21 @@ export class UsersService {
         },
         select: USER_SELECT,
       });
+      // Nunca envia a senha por e-mail: só avisa que o acesso existe.
+      if (user.active) {
+        void this.emailTemplates.sendByTrigger(
+          EmailTriggerType.ADMIN_WELCOME,
+          user.email,
+          {
+            user: {
+              name: user.name,
+              first_name: user.name.trim().split(/\s+/)[0],
+              email: user.email,
+            },
+            action_url: `${config.frontendUrl}/admin/login`,
+          },
+        );
+      }
       return present(user);
     } catch (error) {
       this.rethrowConflict(error);

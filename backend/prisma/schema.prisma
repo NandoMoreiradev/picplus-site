@@ -23,6 +23,9 @@ model User {
   isOwner           Boolean           @default(false)
   // Usuário desativado não consegue entrar e tem a sessão invalidada.
   active            Boolean           @default(true)
+  // Recuperação de senha: guarda só o hash (SHA-256) do token enviado por e-mail.
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
   role              Role?             @relation(fields: [roleId], references: [id], onDelete: SetNull)
   roleId            String?
   articles          Article[]
@@ -449,6 +452,11 @@ enum EmailTriggerType {
   INFLUENCER_APPROVED
   INFLUENCER_REJECTED
   CONTACT_RECEIVED
+  ADMIN_WELCOME
+  ADMIN_PASSWORD_RESET
+  ACADEMY_PAYMENT_PENDING
+  ACADEMY_PAYMENT_REJECTED
+  ACADEMY_REFUNDED
 }
 
 model EmailTemplate {

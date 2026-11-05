@@ -44,11 +44,19 @@ export class EmailTemplatesService implements OnApplicationBootstrap {
   private async ensureDefaultTemplates() {
     try {
       // Em testes unitários onde prisma.emailTemplate pode não estar no mock, ignora silenciosamente.
-      if (!this.prisma.emailTemplate?.count) return;
-      const count = await this.prisma.emailTemplate.count();
-      if (count > 0) return;
+      if (!this.prisma.emailTemplate?.findMany) return;
+      // Cria só os gatilhos que ainda não têm template (instalações antigas ganham os novos).
+      const existing = await this.prisma.emailTemplate.findMany({
+        where: { trigger: { not: null } },
+        select: { trigger: true },
+      });
+      const taken = new Set(existing.map((item) => item.trigger));
+      const missing = DEFAULT_EMAIL_TEMPLATES.filter(
+        (seed) => !taken.has(seed.trigger),
+      );
+      if (!missing.length) return;
 
-      for (const seed of DEFAULT_EMAIL_TEMPLATES) {
+      for (const seed of missing) {
         const inner = this.renderer.renderDesignJson(seed.designJson);
         const body = this.renderer.wrapInBrandLayout(
           inner,
@@ -66,7 +74,7 @@ export class EmailTemplatesService implements OnApplicationBootstrap {
         });
       }
       this.logger.log(
-        `Templates de e-mail padrão criados (${DEFAULT_EMAIL_TEMPLATES.length}).`,
+        `Templates de e-mail padrão criados (${missing.length}).`,
       );
     } catch (error) {
       this.logger.warn(
@@ -242,6 +250,13 @@ export class EmailTemplatesService implements OnApplicationBootstrap {
         code: 'PIC-2026-DEMO99',
         url: `${frontendUrl}/academy/certificado/PIC-2026-DEMO99`,
       },
+      user: {
+        name: 'Marina Alves',
+        first_name: 'Marina',
+        email: 'marina@picplus.com.br',
+      },
+      influencer: { name: 'Bruna Lima' },
+      contact: { name: 'Carlos Souza' },
       action_url: `${frontendUrl}/academy/minha-area`,
       reply_content:
         'Excelente dúvida! Você pode baixar o checklist na aba de Materiais desta aula.',
