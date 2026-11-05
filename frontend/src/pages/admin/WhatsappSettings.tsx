@@ -105,7 +105,8 @@ export default function WhatsappSettings() {
     e.preventDefault();
     setIsSavingChannel(true);
     try {
-      const updated = await whatsappApi.updateChannel(channel);
+      const payload = { ...channel, isActive: true };
+      const updated = await whatsappApi.updateChannel(payload);
       setChannel(updated);
       toast.success('Credenciais da Meta salvas com sucesso!');
     } catch {

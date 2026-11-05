@@ -92,6 +92,22 @@ export const useWhatsappStore = create<WhatsappState>((set, get) => ({
         ...conversations.filter((c) => c.id !== conversationId),
       ];
       set({ conversations: updatedList });
+    } else {
+      // Nova conversa recebida via WebSocket: buscar dados frescos
+      import('../lib/whatsapp').then(({ whatsappApi }) => {
+        whatsappApi
+          .listConversations({})
+          .then((res: { items: WhatsappConversation[] }) => {
+            if (res?.items) set({ conversations: res.items });
+          })
+          .catch(() => null);
+        whatsappApi
+          .getCounts()
+          .then((counts: ConversationCounts) => {
+            if (counts) set({ counts });
+          })
+          .catch(() => null);
+      });
     }
   },
 

@@ -248,9 +248,12 @@ export class WhatsappMessageProcessorService {
     });
     this.gateway.emitConversationUpdated(conversation);
 
-    // 6. Marcar como lida na Meta
+    // 6. Marcar como lida na Meta e obter canal ativo
     const channel = await this.prisma.whatsappChannel.findFirst({
-      where: { isActive: true },
+      where: {
+        OR: [{ isActive: true }, { accessToken: { not: '' } }],
+      },
+      orderBy: { createdAt: 'desc' },
     });
     if (channel?.accessToken) {
       this.metaApi

@@ -323,6 +323,7 @@ export class WhatsappService {
    * Salva as credenciais do WhatsApp Meta Cloud API.
    */
   async updateChannelConfig(dto: UpdateChannelConfigDto) {
+    const isActive = dto.isActive !== undefined ? dto.isActive : true;
     const existing = await this.prisma.whatsappChannel.findFirst({
       orderBy: { createdAt: 'desc' },
     });
@@ -330,12 +331,18 @@ export class WhatsappService {
     if (existing) {
       return this.prisma.whatsappChannel.update({
         where: { id: existing.id },
-        data: dto,
+        data: {
+          ...dto,
+          isActive,
+        },
       });
     }
 
     return this.prisma.whatsappChannel.create({
-      data: dto,
+      data: {
+        ...dto,
+        isActive,
+      },
     });
   }
 
