@@ -14,6 +14,7 @@ import {
   UpdateConversationStatusDto,
 } from './dto/whatsapp.dto';
 import {
+  Prisma,
   WhatsappMessageDirection,
   WhatsappMessageStatus,
   WhatsappMessageType,
@@ -35,7 +36,7 @@ export class WhatsappService {
     const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.WhatsappConversationWhereInput = {};
 
     if (query.status) {
       where.status = query.status;
