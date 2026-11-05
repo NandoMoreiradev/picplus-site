@@ -11,7 +11,11 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../components/ui/Toast';
 import { whatsappApi } from '../../lib/whatsapp';
-import type { WhatsappChannel, AiChatbotConfig } from '../../lib/whatsapp';
+import type {
+  WhatsappChannel,
+  AiChatbotConfig,
+  AiModelOption,
+} from '../../lib/whatsapp';
 import { API_URL } from '../../lib/api';
 
 type Tab = 'CONNECTION' | 'AI';
@@ -34,6 +38,39 @@ export default function WhatsappSettings() {
 
   // Estados da IA
   const [aiConfig, setAiConfig] = useState<AiChatbotConfig | null>(null);
+  const [availableModels, setAvailableModels] = useState<AiModelOption[]>([
+    {
+      id: 'gemini-3.8-flash',
+      name: 'Gemini 3.8 Flash (Última Geração - Recomendado)',
+      description: 'Mais veloz e melhor interpretação.',
+      isLatest: true,
+    },
+    {
+      id: 'gemini-3.5-flash',
+      name: 'Gemini 3.5 Flash',
+      description: 'Alta precisão e raciocínio refinado.',
+    },
+    {
+      id: 'gemini-3.1-flash-lite',
+      name: 'Gemini 3.1 Flash-Lite',
+      description: 'Ultra-rápido com latência mínima.',
+    },
+    {
+      id: 'gemini-2.5-flash',
+      name: 'Gemini 2.5 Flash',
+      description: 'Versão consolidada de alta velocidade.',
+    },
+    {
+      id: 'gemini-2.5-pro',
+      name: 'Gemini 2.5 Pro',
+      description: 'Maior capacidade analítica.',
+    },
+    {
+      id: 'gemini-2.0-flash',
+      name: 'Gemini 2.0 Flash',
+      description: 'Geração 2.0 estável.',
+    },
+  ]);
   const [isSavingAi, setIsSavingAi] = useState(false);
 
   // Estados do Simulador de Teste
@@ -54,6 +91,13 @@ export default function WhatsappSettings() {
       .getAiConfig()
       .then((data) => setAiConfig(data))
       .catch(() => toast.error('Falha ao carregar configurações da IA.'));
+
+    whatsappApi
+      .getAiModels()
+      .then((models) => {
+        if (models?.length) setAvailableModels(models);
+      })
+      .catch(() => null);
   }, [toast]);
 
   // Salvar canal do WhatsApp
@@ -79,7 +123,7 @@ export default function WhatsappSettings() {
     try {
       const updated = await whatsappApi.updateAiConfig(aiConfig);
       setAiConfig(updated);
-      toast.success('Configurações da Sofia (IA) salvas com sucesso!');
+      toast.success('Configurações da Cloe (IA) salvas com sucesso!');
     } catch {
       toast.error('Erro ao atualizar configurações da IA.');
     } finally {
@@ -122,7 +166,7 @@ export default function WhatsappSettings() {
         <div>
           <h2>WhatsApp & Atendimento IA</h2>
           <p>
-            Configure a integração oficial com a Meta Cloud API e personalize o comportamento da Sofia (IA).
+            Configure a integração oficial com a Meta Cloud API e personalize o comportamento da Cloe (IA).
           </p>
         </div>
       </PageHeader>
@@ -138,7 +182,7 @@ export default function WhatsappSettings() {
           $active={activeTab === 'AI'}
           onClick={() => setActiveTab('AI')}
         >
-          <Bot size={16} /> Chatbot com IA (Sofia)
+          <Bot size={16} /> Chatbot com IA (Cloe)
         </NavTabButton>
       </TabNavigation>
 
@@ -254,11 +298,11 @@ export default function WhatsappSettings() {
         </ContentGrid>
       )}
 
-      {/* ── ABA 2: CÉREBRO DA IA (SOFIA) ── */}
+      {/* ── ABA 2: CÉREBRO DA IA (Cloe) ── */}
       {activeTab === 'AI' && aiConfig && (
         <ContentGrid>
           <FormCard onSubmit={handleSaveAi}>
-            <CardTitle>Configurações da Sofia (Assistente PicPlus)</CardTitle>
+            <CardTitle>Configurações da Cloe (Assistente PicPlus)</CardTitle>
             <CardDescription>
               Personalize o nome, tom de voz, regras de atendimento e conhecimentos sobre a PicPlus.
             </CardDescription>
@@ -298,9 +342,11 @@ export default function WhatsappSettings() {
                     setAiConfig({ ...aiConfig, geminiModel: e.target.value })
                   }
                 >
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash (Recomendado - Mais Rápido)</option>
-                  <option value="gemini-1.5-pro">Gemini 1.5 Pro (Maior Raciocínio)</option>
-                  <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  {availableModels.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
                 </select>
               </FieldGroup>
             </FieldRow>
@@ -361,7 +407,7 @@ export default function WhatsappSettings() {
               <Sparkles size={18} color="#B6E829" /> Simulador de Conversa
             </CardTitle>
             <CardDescription>
-              Envie uma pergunta como se fosse um cliente para testar como a Sofia responderá com o prompt atual:
+              Envie uma pergunta como se fosse um cliente para testar como a Cloe responderá com o prompt atual:
             </CardDescription>
 
             <TestForm onSubmit={handleTestPrompt}>
@@ -381,7 +427,7 @@ export default function WhatsappSettings() {
 
             {testReply && (
               <TestReplyCard>
-                <strong>Sofia (Resposta Simulada):</strong>
+                <strong>Cloe (Resposta Simulada):</strong>
                 <p>{testReply}</p>
               </TestReplyCard>
             )}

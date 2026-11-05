@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Put } from '@nestjs/common';
 import { Resource } from '../common/decorators/permissions.decorator';
 import { AiChatbotService } from './ai-chatbot.service';
+import { GEMINI_AVAILABLE_MODELS } from './ai-chatbot.constants';
 import {
   TestAiChatbotPromptDto,
   UpdateAiChatbotConfigDto,
@@ -10,6 +11,11 @@ import {
 @Controller('admin/ai-chatbot')
 export class AiChatbotController {
   constructor(private readonly aiChatbotService: AiChatbotService) {}
+
+  @Get('models')
+  getAvailableModels() {
+    return GEMINI_AVAILABLE_MODELS;
+  }
 
   @Get('config')
   async getConfig() {

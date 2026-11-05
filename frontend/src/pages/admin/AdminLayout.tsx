@@ -437,7 +437,7 @@ const NAV_GROUPS: NavGroupDef[] = [
       { to: '/admin/cargos', label: 'Cargos e permissões', icon: ShieldCheck, perm: 'roles.view' },
       { to: '/admin/templates-email', label: 'Templates de e-mail', icon: Mail, perm: 'email_templates.view' },
       { to: '/admin/configuracoes', label: 'Configurações do site', icon: SettingsIcon, perm: 'settings.view' },
-      { to: '/admin/whatsapp/configuracoes', label: 'WhatsApp & IA (Sofia)', icon: Bot, perm: 'whatsapp.manage' },
+      { to: '/admin/whatsapp/configuracoes', label: 'WhatsApp & IA (Cloe)', icon: Bot, perm: 'whatsapp.manage' },
     ],
   },
 ];
@@ -618,7 +618,12 @@ export function AdminLayout() {
             </button>
             <Logo to="/admin" size="1.4rem" label="Painel PicPlus" />
           </TopBar>
-          <Content $bleed={location.pathname.startsWith('/admin/tarefas')}>
+          <Content
+            $bleed={
+              location.pathname.startsWith('/admin/tarefas') ||
+              location.pathname === '/admin/whatsapp'
+            }
+          >
             <Outlet />
           </Content>
         </Main>

@@ -92,6 +92,13 @@ export interface WhatsappChannel {
   qualityRating?: string | null;
 }
 
+export interface AiModelOption {
+  id: string;
+  name: string;
+  description: string;
+  isLatest?: boolean;
+}
+
 export interface AiChatbotConfig {
   id: string;
   isActive: boolean;
@@ -155,6 +162,8 @@ export const whatsappApi = {
   updateChannel: (data: Partial<WhatsappChannel>) => api.put<WhatsappChannel>('/admin/whatsapp/channel', data),
 
   getAiConfig: () => api.get<AiChatbotConfig>('/admin/ai-chatbot/config'),
+
+  getAiModels: () => api.get<AiModelOption[]>('/admin/ai-chatbot/models'),
 
   updateAiConfig: (data: Partial<AiChatbotConfig>) => api.put<AiChatbotConfig>('/admin/ai-chatbot/config', data),
 

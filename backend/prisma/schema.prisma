@@ -994,9 +994,9 @@ model WhatsappConversationNote {
 model AiChatbotConfig {
   id                         String   @id @default("default")
   isActive                   Boolean  @default(true)
-  personaName                String   @default("Sofia")
+  personaName                String   @default("Cloe")
   systemPrompt               String   @db.Text
-  geminiModel                String   @default("gemini-2.5-flash")
+  geminiModel                String   @default("gemini-3.8-flash")
   geminiApiKey               String?  @db.Text
   temperature                Float    @default(0.7)
   autoHandoff                Boolean  @default(true)

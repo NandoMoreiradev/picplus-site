@@ -146,7 +146,7 @@ export default function Inbox() {
       const updated = await whatsappApi.updateStatus(selectedId, newStatus);
       toast.success(
         newStatus === 'BOT_HANDLING'
-          ? 'Conversa devolvida para a IA Sofia.'
+          ? 'Conversa devolvida para a IA Cloe.'
           : newStatus === 'OPEN'
             ? 'Você assumiu o atendimento desta conversa.'
             : 'Atendimento finalizado com sucesso.',
@@ -270,7 +270,7 @@ export default function Inbox() {
 
                       {isBot && (
                         <StatusBadge $tone="bot">
-                          <Bot size={11} /> Sofia
+                          <Bot size={11} /> Cloe
                         </StatusBadge>
                       )}
                       {isOpen && (
@@ -366,7 +366,7 @@ export default function Inbox() {
               <AiBanner>
                 <Sparkles size={16} />
                 <span>
-                  <strong>A Sofia (IA) está atendendo este cliente automaticamente.</strong> Se você enviar uma mensagem, o atendimento passa automaticamente para você.
+                  <strong>A Cloe (IA) está atendendo este cliente automaticamente.</strong> Se você enviar uma mensagem, o atendimento passa automaticamente para você.
                 </span>
               </AiBanner>
             )}
@@ -385,7 +385,7 @@ export default function Inbox() {
                       <MessageBubble $isOut={isOut}>
                         {isOut && (
                           <BubbleSender>
-                            {msg.sentByUser ? msg.sentByUser.name : 'Sofia (IA)'}
+                            {msg.sentByUser ? msg.sentByUser.name : 'Cloe (IA)'}
                           </BubbleSender>
                         )}
                         <BubbleText>{msg.content}</BubbleText>
@@ -511,12 +511,10 @@ export default function Inbox() {
 
 const Container = styled.div`
   display: flex;
-  height: calc(100vh - 80px);
+  height: 100%;
   width: 100%;
   background: ${({ theme }) => theme.colors.background};
   overflow: hidden;
-  border-radius: ${({ theme }) => theme.radii.lg};
-  border: 1px solid ${({ theme }) => theme.colors.border};
 `;
 
 const Sidebar = styled.div`

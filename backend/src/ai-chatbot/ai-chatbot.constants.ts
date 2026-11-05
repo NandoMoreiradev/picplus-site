@@ -1,5 +1,51 @@
 export const DEFAULT_AI_PERSONA_NAME = 'Sofia';
 
+export interface AiModelOption {
+  id: string;
+  name: string;
+  description: string;
+  isLatest?: boolean;
+}
+
+export const GEMINI_AVAILABLE_MODELS: AiModelOption[] = [
+  {
+    id: 'gemini-3.8-flash',
+    name: 'Gemini 3.8 Flash (Última Geração - Recomendado)',
+    description:
+      'Mais veloz, respostas instantâneas e melhor interpretação em conversas no WhatsApp.',
+    isLatest: true,
+  },
+  {
+    id: 'gemini-3.5-flash',
+    name: 'Gemini 3.5 Flash',
+    description: 'Equilíbrio excelente entre raciocínio ágil e alta precisão.',
+  },
+  {
+    id: 'gemini-3.1-flash-lite',
+    name: 'Gemini 3.1 Flash-Lite',
+    description:
+      'Ultra-rápido com latência mínima para alto volume de mensagens.',
+  },
+  {
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: 'Versão consolidada de alta velocidade da geração 2.5.',
+  },
+  {
+    id: 'gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    description:
+      'Maior capacidade analítica e raciocínio para propostas complexas.',
+  },
+  {
+    id: 'gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash',
+    description: 'Geração 2.0 estável.',
+  },
+];
+
+export const DEFAULT_AI_MODEL = 'gemini-3.8-flash';
+
 export const DEFAULT_AI_SYSTEM_PROMPT = `Você é a Sofia, assistente virtual inteligente da PicPlus.
 Sua missão é atender leads, clientes, marcas e influenciadores que entram em contato pelo WhatsApp oficial da PicPlus.
 
@@ -29,5 +75,3 @@ Exemplo:
 "Com certeza! Vou transferir você agora mesmo para um de nossos especialistas comerciais da equipe PicPlus dar continuidade ao seu orçamento. Um instante por favor! 😊
 [HANDOFF: Cliente solicitou proposta comercial personalizada]"
 `;
-
-export const DEFAULT_AI_MODEL = 'gemini-2.5-flash';

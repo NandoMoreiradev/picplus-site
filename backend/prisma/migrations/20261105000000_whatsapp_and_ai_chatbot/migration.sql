@@ -98,9 +98,9 @@ CREATE TABLE "WhatsappConversationNote" (
 CREATE TABLE "AiChatbotConfig" (
     "id" TEXT NOT NULL DEFAULT 'default',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "personaName" TEXT NOT NULL DEFAULT 'Sofia',
+    "personaName" TEXT NOT NULL DEFAULT 'Cloe',
     "systemPrompt" TEXT NOT NULL,
-    "geminiModel" TEXT NOT NULL DEFAULT 'gemini-2.5-flash',
+    "geminiModel" TEXT NOT NULL DEFAULT 'gemini-3.8-flash',
     "geminiApiKey" TEXT,
     "temperature" DOUBLE PRECISION NOT NULL DEFAULT 0.7,
     "autoHandoff" BOOLEAN NOT NULL DEFAULT true,
