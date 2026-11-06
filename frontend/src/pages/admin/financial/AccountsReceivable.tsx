@@ -109,7 +109,7 @@ export function AccountsReceivable() {
       const [cats, accs, clsRes] = await Promise.all([
         financialApi.listCategories(),
         financialApi.listAccounts(),
-        api.get<{ items: Array<{ id: string; tradeName: string; corporateName: string }> }>('admin/clients?limit=100'),
+        api.get<{ items: Array<{ id: string; tradeName: string; corporateName: string }> }>('/admin/clients?limit=100'),
       ]);
       setCategories(cats.filter((c) => c.nature === 'REVENUE'));
       setAccounts(accs);

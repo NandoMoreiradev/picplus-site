@@ -72,8 +72,9 @@ async function request<T>(
   }
 
   let response: Response;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   try {
-    response = await fetch(`${API_BASE}${path}`, { method, headers, body, signal: options.signal });
+    response = await fetch(`${API_BASE}${normalizedPath}`, { method, headers, body, signal: options.signal });
   } catch (error) {
     if ((error as Error).name === 'AbortError') throw error;
     throw new ApiError('Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.', 0);

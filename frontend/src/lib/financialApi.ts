@@ -142,32 +142,32 @@ export interface CashFlowReport {
 }
 
 export const financialApi = {
-  getStats: () => api.get<FinancialStats>('admin/finance/stats'),
-  getDre: (year?: number) => api.get<DreReport>(withQuery('admin/finance/dre', { year })),
+  getStats: () => api.get<FinancialStats>('/admin/finance/stats'),
+  getDre: (year?: number) => api.get<DreReport>(withQuery('/admin/finance/dre', { year })),
   getCashFlow: (startDate?: string, endDate?: string) =>
-    api.get<CashFlowReport>(withQuery('admin/finance/cash-flow', { startDate, endDate })),
-  syncCharges: () => api.post<{ count?: number }>('admin/finance/sync-charges'),
+    api.get<CashFlowReport>(withQuery('/admin/finance/cash-flow', { startDate, endDate })),
+  syncCharges: () => api.post<{ count?: number }>('/admin/finance/sync-charges'),
 
   listEntries: (query: Record<string, unknown>) =>
     api.get<{ items: FinancialEntry[]; total: number; page: number; limit: number; totalPages: number }>(
-      withQuery('admin/finance/entries', query as any),
+      withQuery('/admin/finance/entries', query as any),
     ),
-  getEntry: (id: string) => api.get<FinancialEntry>(`admin/finance/entries/${id}`),
-  createEntry: (body: unknown) => api.post<FinancialEntry>('admin/finance/entries', body),
-  updateEntry: (id: string, body: unknown) => api.put<FinancialEntry>(`admin/finance/entries/${id}`, body),
+  getEntry: (id: string) => api.get<FinancialEntry>(`/admin/finance/entries/${id}`),
+  createEntry: (body: unknown) => api.post<FinancialEntry>('/admin/finance/entries', body),
+  updateEntry: (id: string, body: unknown) => api.put<FinancialEntry>(`/admin/finance/entries/${id}`, body),
   settleEntry: (id: string, body: { paidAmountCents: number; paidAt: string; accountId?: string; paymentMethod?: string }) =>
-    api.post<FinancialEntry>(`admin/finance/entries/${id}/settle`, body),
-  deleteEntry: (id: string) => api.delete(`admin/finance/entries/${id}`),
+    api.post<FinancialEntry>(`/admin/finance/entries/${id}/settle`, body),
+  deleteEntry: (id: string) => api.delete(`/admin/finance/entries/${id}`),
 
-  listCategories: () => api.get<FinancialCategory[]>('admin/finance/categories'),
-  createCategory: (body: unknown) => api.post<FinancialCategory>('admin/finance/categories', body),
+  listCategories: () => api.get<FinancialCategory[]>('/admin/finance/categories'),
+  createCategory: (body: unknown) => api.post<FinancialCategory>('/admin/finance/categories', body),
 
-  listCostCenters: () => api.get<FinancialCostCenter[]>('admin/finance/cost-centers'),
-  createCostCenter: (body: unknown) => api.post<FinancialCostCenter>('admin/finance/cost-centers', body),
+  listCostCenters: () => api.get<FinancialCostCenter[]>('/admin/finance/cost-centers'),
+  createCostCenter: (body: unknown) => api.post<FinancialCostCenter>('/admin/finance/cost-centers', body),
 
-  listAccounts: () => api.get<FinancialAccount[]>('admin/finance/accounts'),
-  createAccount: (body: unknown) => api.post<FinancialAccount>('admin/finance/accounts', body),
+  listAccounts: () => api.get<FinancialAccount[]>('/admin/finance/accounts'),
+  createAccount: (body: unknown) => api.post<FinancialAccount>('/admin/finance/accounts', body),
 
-  listSuppliers: () => api.get<FinancialSupplier[]>('admin/finance/suppliers'),
-  createSupplier: (body: unknown) => api.post<FinancialSupplier>('admin/finance/suppliers', body),
+  listSuppliers: () => api.get<FinancialSupplier[]>('/admin/finance/suppliers'),
+  createSupplier: (body: unknown) => api.post<FinancialSupplier>('/admin/finance/suppliers', body),
 };

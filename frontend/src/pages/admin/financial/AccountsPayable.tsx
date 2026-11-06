@@ -132,7 +132,7 @@ export function AccountsPayable() {
         financialApi.listCostCenters(),
         financialApi.listAccounts(),
         financialApi.listSuppliers(),
-        api.get<Array<{ id: string; name: string }>>('admin/influencers?limit=100').catch(() => []),
+        api.get<Array<{ id: string; name: string }>>('/admin/influencers?limit=100').catch(() => []),
       ]);
       setCategories(cats.filter((c) => c.nature !== 'REVENUE'));
       setCostCenters(centers);
