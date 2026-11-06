@@ -14,10 +14,11 @@ import { errorMessage } from '../../lib/validation';
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
-const Stack = styled.div`
-  display: flex;
-  flex-direction: column;
+const CardsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
   gap: 1.5rem;
+  align-items: start;
 `;
 
 const AvatarRow = styled.div`
@@ -47,7 +48,6 @@ const AvatarRow = styled.div`
 `;
 
 const Card = styled(Panel)`
-  max-width: 520px;
   padding: 1.75rem;
 
   h2 {
@@ -195,7 +195,7 @@ export function Account() {
   return (
     <>
       <PageHeader title="Minha conta" description={`${user?.name} · ${user?.email}`} />
-      <Stack>
+      <CardsGrid>
         {user && <ProfileCard user={user} />}
         <Card>
           <h2>Alterar senha</h2>
@@ -235,7 +235,7 @@ export function Account() {
             </div>
           </FormStack>
         </Card>
-      </Stack>
+      </CardsGrid>
     </>
   );
 }

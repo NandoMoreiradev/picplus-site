@@ -324,12 +324,16 @@ const TopBar = styled.header`
 `;
 
 const Content = styled.main<{ $bleed?: boolean }>`
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2.25rem 2rem 4rem;
+  width: 100%;
+  padding: 1.75rem 2rem 3.5rem;
+  box-sizing: border-box;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
-    padding: 1.5rem 1rem 3rem;
+    padding: 1.25rem 1.25rem 3rem;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    padding: 1rem 0.85rem 2.5rem;
   }
 
   /* Telas de trabalho (ex.: tarefas) ocupam toda a área, com a altura da janela.
@@ -338,7 +342,6 @@ const Content = styled.main<{ $bleed?: boolean }>`
     $bleed &&
     `
     && {
-      max-width: none;
       padding: 0;
       height: 100vh;
     }

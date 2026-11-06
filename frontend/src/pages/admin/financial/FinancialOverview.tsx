@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import {
@@ -17,6 +17,7 @@ import { PageHeader, Panel } from '../../../components/admin/AdminUI';
 import { Button } from '../../../components/ui/Button';
 import { ErrorState, PageLoader } from '../../../components/ui/Feedback';
 import { useToast } from '../../../components/ui/Toast';
+import { useFetch } from '../../../hooks/useFetch';
 import { formatCents } from '../../../lib/format';
 import { financialApi, type FinancialStats } from '../../../lib/financialApi';
 
@@ -124,33 +125,16 @@ const AccountItem = styled.div`
 `;
 
 export function FinancialOverview() {
-  const [stats, setStats] = useState<FinancialStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, loading, error, reload } = useFetch<FinancialStats>('/admin/finance/stats');
   const [syncing, setSyncing] = useState(false);
   const toast = useToast();
-
-  const loadStats = async () => {
-    try {
-      setLoading(true);
-      const data = await financialApi.getStats();
-      setStats(data);
-    } catch {
-      toast.error('Erro ao carregar indicadores financeiros');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadStats();
-  }, []);
 
   const handleSyncAsaas = async () => {
     try {
       setSyncing(true);
       await financialApi.syncCharges();
       toast.success('Cobranças do Asaas sincronizadas com sucesso!');
-      await loadStats();
+      reload();
     } catch {
       toast.error('Falha ao sincronizar com Asaas');
     } finally {
@@ -159,7 +143,7 @@ export function FinancialOverview() {
   };
 
   if (loading && !stats) return <PageLoader label="Carregando inteligência financeira…" />;
-  if (!stats) return <ErrorState message="Não foi possível obter os dados financeiros." />;
+  if (error || !stats) return <ErrorState message="Não foi possível obter os dados financeiros." onRetry={reload} />;
 
   const isProfitable = stats.projectedResultMonthCents >= 0;
 

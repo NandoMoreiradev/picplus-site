@@ -33,7 +33,7 @@ function SettingsForm({ initial }: { initial: SiteSettings }) {
   };
 
   return (
-    <Panel style={{ maxWidth: 640, padding: '1.75rem' }}>
+    <Panel style={{ maxWidth: 800, padding: '1.75rem' }}>
       <FormStack onSubmit={submit}>
         <UploadField
           label="Imagem de compartilhamento do site"
