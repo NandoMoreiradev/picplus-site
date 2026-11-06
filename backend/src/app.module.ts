@@ -26,6 +26,7 @@ import { TestimonialsModule } from './testimonials/testimonials.module';
 import { UsersModule } from './users/users.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { AiChatbotModule } from './ai-chatbot/ai-chatbot.module';
+import { FinanceModule } from './finance/finance.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { AiChatbotModule } from './ai-chatbot/ai-chatbot.module';
     UsersModule,
     WhatsappModule,
     AiChatbotModule,
+    FinanceModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

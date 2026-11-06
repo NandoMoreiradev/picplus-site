@@ -32,6 +32,14 @@ const Tasks = lazy(() => import('./Tasks'));
 const Inbox = lazy(() => import('./Inbox'));
 const WhatsappSettings = lazy(() => import('./WhatsappSettings'));
 
+// Módulo financeiro carregado sob demanda
+const FinancialOverview = lazy(() => import('./financial/FinancialOverview'));
+const AccountsReceivable = lazy(() => import('./financial/AccountsReceivable'));
+const AccountsPayable = lazy(() => import('./financial/AccountsPayable'));
+const DreStatement = lazy(() => import('./financial/DreStatement'));
+const CashFlow = lazy(() => import('./financial/CashFlow'));
+const FinancialSettings = lazy(() => import('./financial/FinancialSettings'));
+
 /** Protege a tela com a permissão de "ver" do módulo (o servidor revalida cada chamada). */
 const guard = (permission: string, page: ReactNode) => (
   <RequirePermission permission={permission}>{page}</RequirePermission>
@@ -60,6 +68,60 @@ export default function AdminRoutes() {
         <Route index element={<Home />} />
         <Route path="clientes" element={guard('clients.view', <Clients />)} />
         <Route path="clientes/:id" element={guard('clients.view', <ClientDetail />)} />
+        <Route
+          path="financeiro"
+          element={guard(
+            'financial.view',
+            <Suspense fallback={<PageLoader label="Carregando financeiro…" />}>
+              <FinancialOverview />
+            </Suspense>,
+          )}
+        />
+        <Route
+          path="financeiro/receber"
+          element={guard(
+            'financial.receivables',
+            <Suspense fallback={<PageLoader label="Carregando contas a receber…" />}>
+              <AccountsReceivable />
+            </Suspense>,
+          )}
+        />
+        <Route
+          path="financeiro/pagar"
+          element={guard(
+            'financial.payables',
+            <Suspense fallback={<PageLoader label="Carregando contas a pagar…" />}>
+              <AccountsPayable />
+            </Suspense>,
+          )}
+        />
+        <Route
+          path="financeiro/dre"
+          element={guard(
+            'financial.reports',
+            <Suspense fallback={<PageLoader label="Carregando DRE…" />}>
+              <DreStatement />
+            </Suspense>,
+          )}
+        />
+        <Route
+          path="financeiro/fluxo-caixa"
+          element={guard(
+            'financial.reports',
+            <Suspense fallback={<PageLoader label="Carregando fluxo de caixa…" />}>
+              <CashFlow />
+            </Suspense>,
+          )}
+        />
+        <Route
+          path="financeiro/configuracoes"
+          element={guard(
+            'financial.settings',
+            <Suspense fallback={<PageLoader label="Carregando configurações financeiras…" />}>
+              <FinancialSettings />
+            </Suspense>,
+          )}
+        />
         <Route path="academy" element={guard('academy.view', <AcademyAdmin />)} />
         <Route path="templates-email" element={guard('email_templates.view', <EmailTemplates />)} />
         <Route path="influenciadores" element={guard('influencers.view', <Influencers />)} />

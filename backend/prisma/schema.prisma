@@ -46,6 +46,9 @@ model User {
   whatsappConversationsAssigned WhatsappConversation[] @relation("ConversationAssignedTo")
   whatsappMessagesSent          WhatsappMessage[]      @relation("SentByUser")
   whatsappNotesCreated          WhatsappConversationNote[] @relation("NoteAuthor")
+  // Financeiro
+  createdFinancialEntries       FinancialEntry[]       @relation("FinancialEntryCreatedBy")
+  approvedFinancialEntries      FinancialEntry[]       @relation("FinancialEntryApprovedBy")
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -92,6 +95,7 @@ model Influencer {
   showOnShowcase  Boolean          @default(false)
   rejectionReason String?
   reviewedAt      DateTime?
+  financialEntries FinancialEntry[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -796,6 +800,7 @@ model Client {
   charges           ClientCharge[]
   notes             ClientNote[]
   whatsappContacts  WhatsappContact[]
+  financialEntries  FinancialEntry[]
 
   deletedAt         DateTime?
   createdAt         DateTime        @default(now())
@@ -840,6 +845,8 @@ model ClientCharge {
   pixQrCodeUrl   String?
   pixPayload     String?           @db.Text
   paidAt         DateTime?
+
+  financialEntry FinancialEntry?
 
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
@@ -1018,4 +1025,162 @@ model AiChatbotConfig {
   updatedAt                  DateTime @updatedAt
   createdAt                  DateTime @default(now())
 }
+
+// ─────────────────────────────────────────────────────────────
+// Módulo Financeiro (Contas a Pagar, Receber, DRE e Fluxo de Caixa)
+// ─────────────────────────────────────────────────────────────
+
+enum FinancialEntryType {
+  INCOME  // A Receber
+  EXPENSE // A Pagar
+}
+
+enum FinancialEntryStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELED
+}
+
+enum FinancialCategoryNature {
+  REVENUE             // Receita Bruta
+  DEDUCTION           // Dedução da Receita (Impostos diretos, taxas de gateway)
+  DIRECT_COST         // Custo Direto / Custo do Serviço Prestado (repasses a influenciadores, produtoras)
+  OPERATING_EXPENSE   // Despesa Fixa / Operacional (pessoal, ferramentas, aluguel)
+  FINANCIAL_RESULT    // Resultado Financeiro (juros, multas, rendimentos)
+}
+
+enum FinancialAccountType {
+  CHECKING            // Conta Corrente
+  SAVINGS             // Poupança / Aplicação
+  PAYMENT_GATEWAY     // Gateway / Carteira Digital (Asaas, Mercado Pago, etc.)
+  CASH                // Caixa Físico / Cofre
+}
+
+model FinancialCategory {
+  id          String                  @id @default(uuid())
+  name        String
+  code        String                  // Ex.: "1.1", "2.1", "3.1", "4.1"
+  nature      FinancialCategoryNature
+  color       String?                 // Cor para gráficos (#3B82F6 etc)
+  parentId    String?
+  parent      FinancialCategory?      @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    FinancialCategory[]     @relation("CategoryHierarchy")
+  entries     FinancialEntry[]
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  @@index([nature])
+  @@index([parentId])
+}
+
+model FinancialCostCenter {
+  id          String           @id @default(uuid())
+  name        String           // Ex.: "Agência", "Academy", "Produtora Audiovisual", "Geral"
+  code        String           @unique
+  description String?
+  entries     FinancialEntry[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model FinancialAccount {
+  id                  String               @id @default(uuid())
+  name                String               // Ex.: "Asaas (Principal)", "Banco Inter", "Caixa Interno"
+  bankName            String?
+  accountType         FinancialAccountType @default(CHECKING)
+  initialBalanceCents Int                  @default(0)
+  currentBalanceCents Int                  @default(0)
+  isDefault           Boolean              @default(false)
+  entries             FinancialEntry[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model FinancialSupplier {
+  id          String           @id @default(uuid())
+  name        String
+  document    String?          // CPF ou CNPJ
+  email       String?
+  phone       String?
+  pixKey      String?
+  category    String?          // Ex.: "Audiovisual", "Software", "Contabilidade"
+  notes       String?          @db.Text
+  entries     FinancialEntry[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([name])
+}
+
+model FinancialEntry {
+  id                 String               @id @default(uuid())
+  type               FinancialEntryType
+  status             FinancialEntryStatus @default(PENDING)
+  title              String
+  description        String?              @db.Text
+  
+  // Valores em centavos
+  nominalAmountCents Int
+  interestCents      Int                  @default(0)
+  discountCents      Int                  @default(0)
+  paidAmountCents    Int                  @default(0)
+  
+  // Datas contábeis e gerenciais
+  dueDate            DateTime             // Vencimento (Fluxo de Caixa Previsto)
+  competenceDate     DateTime             // Competência (DRE)
+  paidAt             DateTime?            // Efetivação / Liquidação (Fluxo de Caixa Realizado)
+  
+  // Classificação
+  categoryId         String
+  category           FinancialCategory    @relation(fields: [categoryId], references: [id])
+  costCenterId       String?
+  costCenter         FinancialCostCenter? @relation(fields: [costCenterId], references: [id], onDelete: SetNull)
+  accountId          String?
+  account            FinancialAccount?    @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  
+  // Favorecido / Origem
+  clientId           String?
+  client             Client?              @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  influencerId       String?
+  influencer         Influencer?          @relation(fields: [influencerId], references: [id], onDelete: SetNull)
+  supplierId         String?
+  supplier           FinancialSupplier?   @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  
+  // Vínculo com cobranças Asaas existentes
+  chargeId           String?              @unique
+  charge             ClientCharge?        @relation(fields: [chargeId], references: [id], onDelete: SetNull)
+  
+  // Documentação e auditoria
+  attachmentUrl      String?
+  invoiceNumber      String?
+  paymentMethod      String?              // PIX, BOLETO, CREDIT_CARD, BANK_TRANSFER, MONEY
+  notes              String?              @db.Text
+  
+  createdById        String?
+  createdBy          User?                @relation("FinancialEntryCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  approvedById       String?
+  approvedBy         User?                @relation("FinancialEntryApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  
+  // Recorrência / Parcelas
+  installmentIndex   Int?
+  installmentTotal   Int?
+  recurrenceGroupId  String?
+  
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([type, status])
+  @@index([dueDate])
+  @@index([competenceDate])
+  @@index([paidAt])
+  @@index([categoryId])
+  @@index([costCenterId])
+  @@index([accountId])
+  @@index([clientId])
+  @@index([influencerId])
+  @@index([supplierId])
+}
+
 

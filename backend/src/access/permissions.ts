@@ -183,6 +183,17 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     ],
   },
   {
+    key: 'financial',
+    label: 'Gestão Financeira',
+    permissions: [
+      { key: 'financial.view', label: 'Ver visão geral e indicadores financeiros' },
+      { key: 'financial.receivables', label: 'Gerenciar contas a receber' },
+      { key: 'financial.payables', label: 'Gerenciar contas a pagar e aprovações' },
+      { key: 'financial.reports', label: 'Ver DRE, fluxo de caixa e relatórios' },
+      { key: 'financial.settings', label: 'Configurar categorias, centros de custo e contas' },
+    ],
+  },
+  {
     key: 'roles',
     label: 'Cargos e permissões',
     permissions: crud('roles', 'cargos'),
