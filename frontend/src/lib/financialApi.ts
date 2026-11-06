@@ -148,9 +148,9 @@ export const financialApi = {
     api.get<CashFlowReport>(withQuery('/admin/finance/cash-flow', { startDate, endDate })),
   syncCharges: () => api.post<{ count?: number }>('/admin/finance/sync-charges'),
 
-  listEntries: (query: Record<string, unknown>) =>
+  listEntries: (query: Record<string, string | number | boolean | undefined | null>) =>
     api.get<{ items: FinancialEntry[]; total: number; page: number; limit: number; totalPages: number }>(
-      withQuery('/admin/finance/entries', query as any),
+      withQuery('/admin/finance/entries', query),
     ),
   getEntry: (id: string) => api.get<FinancialEntry>(`/admin/finance/entries/${id}`),
   createEntry: (body: unknown) => api.post<FinancialEntry>('/admin/finance/entries', body),
