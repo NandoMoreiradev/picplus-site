@@ -3,6 +3,7 @@ import {
   ArrowDownCircle,
   CheckCircle2,
   ExternalLink,
+  Pencil,
   Plus,
   RefreshCw,
   Trash2,
@@ -27,6 +28,7 @@ import { SearchInput } from '../../../components/ui/SearchInput';
 import { useToast } from '../../../components/ui/Toast';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { formatCents, formatDate, parseBRLToCents } from '../../../lib/format';
+import { errorMessage } from '../../../lib/validation';
 import {
   financialApi,
   type FinancialAccount,
@@ -64,6 +66,7 @@ export function AccountsReceivable() {
   // Modais
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [settleEntry, setSettleEntry] = useState<FinancialEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<FinancialEntry | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // Form de criação
@@ -76,6 +79,19 @@ export function AccountsReceivable() {
   const [formPaymentMethod, setFormPaymentMethod] = useState('PIX');
   const [formInstallments, setFormInstallments] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+
+  // Form de edição
+  const [editTitle, setEditTitle] = useState('');
+  const [editValue, setEditValue] = useState('0,00');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editCompetenceDate, setEditCompetenceDate] = useState('');
+  const [editCategoryId, setEditCategoryId] = useState('');
+  const [editAccountId, setEditAccountId] = useState('');
+  const [editClientId, setEditClientId] = useState('');
+  const [editStatus, setEditStatus] = useState<FinancialEntryStatus>('PENDING');
+  const [editPaymentMethod, setEditPaymentMethod] = useState('PIX');
+  const [editNotes, setEditNotes] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   // Form de liquidação
   const [settleAmount, setSettleAmount] = useState('0,00');
@@ -222,6 +238,61 @@ export function AccountsReceivable() {
     }
   };
 
+  const handleOpenEdit = (entry: FinancialEntry) => {
+    setEditingEntry(entry);
+    setEditTitle(entry.title);
+    setEditValue((entry.nominalAmountCents / 100).toFixed(2).replace('.', ','));
+    setEditDueDate(entry.dueDate.slice(0, 10));
+    setEditCompetenceDate(entry.competenceDate ? entry.competenceDate.slice(0, 10) : entry.dueDate.slice(0, 10));
+    setEditCategoryId(entry.categoryId);
+    setEditAccountId(entry.accountId || '');
+    setEditClientId(entry.clientId || '');
+    setEditStatus(entry.status);
+    setEditPaymentMethod(entry.paymentMethod || 'PIX');
+    setEditNotes(entry.notes || '');
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEntry) return;
+    const cents = parseBRLToCents(editValue);
+    if (!editTitle.trim()) {
+      toast.error('Informe o título do recebimento');
+      return;
+    }
+    if (cents <= 0) {
+      toast.error('O valor deve ser maior que zero');
+      return;
+    }
+    if (!editDueDate) {
+      toast.error('Informe a data de vencimento');
+      return;
+    }
+
+    try {
+      setUpdating(true);
+      await financialApi.updateEntry(editingEntry.id, {
+        title: editTitle.trim(),
+        nominalAmountCents: cents,
+        dueDate: new Date(editDueDate).toISOString(),
+        competenceDate: editCompetenceDate ? new Date(editCompetenceDate).toISOString() : new Date(editDueDate).toISOString(),
+        categoryId: editCategoryId,
+        accountId: editAccountId || null,
+        clientId: editClientId || null,
+        status: editStatus,
+        paymentMethod: editPaymentMethod,
+        notes: editNotes.trim() || null,
+      });
+      toast.success('Recebimento atualizado com sucesso!');
+      setEditingEntry(null);
+      await loadData();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
     try {
@@ -229,8 +300,8 @@ export function AccountsReceivable() {
       toast.success('Lançamento removido com sucesso!');
       setDeleteId(null);
       await loadData();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao remover lançamento');
+    } catch (err: unknown) {
+      toast.error(errorMessage(err));
     }
   };
 
@@ -365,6 +436,12 @@ export function AccountsReceivable() {
                             <ExternalLink size={15} />
                           </a>
                         )}
+                        <IconButton
+                          label="Editar recebimento"
+                          onClick={() => handleOpenEdit(entry)}
+                        >
+                          <Pencil size={15} />
+                        </IconButton>
                         {entry.status !== 'PAID' && entry.status !== 'CANCELED' && (
                           <IconButton
                             label="Dar baixa / Registrar recebimento"
@@ -374,7 +451,7 @@ export function AccountsReceivable() {
                             <CheckCircle2 size={16} />
                           </IconButton>
                         )}
-                        {entry.status !== 'PAID' && (
+                        {!(entry.status === 'PAID' && entry.chargeId) && (
                           <IconButton
                             label="Excluir recebimento"
                             danger
@@ -536,6 +613,122 @@ export function AccountsReceivable() {
             </Button>
             <Button type="submit" disabled={settling}>
               {settling ? 'Confirmando…' : 'Confirmar Recebimento'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal de Editar Recebimento */}
+      <Modal
+        open={!!editingEntry}
+        onClose={() => setEditingEntry(null)}
+        title="Editar Lançamento a Receber"
+      >
+        <form onSubmit={handleUpdate}>
+          <TextField
+            label="Título / Descrição *"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            required
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+            <CurrencyField
+              label="Valor Nominal (R$) *"
+              value={editValue}
+              onChange={setEditValue}
+            />
+            <TextField
+              label="Data de Vencimento *"
+              type="date"
+              value={editDueDate}
+              onChange={(e) => setEditDueDate(e.target.value)}
+              required
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+            <TextField
+              label="Data de Competência (DRE)"
+              type="date"
+              value={editCompetenceDate}
+              onChange={(e) => setEditCompetenceDate(e.target.value)}
+            />
+            <SelectField
+              label="Status *"
+              value={editStatus}
+              onChange={(e) => setEditStatus(e.target.value as FinancialEntryStatus)}
+              options={[
+                { value: 'PENDING', label: 'Aguardando' },
+                { value: 'PARTIALLY_PAID', label: 'Parcial' },
+                { value: 'PAID', label: 'Recebido' },
+                { value: 'OVERDUE', label: 'Em atraso' },
+                { value: 'CANCELED', label: 'Cancelado' },
+              ]}
+              disabled={!!(editingEntry?.chargeId && editingEntry?.status === 'PAID')}
+            />
+          </div>
+
+          <div style={{ marginTop: '0.75rem' }}>
+            <SelectField
+              label="Categoria Contábil *"
+              value={editCategoryId}
+              onChange={(e) => setEditCategoryId(e.target.value)}
+              options={categories.map((c) => ({ value: c.id, label: `${c.code} - ${c.name}` }))}
+            />
+          </div>
+
+          <div style={{ marginTop: '0.75rem' }}>
+            <SelectField
+              label="Cliente Vinculado (Opcional)"
+              value={editClientId}
+              onChange={(e) => setEditClientId(e.target.value)}
+              options={[
+                { value: '', label: 'Sem vínculo com cliente específico' },
+                ...clients.map((c) => ({ value: c.id, label: c.tradeName || c.corporateName })),
+              ]}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+            <SelectField
+              label="Conta Bancária Destino"
+              value={editAccountId}
+              onChange={(e) => setEditAccountId(e.target.value)}
+              options={[
+                { value: '', label: 'Nenhuma / Padrão' },
+                ...accounts.map((a) => ({ value: a.id, label: `${a.name} (${a.bankName || a.accountType})` })),
+              ]}
+            />
+            <SelectField
+              label="Forma de Pagamento"
+              value={editPaymentMethod}
+              onChange={(e) => setEditPaymentMethod(e.target.value)}
+              options={[
+                { value: 'PIX', label: 'PIX' },
+                { value: 'BOLETO', label: 'Boleto Bancário' },
+                { value: 'CREDIT_CARD', label: 'Cartão de Crédito' },
+                { value: 'BANK_TRANSFER', label: 'Transferência / TED' },
+                { value: 'MONEY', label: 'Dinheiro / Espécie' },
+              ]}
+            />
+          </div>
+
+          <div style={{ marginTop: '0.75rem' }}>
+            <TextField
+              label="Observações / Notas Internas"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              placeholder="Anotações internas sobre este recebimento..."
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.625rem', marginTop: '1.5rem' }}>
+            <Button type="button" variant="ghost" onClick={() => setEditingEntry(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={updating}>
+              Salvar Alterações
             </Button>
           </div>
         </form>

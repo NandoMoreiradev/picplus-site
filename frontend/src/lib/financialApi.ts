@@ -161,13 +161,21 @@ export const financialApi = {
 
   listCategories: () => api.get<FinancialCategory[]>('/admin/finance/categories'),
   createCategory: (body: unknown) => api.post<FinancialCategory>('/admin/finance/categories', body),
+  updateCategory: (id: string, body: unknown) => api.put<FinancialCategory>(`/admin/finance/categories/${id}`, body),
+  deleteCategory: (id: string) => api.delete(`/admin/finance/categories/${id}`),
 
   listCostCenters: () => api.get<FinancialCostCenter[]>('/admin/finance/cost-centers'),
   createCostCenter: (body: unknown) => api.post<FinancialCostCenter>('/admin/finance/cost-centers', body),
+  updateCostCenter: (id: string, body: unknown) => api.put<FinancialCostCenter>(`/admin/finance/cost-centers/${id}`, body),
+  deleteCostCenter: (id: string) => api.delete(`/admin/finance/cost-centers/${id}`),
 
   listAccounts: () => api.get<FinancialAccount[]>('/admin/finance/accounts'),
   createAccount: (body: unknown) => api.post<FinancialAccount>('/admin/finance/accounts', body),
+  updateAccount: (id: string, body: unknown) => api.put<FinancialAccount>(`/admin/finance/accounts/${id}`, body),
+  deleteAccount: (id: string) => api.delete(`/admin/finance/accounts/${id}`),
 
   listSuppliers: () => api.get<FinancialSupplier[]>('/admin/finance/suppliers'),
   createSupplier: (body: unknown) => api.post<FinancialSupplier>('/admin/finance/suppliers', body),
+  updateSupplier: (id: string, body: unknown) => api.put<FinancialSupplier>(`/admin/finance/suppliers/${id}`, body),
+  deleteSupplier: (id: string) => api.delete(`/admin/finance/suppliers/${id}`),
 };

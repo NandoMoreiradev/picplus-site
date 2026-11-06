@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import {
+  IconButton,
   PageHeader,
+  RowActions,
   StatusPill,
   Table,
   TableWrap,
@@ -11,9 +13,10 @@ import {
 import { Button } from '../../../components/ui/Button';
 import { PageLoader } from '../../../components/ui/Feedback';
 import { CurrencyField, SelectField, TextField } from '../../../components/ui/Form';
-import { Modal } from '../../../components/ui/Modal';
+import { ConfirmDialog, Modal } from '../../../components/ui/Modal';
 import { useToast } from '../../../components/ui/Toast';
 import { formatCents, parseBRLToCents } from '../../../lib/format';
+import { errorMessage } from '../../../lib/validation';
 import {
   financialApi,
   type FinancialAccount,
@@ -67,31 +70,69 @@ export function FinancialSettings() {
   const [suppPhone, setSuppPhone] = useState('');
   const [suppPix, setSuppPix] = useState('');
 
-  const toast = useToast();
+  // Modais de Edição
+  const [editingCat, setEditingCat] = useState<FinancialCategory | null>(null);
+  const [editCatName, setEditCatName] = useState('');
+  const [editCatCode, setEditCatCode] = useState('');
+  const [editCatNature, setEditCatNature] = useState<FinancialCategoryNature>('REVENUE');
 
-  const loadAll = async () => {
-    try {
-      setLoading(true);
-      const [cats, ccs, accs, supps] = await Promise.all([
-        financialApi.listCategories(),
-        financialApi.listCostCenters(),
-        financialApi.listAccounts(),
-        financialApi.listSuppliers(),
-      ]);
-      setCategories(cats);
-      setCostCenters(ccs);
-      setAccounts(accs);
-      setSuppliers(supps);
-    } catch {
-      toast.error('Erro ao carregar configurações financeiras');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [editingCc, setEditingCc] = useState<FinancialCostCenter | null>(null);
+  const [editCcName, setEditCcName] = useState('');
+  const [editCcCode, setEditCcCode] = useState('');
+  const [editCcDesc, setEditCcDesc] = useState('');
+
+  const [editingAcc, setEditingAcc] = useState<FinancialAccount | null>(null);
+  const [editAccName, setEditAccName] = useState('');
+  const [editAccBank, setEditAccBank] = useState('');
+  const [editAccBalance, setEditAccBalance] = useState('0,00');
+
+  const [editingSupp, setEditingSupp] = useState<FinancialSupplier | null>(null);
+  const [editSuppName, setEditSuppName] = useState('');
+  const [editSuppDoc, setEditSuppDoc] = useState('');
+  const [editSuppEmail, setEditSuppEmail] = useState('');
+  const [editSuppPhone, setEditSuppPhone] = useState('');
+  const [editSuppPix, setEditSuppPix] = useState('');
+
+  // Modal de Exclusão
+  const [deletingTarget, setDeletingTarget] = useState<{
+    type: 'category' | 'costCenter' | 'account' | 'supplier';
+    id: string;
+    name: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const toast = useToast();
+  const [version, setVersion] = useState(0);
+  const loadAll = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
-    loadAll();
-  }, []);
+    let active = true;
+    Promise.all([
+      financialApi.listCategories(),
+      financialApi.listCostCenters(),
+      financialApi.listAccounts(),
+      financialApi.listSuppliers(),
+    ])
+      .then(([cats, ccs, accs, supps]) => {
+        if (!active) return;
+        setCategories(cats);
+        setCostCenters(ccs);
+        setAccounts(accs);
+        setSuppliers(supps);
+      })
+      .catch(() => {
+        if (!active) return;
+        toast.error('Erro ao carregar configurações financeiras');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [toast, version]);
 
   const handleCreateCat = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,8 +201,149 @@ export function FinancialSettings() {
       setSuppPhone('');
       setSuppPix('');
       await loadAll();
-    } catch {
-      toast.error('Erro ao cadastrar fornecedor');
+    } catch (err) {
+      toast.error(errorMessage(err) || 'Erro ao cadastrar fornecedor');
+    }
+  };
+
+  // Abrir modais de edição
+  const handleOpenEditCat = (c: FinancialCategory) => {
+    setEditingCat(c);
+    setEditCatName(c.name);
+    setEditCatCode(c.code);
+    setEditCatNature(c.nature);
+  };
+
+  const handleOpenEditCc = (cc: FinancialCostCenter) => {
+    setEditingCc(cc);
+    setEditCcName(cc.name);
+    setEditCcCode(cc.code);
+    setEditCcDesc(cc.description || '');
+  };
+
+  const handleOpenEditAcc = (acc: FinancialAccount) => {
+    setEditingAcc(acc);
+    setEditAccName(acc.name);
+    setEditAccBank(acc.bankName || '');
+    setEditAccBalance((acc.currentBalanceCents / 100).toFixed(2).replace('.', ','));
+  };
+
+  const handleOpenEditSupp = (s: FinancialSupplier) => {
+    setEditingSupp(s);
+    setEditSuppName(s.name);
+    setEditSuppDoc(s.document || '');
+    setEditSuppEmail(s.email || '');
+    setEditSuppPhone(s.phone || '');
+    setEditSuppPix(s.pixKey || '');
+  };
+
+  // Submissão de edições
+  const handleUpdateCat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCat) return;
+    try {
+      setIsSaving(true);
+      await financialApi.updateCategory(editingCat.id, {
+        name: editCatName,
+        code: editCatCode,
+        nature: editCatNature,
+      });
+      toast.success('Categoria contábil atualizada!');
+      setEditingCat(null);
+      await loadAll();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateCc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCc) return;
+    try {
+      setIsSaving(true);
+      await financialApi.updateCostCenter(editingCc.id, {
+        name: editCcName,
+        code: editCcCode.toUpperCase(),
+        description: editCcDesc,
+      });
+      toast.success('Centro de custo atualizado!');
+      setEditingCc(null);
+      await loadAll();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateAcc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAcc) return;
+    try {
+      setIsSaving(true);
+      await financialApi.updateAccount(editingAcc.id, {
+        name: editAccName,
+        bankName: editAccBank,
+        currentBalanceCents: parseBRLToCents(editAccBalance),
+      });
+      toast.success('Conta bancária atualizada!');
+      setEditingAcc(null);
+      await loadAll();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUpdateSupp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSupp) return;
+    try {
+      setIsSaving(true);
+      await financialApi.updateSupplier(editingSupp.id, {
+        name: editSuppName,
+        document: editSuppDoc,
+        email: editSuppEmail,
+        phone: editSuppPhone,
+        pixKey: editSuppPix,
+      });
+      toast.success('Fornecedor atualizado!');
+      setEditingSupp(null);
+      await loadAll();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Exclusão
+  const handleConfirmDelete = async () => {
+    if (!deletingTarget) return;
+    try {
+      setIsDeleting(true);
+      if (deletingTarget.type === 'category') {
+        await financialApi.deleteCategory(deletingTarget.id);
+        toast.success(`Categoria "${deletingTarget.name}" excluída!`);
+      } else if (deletingTarget.type === 'costCenter') {
+        await financialApi.deleteCostCenter(deletingTarget.id);
+        toast.success(`Centro de custo "${deletingTarget.name}" excluído!`);
+      } else if (deletingTarget.type === 'account') {
+        await financialApi.deleteAccount(deletingTarget.id);
+        toast.success(`Conta bancária "${deletingTarget.name}" excluída!`);
+      } else if (deletingTarget.type === 'supplier') {
+        await financialApi.deleteSupplier(deletingTarget.id);
+        toast.success(`Fornecedor "${deletingTarget.name}" excluído!`);
+      }
+      setDeletingTarget(null);
+      await loadAll();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -222,6 +404,7 @@ export function FinancialSettings() {
                 <th>Código</th>
                 <th>Nome da Categoria</th>
                 <th>Natureza (DRE)</th>
+                <th style={{ textAlign: 'right' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -235,6 +418,29 @@ export function FinancialSettings() {
                     <td>{c.name}</td>
                     <td>
                       <StatusPill tone={nat.tone}>{nat.label}</StatusPill>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <RowActions>
+                        <IconButton
+                          label="Editar categoria"
+                          onClick={() => handleOpenEditCat(c)}
+                        >
+                          <Pencil size={15} />
+                        </IconButton>
+                        <IconButton
+                          label="Excluir categoria"
+                          danger
+                          onClick={() =>
+                            setDeletingTarget({
+                              type: 'category',
+                              id: c.id,
+                              name: c.name,
+                            })
+                          }
+                        >
+                          <Trash2 size={15} />
+                        </IconButton>
+                      </RowActions>
                     </td>
                   </tr>
                 );
@@ -253,6 +459,7 @@ export function FinancialSettings() {
                 <th>Código</th>
                 <th>Nome</th>
                 <th>Descrição</th>
+                <th style={{ textAlign: 'right' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -263,6 +470,29 @@ export function FinancialSettings() {
                   </td>
                   <td>{cc.name}</td>
                   <td style={{ color: '#94a3b8' }}>{cc.description || '—'}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    <RowActions>
+                      <IconButton
+                        label="Editar centro de custo"
+                        onClick={() => handleOpenEditCc(cc)}
+                      >
+                        <Pencil size={15} />
+                      </IconButton>
+                      <IconButton
+                        label="Excluir centro de custo"
+                        danger
+                        onClick={() =>
+                          setDeletingTarget({
+                            type: 'costCenter',
+                            id: cc.id,
+                            name: cc.name,
+                          })
+                        }
+                      >
+                        <Trash2 size={15} />
+                      </IconButton>
+                    </RowActions>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -280,6 +510,7 @@ export function FinancialSettings() {
                 <th>Instituição</th>
                 <th>Tipo</th>
                 <th>Saldo Atual</th>
+                <th style={{ textAlign: 'right' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -293,6 +524,31 @@ export function FinancialSettings() {
                   <td>{acc.accountType}</td>
                   <td>
                     <strong style={{ color: '#10b981' }}>{formatCents(acc.currentBalanceCents)}</strong>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <RowActions>
+                      <IconButton
+                        label="Editar conta bancária"
+                        onClick={() => handleOpenEditAcc(acc)}
+                      >
+                        <Pencil size={15} />
+                      </IconButton>
+                      {!acc.isDefault && (
+                        <IconButton
+                          label="Excluir conta bancária"
+                          danger
+                          onClick={() =>
+                            setDeletingTarget({
+                              type: 'account',
+                              id: acc.id,
+                              name: acc.name,
+                            })
+                          }
+                        >
+                          <Trash2 size={15} />
+                        </IconButton>
+                      )}
+                    </RowActions>
                   </td>
                 </tr>
               ))}
@@ -311,12 +567,13 @@ export function FinancialSettings() {
                 <th>Documento</th>
                 <th>Contato</th>
                 <th>Chave PIX</th>
+                <th style={{ textAlign: 'right' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {suppliers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', color: '#94a3b8' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8' }}>
                     Nenhum fornecedor cadastrado.
                   </td>
                 </tr>
@@ -329,6 +586,29 @@ export function FinancialSettings() {
                     <td style={{ color: '#cbd5e1' }}>{s.document || '—'}</td>
                     <td style={{ color: '#94a3b8' }}>{s.email || s.phone || '—'}</td>
                     <td style={{ color: '#38bdf8' }}>{s.pixKey || '—'}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <RowActions>
+                        <IconButton
+                          label="Editar fornecedor"
+                          onClick={() => handleOpenEditSupp(s)}
+                        >
+                          <Pencil size={15} />
+                        </IconButton>
+                        <IconButton
+                          label="Excluir fornecedor"
+                          danger
+                          onClick={() =>
+                            setDeletingTarget({
+                              type: 'supplier',
+                              id: s.id,
+                              name: s.name,
+                            })
+                          }
+                        >
+                          <Trash2 size={15} />
+                        </IconButton>
+                      </RowActions>
+                    </td>
                   </tr>
                 ))
               )}
@@ -358,7 +638,7 @@ export function FinancialSettings() {
             <SelectField
               label="Natureza no DRE *"
               value={catNature}
-              onChange={(e) => setCatNature(e.target.value as any)}
+              onChange={(e) => setCatNature(e.target.value as FinancialCategoryNature)}
               options={[
                 { value: 'REVENUE', label: '1. Receita Operacional' },
                 { value: 'DEDUCTION', label: '2. Dedução da Receita' },
@@ -487,6 +767,175 @@ export function FinancialSettings() {
           </div>
         </form>
       </Modal>
+
+      {/* Modal Editar Categoria */}
+      <Modal open={!!editingCat} onClose={() => setEditingCat(null)} title="Editar Categoria Contábil">
+        <form onSubmit={handleUpdateCat}>
+          <TextField
+            label="Código (ex: 1.5, 3.4, 4.6) *"
+            value={editCatCode}
+            onChange={(e) => setEditCatCode(e.target.value)}
+            required
+          />
+          <div style={{ marginTop: '0.75rem' }}>
+            <TextField
+              label="Nome da Categoria *"
+              value={editCatName}
+              onChange={(e) => setEditCatName(e.target.value)}
+              required
+            />
+          </div>
+          <div style={{ marginTop: '0.75rem' }}>
+            <SelectField
+              label="Natureza no DRE *"
+              value={editCatNature}
+              onChange={(e) => setEditCatNature(e.target.value as FinancialCategoryNature)}
+              options={[
+                { value: 'REVENUE', label: '1. Receita Operacional' },
+                { value: 'DEDUCTION', label: '2. Dedução da Receita' },
+                { value: 'DIRECT_COST', label: '3. Custo Direto (CSP / Repasses)' },
+                { value: 'OPERATING_EXPENSE', label: '4. Despesa Operacional / Fixa' },
+                { value: 'FINANCIAL_RESULT', label: '5. Resultado Financeiro' },
+              ]}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.625rem', marginTop: '1.5rem' }}>
+            <Button type="button" variant="ghost" onClick={() => setEditingCat(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={isSaving}>Salvar Alterações</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Editar Centro de Custo */}
+      <Modal open={!!editingCc} onClose={() => setEditingCc(null)} title="Editar Centro de Custo">
+        <form onSubmit={handleUpdateCc}>
+          <TextField
+            label="Código (ex: PODCAST, DESIGN) *"
+            value={editCcCode}
+            onChange={(e) => setEditCcCode(e.target.value)}
+            required
+          />
+          <div style={{ marginTop: '0.75rem' }}>
+            <TextField
+              label="Nome do Centro de Custo *"
+              value={editCcName}
+              onChange={(e) => setEditCcName(e.target.value)}
+              required
+            />
+          </div>
+          <div style={{ marginTop: '0.75rem' }}>
+            <TextField
+              label="Descrição"
+              value={editCcDesc}
+              onChange={(e) => setEditCcDesc(e.target.value)}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.625rem', marginTop: '1.5rem' }}>
+            <Button type="button" variant="ghost" onClick={() => setEditingCc(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={isSaving}>Salvar Alterações</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Editar Conta Bancária */}
+      <Modal open={!!editingAcc} onClose={() => setEditingAcc(null)} title="Editar Conta Bancária">
+        <form onSubmit={handleUpdateAcc}>
+          <TextField
+            label="Nome da Conta *"
+            value={editAccName}
+            onChange={(e) => setEditAccName(e.target.value)}
+            required
+          />
+          <div style={{ marginTop: '0.75rem' }}>
+            <TextField
+              label="Instituição / Banco"
+              value={editAccBank}
+              onChange={(e) => setEditAccBank(e.target.value)}
+            />
+          </div>
+          <div style={{ marginTop: '0.75rem' }}>
+            <CurrencyField
+              label="Saldo Atual (R$)"
+              value={editAccBalance}
+              onChange={setEditAccBalance}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.625rem', marginTop: '1.5rem' }}>
+            <Button type="button" variant="ghost" onClick={() => setEditingAcc(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={isSaving}>Salvar Alterações</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Editar Fornecedor */}
+      <Modal open={!!editingSupp} onClose={() => setEditingSupp(null)} title="Editar Fornecedor">
+        <form onSubmit={handleUpdateSupp}>
+          <TextField
+            label="Nome / Razão Social *"
+            value={editSuppName}
+            onChange={(e) => setEditSuppName(e.target.value)}
+            required
+          />
+          <div style={{ marginTop: '0.75rem' }}>
+            <TextField
+              label="CNPJ ou CPF"
+              value={editSuppDoc}
+              onChange={(e) => setEditSuppDoc(e.target.value)}
+            />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+            <TextField
+              label="E-mail"
+              type="email"
+              value={editSuppEmail}
+              onChange={(e) => setEditSuppEmail(e.target.value)}
+            />
+            <TextField
+              label="Telefone / WhatsApp"
+              value={editSuppPhone}
+              onChange={(e) => setEditSuppPhone(e.target.value)}
+            />
+          </div>
+          <div style={{ marginTop: '0.75rem' }}>
+            <TextField
+              label="Chave PIX"
+              value={editSuppPix}
+              onChange={(e) => setEditSuppPix(e.target.value)}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.625rem', marginTop: '1.5rem' }}>
+            <Button type="button" variant="ghost" onClick={() => setEditingSupp(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" loading={isSaving}>Salvar Alterações</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal Confirmação de Exclusão */}
+      <ConfirmDialog
+        open={!!deletingTarget}
+        title="Confirmar Exclusão"
+        message={`Tem certeza de que deseja excluir ${
+          deletingTarget?.type === 'category'
+            ? `a categoria "${deletingTarget?.name}"`
+            : deletingTarget?.type === 'costCenter'
+            ? `o centro de custo "${deletingTarget?.name}"`
+            : deletingTarget?.type === 'account'
+            ? `a conta bancária "${deletingTarget?.name}"`
+            : `o fornecedor "${deletingTarget?.name}"`
+        }? Esta ação não pode ser desfeita.`}
+        confirmLabel="Excluir"
+        loading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeletingTarget(null)}
+      />
     </div>
   );
 }

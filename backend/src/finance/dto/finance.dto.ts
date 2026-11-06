@@ -346,3 +346,111 @@ export class CreateSupplierDto {
   @IsString()
   notes?: string;
 }
+
+export class UpdateCategoryDto {
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MinLength(2)
+  name?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsEnum(FinancialCategoryNature)
+  nature?: FinancialCategoryNature;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  color?: string;
+
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+}
+
+export class UpdateCostCenterDto {
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MinLength(2)
+  name?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  description?: string;
+}
+
+export class UpdateAccountDto {
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MinLength(2)
+  name?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  bankName?: string;
+
+  @IsOptional()
+  @IsEnum(FinancialAccountType)
+  accountType?: FinancialAccountType;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  currentBalanceCents?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
+}
+
+export class UpdateSupplierDto {
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MinLength(2)
+  name?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  document?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  pixKey?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  notes?: string;
+}

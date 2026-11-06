@@ -21,7 +21,11 @@ import {
   CreateSupplierDto,
   ListFinancialEntriesQueryDto,
   SettleFinancialEntryDto,
+  UpdateAccountDto,
+  UpdateCategoryDto,
+  UpdateCostCenterDto,
   UpdateFinancialEntryDto,
+  UpdateSupplierDto,
 } from './dto/finance.dto';
 import { randomUUID } from 'crypto';
 
@@ -543,6 +547,23 @@ export class FinanceService implements OnModuleInit {
         'Não é permitido excluir uma cobrança oficial do Asaas já liquidada.',
       );
     }
+
+    // Reverte saldo da conta se o título estava liquidado manualmente
+    if (
+      entry.status === FinancialEntryStatus.PAID &&
+      entry.accountId &&
+      entry.paidAmountCents > 0
+    ) {
+      const revertDelta =
+        entry.type === FinancialEntryType.INCOME
+          ? -entry.paidAmountCents
+          : entry.paidAmountCents;
+      await this.prisma.financialAccount.update({
+        where: { id: entry.accountId },
+        data: { currentBalanceCents: { increment: revertDelta } },
+      });
+    }
+
     return this.prisma.financialEntry.delete({ where: { id } });
   }
 
@@ -862,6 +883,44 @@ export class FinanceService implements OnModuleInit {
     return this.prisma.financialCategory.create({ data: dto });
   }
 
+  async updateCategory(id: string, dto: UpdateCategoryDto) {
+    const exists = await this.prisma.financialCategory.findUnique({
+      where: { id },
+    });
+    if (!exists) throw new NotFoundException('Categoria não encontrada.');
+    return this.prisma.financialCategory.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteCategory(id: string) {
+    const exists = await this.prisma.financialCategory.findUnique({
+      where: { id },
+    });
+    if (!exists) throw new NotFoundException('Categoria não encontrada.');
+
+    const entriesCount = await this.prisma.financialEntry.count({
+      where: { categoryId: id },
+    });
+    if (entriesCount > 0) {
+      throw new BadRequestException(
+        `Não é possível excluir a categoria "${exists.name}" pois ela possui ${entriesCount} lançamento(s) vinculado(s).`,
+      );
+    }
+
+    const childrenCount = await this.prisma.financialCategory.count({
+      where: { parentId: id },
+    });
+    if (childrenCount > 0) {
+      throw new BadRequestException(
+        `Não é possível excluir a categoria "${exists.name}" pois ela possui subcategorias vinculadas.`,
+      );
+    }
+
+    return this.prisma.financialCategory.delete({ where: { id } });
+  }
+
   async listCostCenters() {
     return this.prisma.financialCostCenter.findMany({
       orderBy: { name: 'asc' },
@@ -870,6 +929,25 @@ export class FinanceService implements OnModuleInit {
 
   async createCostCenter(dto: CreateCostCenterDto) {
     return this.prisma.financialCostCenter.create({ data: dto });
+  }
+
+  async updateCostCenter(id: string, dto: UpdateCostCenterDto) {
+    const exists = await this.prisma.financialCostCenter.findUnique({
+      where: { id },
+    });
+    if (!exists) throw new NotFoundException('Centro de custo não encontrado.');
+    return this.prisma.financialCostCenter.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteCostCenter(id: string) {
+    const exists = await this.prisma.financialCostCenter.findUnique({
+      where: { id },
+    });
+    if (!exists) throw new NotFoundException('Centro de custo não encontrado.');
+    return this.prisma.financialCostCenter.delete({ where: { id } });
   }
 
   async listAccounts() {
@@ -882,11 +960,73 @@ export class FinanceService implements OnModuleInit {
     return this.prisma.financialAccount.create({ data: dto });
   }
 
+  async updateAccount(id: string, dto: UpdateAccountDto) {
+    const exists = await this.prisma.financialAccount.findUnique({
+      where: { id },
+    });
+    if (!exists) throw new NotFoundException('Conta bancária não encontrada.');
+
+    if (dto.isDefault) {
+      await this.prisma.financialAccount.updateMany({
+        where: { id: { not: id } },
+        data: { isDefault: false },
+      });
+    }
+
+    return this.prisma.financialAccount.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteAccount(id: string) {
+    const exists = await this.prisma.financialAccount.findUnique({
+      where: { id },
+    });
+    if (!exists) throw new NotFoundException('Conta bancária não encontrada.');
+
+    if (exists.isDefault) {
+      throw new BadRequestException(
+        'Não é possível excluir a conta bancária padrão.',
+      );
+    }
+
+    const entriesCount = await this.prisma.financialEntry.count({
+      where: { accountId: id },
+    });
+    if (entriesCount > 0) {
+      throw new BadRequestException(
+        `Não é possível excluir a conta "${exists.name}" pois ela possui ${entriesCount} lançamento(s) vinculado(s).`,
+      );
+    }
+
+    return this.prisma.financialAccount.delete({ where: { id } });
+  }
+
   async listSuppliers() {
     return this.prisma.financialSupplier.findMany({ orderBy: { name: 'asc' } });
   }
 
   async createSupplier(dto: CreateSupplierDto) {
     return this.prisma.financialSupplier.create({ data: dto });
+  }
+
+  async updateSupplier(id: string, dto: UpdateSupplierDto) {
+    const exists = await this.prisma.financialSupplier.findUnique({
+      where: { id },
+    });
+    if (!exists) throw new NotFoundException('Fornecedor não encontrado.');
+    return this.prisma.financialSupplier.update({
+      where: { id },
+      data: dto,
+    });
+  }
+
+  async deleteSupplier(id: string) {
+    const exists = await this.prisma.financialSupplier.findUnique({
+      where: { id },
+    });
+    if (!exists) throw new NotFoundException('Fornecedor não encontrado.');
+    return this.prisma.financialSupplier.delete({ where: { id } });
   }
 }

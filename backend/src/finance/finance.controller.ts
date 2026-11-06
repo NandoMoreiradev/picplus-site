@@ -12,6 +12,7 @@ import {
 import type { AuthUser } from '../common/decorators/current-user.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import {
+  RequireAnyPermission,
   RequirePermissions,
   Resource,
 } from '../common/decorators/permissions.decorator';
@@ -23,7 +24,11 @@ import {
   CreateSupplierDto,
   ListFinancialEntriesQueryDto,
   SettleFinancialEntryDto,
+  UpdateAccountDto,
+  UpdateCategoryDto,
+  UpdateCostCenterDto,
   UpdateFinancialEntryDto,
+  UpdateSupplierDto,
 } from './dto/finance.dto';
 import { FinanceService } from './finance.service';
 
@@ -121,6 +126,19 @@ export class FinanceController {
     return this.finance.createCategory(dto);
   }
 
+  @Put('categories/:id')
+  @RequirePermissions('financial.settings')
+  updateCategory(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
+    return this.finance.updateCategory(id, dto);
+  }
+
+  @Delete('categories/:id')
+  @HttpCode(204)
+  @RequirePermissions('financial.settings')
+  async deleteCategory(@Param('id') id: string) {
+    await this.finance.deleteCategory(id);
+  }
+
   @Get('cost-centers')
   @RequirePermissions('financial.view')
   listCostCenters() {
@@ -131,6 +149,19 @@ export class FinanceController {
   @RequirePermissions('financial.settings')
   createCostCenter(@Body() dto: CreateCostCenterDto) {
     return this.finance.createCostCenter(dto);
+  }
+
+  @Put('cost-centers/:id')
+  @RequirePermissions('financial.settings')
+  updateCostCenter(@Param('id') id: string, @Body() dto: UpdateCostCenterDto) {
+    return this.finance.updateCostCenter(id, dto);
+  }
+
+  @Delete('cost-centers/:id')
+  @HttpCode(204)
+  @RequirePermissions('financial.settings')
+  async deleteCostCenter(@Param('id') id: string) {
+    await this.finance.deleteCostCenter(id);
   }
 
   @Get('accounts')
@@ -145,6 +176,19 @@ export class FinanceController {
     return this.finance.createAccount(dto);
   }
 
+  @Put('accounts/:id')
+  @RequirePermissions('financial.settings')
+  updateAccount(@Param('id') id: string, @Body() dto: UpdateAccountDto) {
+    return this.finance.updateAccount(id, dto);
+  }
+
+  @Delete('accounts/:id')
+  @HttpCode(204)
+  @RequirePermissions('financial.settings')
+  async deleteAccount(@Param('id') id: string) {
+    await this.finance.deleteAccount(id);
+  }
+
   @Get('suppliers')
   @RequirePermissions('financial.view')
   listSuppliers() {
@@ -152,8 +196,21 @@ export class FinanceController {
   }
 
   @Post('suppliers')
-  @RequirePermissions('financial.payables')
+  @RequireAnyPermission('financial.settings', 'financial.payables')
   createSupplier(@Body() dto: CreateSupplierDto) {
     return this.finance.createSupplier(dto);
+  }
+
+  @Put('suppliers/:id')
+  @RequireAnyPermission('financial.settings', 'financial.payables')
+  updateSupplier(@Param('id') id: string, @Body() dto: UpdateSupplierDto) {
+    return this.finance.updateSupplier(id, dto);
+  }
+
+  @Delete('suppliers/:id')
+  @HttpCode(204)
+  @RequireAnyPermission('financial.settings', 'financial.payables')
+  async deleteSupplier(@Param('id') id: string) {
+    await this.finance.deleteSupplier(id);
   }
 }
