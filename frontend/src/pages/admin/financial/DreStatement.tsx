@@ -74,20 +74,24 @@ export function DreStatement() {
   const [report, setReport] = useState<DreReport | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadDre = async (selectedYear: number) => {
-    try {
-      setLoading(true);
-      const data = await financialApi.getDre(selectedYear);
-      setReport(data);
-    } catch {
-      // Error
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadDre(year);
+    let active = true;
+    financialApi
+      .getDre(year)
+      .then((data) => {
+        if (!active) return;
+        setReport(data);
+      })
+      .catch(() => {
+        // Error
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [year]);
 
   if (loading && !report) return <PageLoader label="Calculando DRE Gerencial…" />;

@@ -6,10 +6,14 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import {
+  FinancialAccount,
   FinancialAccountType,
+  FinancialCategory,
   FinancialCategoryNature,
+  FinancialCostCenter,
   FinancialEntryStatus,
   FinancialEntryType,
+  FinancialSupplier,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -883,7 +887,10 @@ export class FinanceService implements OnModuleInit {
     return this.prisma.financialCategory.create({ data: dto });
   }
 
-  async updateCategory(id: string, dto: UpdateCategoryDto) {
+  async updateCategory(
+    id: string,
+    dto: UpdateCategoryDto,
+  ): Promise<FinancialCategory> {
     const exists = await this.prisma.financialCategory.findUnique({
       where: { id },
     });
@@ -894,7 +901,7 @@ export class FinanceService implements OnModuleInit {
     });
   }
 
-  async deleteCategory(id: string) {
+  async deleteCategory(id: string): Promise<FinancialCategory> {
     const exists = await this.prisma.financialCategory.findUnique({
       where: { id },
     });
@@ -931,7 +938,10 @@ export class FinanceService implements OnModuleInit {
     return this.prisma.financialCostCenter.create({ data: dto });
   }
 
-  async updateCostCenter(id: string, dto: UpdateCostCenterDto) {
+  async updateCostCenter(
+    id: string,
+    dto: UpdateCostCenterDto,
+  ): Promise<FinancialCostCenter> {
     const exists = await this.prisma.financialCostCenter.findUnique({
       where: { id },
     });
@@ -942,7 +952,7 @@ export class FinanceService implements OnModuleInit {
     });
   }
 
-  async deleteCostCenter(id: string) {
+  async deleteCostCenter(id: string): Promise<FinancialCostCenter> {
     const exists = await this.prisma.financialCostCenter.findUnique({
       where: { id },
     });
@@ -960,7 +970,10 @@ export class FinanceService implements OnModuleInit {
     return this.prisma.financialAccount.create({ data: dto });
   }
 
-  async updateAccount(id: string, dto: UpdateAccountDto) {
+  async updateAccount(
+    id: string,
+    dto: UpdateAccountDto,
+  ): Promise<FinancialAccount> {
     const exists = await this.prisma.financialAccount.findUnique({
       where: { id },
     });
@@ -979,7 +992,7 @@ export class FinanceService implements OnModuleInit {
     });
   }
 
-  async deleteAccount(id: string) {
+  async deleteAccount(id: string): Promise<FinancialAccount> {
     const exists = await this.prisma.financialAccount.findUnique({
       where: { id },
     });
@@ -1011,7 +1024,10 @@ export class FinanceService implements OnModuleInit {
     return this.prisma.financialSupplier.create({ data: dto });
   }
 
-  async updateSupplier(id: string, dto: UpdateSupplierDto) {
+  async updateSupplier(
+    id: string,
+    dto: UpdateSupplierDto,
+  ): Promise<FinancialSupplier> {
     const exists = await this.prisma.financialSupplier.findUnique({
       where: { id },
     });
@@ -1022,7 +1038,7 @@ export class FinanceService implements OnModuleInit {
     });
   }
 
-  async deleteSupplier(id: string) {
+  async deleteSupplier(id: string): Promise<FinancialSupplier> {
     const exists = await this.prisma.financialSupplier.findUnique({
       where: { id },
     });

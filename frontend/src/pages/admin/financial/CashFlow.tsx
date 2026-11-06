@@ -56,20 +56,24 @@ export function CashFlow() {
   const [report, setReport] = useState<CashFlowReport | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadFlow = async () => {
-    try {
-      setLoading(true);
-      const data = await financialApi.getCashFlow(startDate, endDate);
-      setReport(data);
-    } catch {
-      // Error
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadFlow();
+    let active = true;
+    financialApi
+      .getCashFlow(startDate, endDate)
+      .then((data) => {
+        if (!active) return;
+        setReport(data);
+      })
+      .catch(() => {
+        // Error
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [startDate, endDate]);
 
   if (loading && !report) return <PageLoader label="Calculando Fluxo de Caixa…" />;

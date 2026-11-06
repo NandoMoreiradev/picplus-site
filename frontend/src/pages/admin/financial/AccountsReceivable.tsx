@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   ArrowDownCircle,
   CheckCircle2,
@@ -100,54 +100,67 @@ export function AccountsReceivable() {
   const [settling, setSettling] = useState(false);
 
   const toast = useToast();
+  const [dataVersion, setDataVersion] = useState(0);
+  const loadData = useCallback(() => {
+    setLoading(true);
+    setDataVersion((v) => v + 1);
+  }, []);
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const res = await financialApi.listEntries({
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      financialApi.listCategories(),
+      financialApi.listAccounts(),
+      api.get<{ items: Array<{ id: string; tradeName: string; corporateName: string }> }>('/admin/clients?limit=100'),
+    ])
+      .then(([cats, accs, clsRes]) => {
+        if (!active) return;
+        setCategories(cats.filter((c) => c.nature === 'REVENUE'));
+        setAccounts(accs);
+        setClients(clsRes.items || []);
+        if (cats.length > 0) setFormCategoryId(cats[0].id);
+        if (accs.length > 0) {
+          const def = accs.find((a) => a.isDefault) || accs[0];
+          setFormAccountId(def.id);
+          setSettleAccountId(def.id);
+        }
+      })
+      .catch(() => {
+        // Ignora erro auxiliar não-crítico
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    financialApi
+      .listEntries({
         type: 'INCOME',
         status: tab === 'ALL' ? undefined : tab,
         search: debouncedSearch || undefined,
         page,
         limit: 15,
+      })
+      .then((res) => {
+        if (!active) return;
+        setEntries(res.items);
+        setTotalPages(res.totalPages);
+      })
+      .catch(() => {
+        if (!active) return;
+        toast.error('Erro ao carregar contas a receber');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
-      setEntries(res.items);
-      setTotalPages(res.totalPages);
-    } catch {
-      toast.error('Erro ao carregar contas a receber');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const loadAux = async () => {
-    try {
-      const [cats, accs, clsRes] = await Promise.all([
-        financialApi.listCategories(),
-        financialApi.listAccounts(),
-        api.get<{ items: Array<{ id: string; tradeName: string; corporateName: string }> }>('/admin/clients?limit=100'),
-      ]);
-      setCategories(cats.filter((c) => c.nature === 'REVENUE'));
-      setAccounts(accs);
-      setClients(clsRes.items || []);
-      if (cats.length > 0) setFormCategoryId(cats[0].id);
-      if (accs.length > 0) {
-        const def = accs.find((a) => a.isDefault) || accs[0];
-        setFormAccountId(def.id);
-        setSettleAccountId(def.id);
-      }
-    } catch {
-      // Ignora erro auxiliar não-crítico
-    }
-  };
-
-  useEffect(() => {
-    loadAux();
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [tab, debouncedSearch, page]);
+    return () => {
+      active = false;
+    };
+  }, [tab, debouncedSearch, page, dataVersion, toast]);
 
   const handleSyncAsaas = async () => {
     try {

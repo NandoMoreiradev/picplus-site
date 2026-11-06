@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import {
   ArrowUpCircle,
@@ -28,6 +28,7 @@ import { SearchInput } from '../../../components/ui/SearchInput';
 import { useToast } from '../../../components/ui/Toast';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { formatCents, formatDate, parseBRLToCents } from '../../../lib/format';
+import { errorMessage } from '../../../lib/validation';
 import {
   financialApi,
   type FinancialAccount,
@@ -106,59 +107,73 @@ export function AccountsPayable() {
 
   const toast = useToast();
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const res = await financialApi.listEntries({
+  const [dataVersion, setDataVersion] = useState(0);
+  const loadData = useCallback(() => {
+    setLoading(true);
+    setDataVersion((v) => v + 1);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      financialApi.listCategories(),
+      financialApi.listCostCenters(),
+      financialApi.listAccounts(),
+      financialApi.listSuppliers(),
+      api.get<Array<{ id: string; name: string }>>('/admin/influencers?limit=100').catch(() => []),
+    ])
+      .then(([cats, centers, accs, supps, infsRes]) => {
+        if (!active) return;
+        setCategories(cats.filter((c) => c.nature !== 'REVENUE'));
+        setCostCenters(centers);
+        setAccounts(accs);
+        setSuppliers(supps);
+        setInfluencers(infsRes || []);
+
+        if (cats.length > 0) setFormCategoryId(cats[0].id);
+        if (centers.length > 0) setFormCostCenterId(centers[0].id);
+        if (accs.length > 0) {
+          const def = accs.find((a) => a.isDefault) || accs[0];
+          setFormAccountId(def.id);
+          setSettleAccountId(def.id);
+        }
+      })
+      .catch(() => {
+        // Ignora erro auxiliar não-crítico
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    financialApi
+      .listEntries({
         type: 'EXPENSE',
         status: tab === 'ALL' ? undefined : tab,
         search: debouncedSearch || undefined,
         page,
         limit: 15,
+      })
+      .then((res) => {
+        if (!active) return;
+        setEntries(res.items);
+        setTotalPages(res.totalPages);
+      })
+      .catch(() => {
+        if (!active) return;
+        toast.error('Erro ao carregar contas a pagar');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
-      setEntries(res.items);
-      setTotalPages(res.totalPages);
-    } catch {
-      toast.error('Erro ao carregar contas a pagar');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const loadAux = async () => {
-    try {
-      const [cats, centers, accs, supps, infsRes] = await Promise.all([
-        financialApi.listCategories(),
-        financialApi.listCostCenters(),
-        financialApi.listAccounts(),
-        financialApi.listSuppliers(),
-        api.get<Array<{ id: string; name: string }>>('/admin/influencers?limit=100').catch(() => []),
-      ]);
-      setCategories(cats.filter((c) => c.nature !== 'REVENUE'));
-      setCostCenters(centers);
-      setAccounts(accs);
-      setSuppliers(supps);
-      setInfluencers(infsRes || []);
-
-      if (cats.length > 0) setFormCategoryId(cats[0].id);
-      if (centers.length > 0) setFormCostCenterId(centers[0].id);
-      if (accs.length > 0) {
-        const def = accs.find((a) => a.isDefault) || accs[0];
-        setFormAccountId(def.id);
-        setSettleAccountId(def.id);
-      }
-    } catch {
-      // Ignora erro auxiliar não-crítico
-    }
-  };
-
-  useEffect(() => {
-    loadAux();
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [tab, debouncedSearch, page]);
+    return () => {
+      active = false;
+    };
+  }, [tab, debouncedSearch, page, dataVersion, toast]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,8 +262,8 @@ export function AccountsPayable() {
       toast.success('Despesa removida com sucesso!');
       setDeleteId(null);
       await loadData();
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao remover despesa');
+    } catch (err: unknown) {
+      toast.error(errorMessage(err));
     }
   };
 
@@ -440,7 +455,7 @@ export function AccountsPayable() {
             <SelectField
               label="Tipo de Favorecido"
               value={payeeType}
-              onChange={(e) => setPayeeType(e.target.value as any)}
+              onChange={(e) => setPayeeType(e.target.value as 'SUPPLIER' | 'INFLUENCER' | 'GENERAL')}
               options={[
                 { value: 'SUPPLIER', label: 'Fornecedor / Prestador de Serviço' },
                 { value: 'INFLUENCER', label: 'Influenciador da Base (Repasse de Campanha)' },
