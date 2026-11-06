@@ -128,10 +128,7 @@ export class FinanceController {
 
   @Put('categories/:id')
   @RequirePermissions('financial.settings')
-  updateCategory(
-    @Param('id') id: string,
-    @Body() dto: UpdateCategoryDto,
-  ) {
+  updateCategory(@Param('id') id: string, @Body() dto: UpdateCategoryDto) {
     return this.finance.updateCategory(id, dto);
   }
 
@@ -156,10 +153,7 @@ export class FinanceController {
 
   @Put('cost-centers/:id')
   @RequirePermissions('financial.settings')
-  updateCostCenter(
-    @Param('id') id: string,
-    @Body() dto: UpdateCostCenterDto,
-  ) {
+  updateCostCenter(@Param('id') id: string, @Body() dto: UpdateCostCenterDto) {
     return this.finance.updateCostCenter(id, dto);
   }
 
@@ -209,10 +203,7 @@ export class FinanceController {
 
   @Put('suppliers/:id')
   @RequireAnyPermission('financial.settings', 'financial.payables')
-  updateSupplier(
-    @Param('id') id: string,
-    @Body() dto: UpdateSupplierDto,
-  ) {
+  updateSupplier(@Param('id') id: string, @Body() dto: UpdateSupplierDto) {
     return this.finance.updateSupplier(id, dto);
   }
 
