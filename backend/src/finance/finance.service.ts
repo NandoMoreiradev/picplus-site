@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
@@ -26,11 +27,17 @@ import { randomUUID } from 'crypto';
 
 @Injectable()
 export class FinanceService implements OnModuleInit {
+  private readonly logger = new Logger(FinanceService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async onModuleInit() {
-    await this.seedDefaults();
-    await this.syncClientCharges();
+    try {
+      await this.seedDefaults();
+      await this.syncClientCharges();
+    } catch (err: any) {
+      this.logger.error('Erro na inicialização/sincronização do módulo financeiro:', err?.message || err);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────
