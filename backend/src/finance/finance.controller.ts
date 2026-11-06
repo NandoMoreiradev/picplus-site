@@ -41,7 +41,9 @@ export class FinanceController {
   @Get('dre')
   @RequirePermissions('financial.reports')
   getDre(@Query('year') year?: string) {
-    return this.finance.getDre(year ? parseInt(year, 10) : new Date().getFullYear());
+    return this.finance.getDre(
+      year ? parseInt(year, 10) : new Date().getFullYear(),
+    );
   }
 
   @Get('cash-flow')
@@ -84,10 +86,7 @@ export class FinanceController {
 
   @Put('entries/:id')
   @RequirePermissions('financial.view')
-  updateEntry(
-    @Param('id') id: string,
-    @Body() dto: UpdateFinancialEntryDto,
-  ) {
+  updateEntry(@Param('id') id: string, @Body() dto: UpdateFinancialEntryDto) {
     return this.finance.updateEntry(id, dto);
   }
 

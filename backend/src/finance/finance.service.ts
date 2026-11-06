@@ -35,8 +35,11 @@ export class FinanceService implements OnModuleInit {
     try {
       await this.seedDefaults();
       await this.syncClientCharges();
-    } catch (err: any) {
-      this.logger.error('Erro na inicialização/sincronização do módulo financeiro:', err?.message || err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `Erro na inicialização/sincronização do módulo financeiro: ${message}`,
+      );
     }
   }
 
@@ -53,26 +56,106 @@ export class FinanceService implements OnModuleInit {
         nature: FinancialCategoryNature;
         color?: string;
       }> = [
-        { code: '1.1', name: 'Receitas de Agência (Contratos & Gestão)', nature: FinancialCategoryNature.REVENUE, color: '#10B981' },
-        { code: '1.2', name: 'Receitas da PicPlus Academy (Cursos)', nature: FinancialCategoryNature.REVENUE, color: '#059669' },
-        { code: '1.3', name: 'Produção Audiovisual & Diárias', nature: FinancialCategoryNature.REVENUE, color: '#34D399' },
-        { code: '1.4', name: 'Outras Receitas Operacionais', nature: FinancialCategoryNature.REVENUE, color: '#6EE7B7' },
-        
-        { code: '2.1', name: 'Impostos Diretos (DAS / Simples / ISS)', nature: FinancialCategoryNature.DEDUCTION, color: '#F59E0B' },
-        { code: '2.2', name: 'Taxas de Gateway & Cobrança (Asaas)', nature: FinancialCategoryNature.DEDUCTION, color: '#D97706' },
-        
-        { code: '3.1', name: 'Repasse / Cachê de Influenciadores', nature: FinancialCategoryNature.DIRECT_COST, color: '#EF4444' },
-        { code: '3.2', name: 'Videomakers & Editores Freelancers', nature: FinancialCategoryNature.DIRECT_COST, color: '#DC2626' },
-        { code: '3.3', name: 'Tráfego Pago Direto (Mídia)', nature: FinancialCategoryNature.DIRECT_COST, color: '#B91C1C' },
-        
-        { code: '4.1', name: 'Folha de Pagamento & Pró-labore', nature: FinancialCategoryNature.OPERATING_EXPENSE, color: '#6366F1' },
-        { code: '4.2', name: 'Softwares, Cloud & TI (Adobe, OpenAI, Railway)', nature: FinancialCategoryNature.OPERATING_EXPENSE, color: '#8B5CF6' },
-        { code: '4.3', name: 'Aluguel, Estúdio & Ocupação', nature: FinancialCategoryNature.OPERATING_EXPENSE, color: '#A855F7' },
-        { code: '4.4', name: 'Assessoria Contábil & Jurídica', nature: FinancialCategoryNature.OPERATING_EXPENSE, color: '#EC4899' },
-        { code: '4.5', name: 'Marketing & Vendas Internas', nature: FinancialCategoryNature.OPERATING_EXPENSE, color: '#F43F5E' },
-        
-        { code: '5.1', name: 'Rendimentos de Aplicações', nature: FinancialCategoryNature.FINANCIAL_RESULT, color: '#3B82F6' },
-        { code: '5.2', name: 'Juros, Multas e Tarifas Bancárias', nature: FinancialCategoryNature.FINANCIAL_RESULT, color: '#64748B' },
+        {
+          code: '1.1',
+          name: 'Receitas de Agência (Contratos & Gestão)',
+          nature: FinancialCategoryNature.REVENUE,
+          color: '#10B981',
+        },
+        {
+          code: '1.2',
+          name: 'Receitas da PicPlus Academy (Cursos)',
+          nature: FinancialCategoryNature.REVENUE,
+          color: '#059669',
+        },
+        {
+          code: '1.3',
+          name: 'Produção Audiovisual & Diárias',
+          nature: FinancialCategoryNature.REVENUE,
+          color: '#34D399',
+        },
+        {
+          code: '1.4',
+          name: 'Outras Receitas Operacionais',
+          nature: FinancialCategoryNature.REVENUE,
+          color: '#6EE7B7',
+        },
+
+        {
+          code: '2.1',
+          name: 'Impostos Diretos (DAS / Simples / ISS)',
+          nature: FinancialCategoryNature.DEDUCTION,
+          color: '#F59E0B',
+        },
+        {
+          code: '2.2',
+          name: 'Taxas de Gateway & Cobrança (Asaas)',
+          nature: FinancialCategoryNature.DEDUCTION,
+          color: '#D97706',
+        },
+
+        {
+          code: '3.1',
+          name: 'Repasse / Cachê de Influenciadores',
+          nature: FinancialCategoryNature.DIRECT_COST,
+          color: '#EF4444',
+        },
+        {
+          code: '3.2',
+          name: 'Videomakers & Editores Freelancers',
+          nature: FinancialCategoryNature.DIRECT_COST,
+          color: '#DC2626',
+        },
+        {
+          code: '3.3',
+          name: 'Tráfego Pago Direto (Mídia)',
+          nature: FinancialCategoryNature.DIRECT_COST,
+          color: '#B91C1C',
+        },
+
+        {
+          code: '4.1',
+          name: 'Folha de Pagamento & Pró-labore',
+          nature: FinancialCategoryNature.OPERATING_EXPENSE,
+          color: '#6366F1',
+        },
+        {
+          code: '4.2',
+          name: 'Softwares, Cloud & TI (Adobe, OpenAI, Railway)',
+          nature: FinancialCategoryNature.OPERATING_EXPENSE,
+          color: '#8B5CF6',
+        },
+        {
+          code: '4.3',
+          name: 'Aluguel, Estúdio & Ocupação',
+          nature: FinancialCategoryNature.OPERATING_EXPENSE,
+          color: '#A855F7',
+        },
+        {
+          code: '4.4',
+          name: 'Assessoria Contábil & Jurídica',
+          nature: FinancialCategoryNature.OPERATING_EXPENSE,
+          color: '#EC4899',
+        },
+        {
+          code: '4.5',
+          name: 'Marketing & Vendas Internas',
+          nature: FinancialCategoryNature.OPERATING_EXPENSE,
+          color: '#F43F5E',
+        },
+
+        {
+          code: '5.1',
+          name: 'Rendimentos de Aplicações',
+          nature: FinancialCategoryNature.FINANCIAL_RESULT,
+          color: '#3B82F6',
+        },
+        {
+          code: '5.2',
+          name: 'Juros, Multas e Tarifas Bancárias',
+          nature: FinancialCategoryNature.FINANCIAL_RESULT,
+          color: '#64748B',
+        },
       ];
 
       for (const cat of defaultCategories) {
@@ -84,10 +167,26 @@ export class FinanceService implements OnModuleInit {
     if (costCenterCount === 0) {
       await this.prisma.financialCostCenter.createMany({
         data: [
-          { code: 'AGENCIA', name: 'Agência & Influenciadores', description: 'Gestão de marcas e campanhas' },
-          { code: 'ACADEMY', name: 'PicPlus Academy', description: 'Cursos, matrículas e comunidade' },
-          { code: 'PRODUTORA', name: 'Audiovisual & Estúdio', description: 'Gravação e pós-produção' },
-          { code: 'GERAL', name: 'Geral & Administrativo', description: 'Custos corporativos e sócios' },
+          {
+            code: 'AGENCIA',
+            name: 'Agência & Influenciadores',
+            description: 'Gestão de marcas e campanhas',
+          },
+          {
+            code: 'ACADEMY',
+            name: 'PicPlus Academy',
+            description: 'Cursos, matrículas e comunidade',
+          },
+          {
+            code: 'PRODUTORA',
+            name: 'Audiovisual & Estúdio',
+            description: 'Gravação e pós-produção',
+          },
+          {
+            code: 'GERAL',
+            name: 'Geral & Administrativo',
+            description: 'Custos corporativos e sócios',
+          },
         ],
       });
     }
@@ -96,9 +195,24 @@ export class FinanceService implements OnModuleInit {
     if (accountCount === 0) {
       await this.prisma.financialAccount.createMany({
         data: [
-          { name: 'Conta Asaas (Gateway)', bankName: 'Asaas IP S.A.', accountType: FinancialAccountType.PAYMENT_GATEWAY, isDefault: true },
-          { name: 'Banco Inter (Operacional)', bankName: 'Banco Inter', accountType: FinancialAccountType.CHECKING, isDefault: false },
-          { name: 'Caixa Interno (Espécie)', bankName: 'Dinheiro', accountType: FinancialAccountType.CASH, isDefault: false },
+          {
+            name: 'Conta Asaas (Gateway)',
+            bankName: 'Asaas IP S.A.',
+            accountType: FinancialAccountType.PAYMENT_GATEWAY,
+            isDefault: true,
+          },
+          {
+            name: 'Banco Inter (Operacional)',
+            bankName: 'Banco Inter',
+            accountType: FinancialAccountType.CHECKING,
+            isDefault: false,
+          },
+          {
+            name: 'Caixa Interno (Espécie)',
+            bankName: 'Dinheiro',
+            accountType: FinancialAccountType.CASH,
+            isDefault: false,
+          },
         ],
       });
     }
@@ -143,7 +257,8 @@ export class FinanceService implements OnModuleInit {
           status,
           title: `Cobrança: ${charge.description} - ${charge.client.tradeName || charge.client.corporateName}`,
           nominalAmountCents: charge.valueCents,
-          paidAmountCents: status === FinancialEntryStatus.PAID ? charge.valueCents : 0,
+          paidAmountCents:
+            status === FinancialEntryStatus.PAID ? charge.valueCents : 0,
           dueDate: charge.dueDate,
           competenceDate: charge.createdAt,
           paidAt: charge.paidAt,
@@ -188,9 +303,19 @@ export class FinanceService implements OnModuleInit {
       where.OR = [
         { title: { contains: query.search, mode: 'insensitive' } },
         { invoiceNumber: { contains: query.search, mode: 'insensitive' } },
-        { client: { tradeName: { contains: query.search, mode: 'insensitive' } } },
-        { client: { corporateName: { contains: query.search, mode: 'insensitive' } } },
-        { influencer: { name: { contains: query.search, mode: 'insensitive' } } },
+        {
+          client: {
+            tradeName: { contains: query.search, mode: 'insensitive' },
+          },
+        },
+        {
+          client: {
+            corporateName: { contains: query.search, mode: 'insensitive' },
+          },
+        },
+        {
+          influencer: { name: { contains: query.search, mode: 'insensitive' } },
+        },
         { supplier: { name: { contains: query.search, mode: 'insensitive' } } },
       ];
     }
@@ -206,10 +331,19 @@ export class FinanceService implements OnModuleInit {
           category: true,
           costCenter: true,
           account: true,
-          client: { select: { id: true, tradeName: true, corporateName: true } },
+          client: {
+            select: { id: true, tradeName: true, corporateName: true },
+          },
           influencer: { select: { id: true, name: true, profileImage: true } },
           supplier: { select: { id: true, name: true, document: true } },
-          charge: { select: { id: true, invoiceUrl: true, bankSlipUrl: true, pixQrCodeUrl: true } },
+          charge: {
+            select: {
+              id: true,
+              invoiceUrl: true,
+              bankSlipUrl: true,
+              pixQrCodeUrl: true,
+            },
+          },
           createdBy: { select: { id: true, name: true } },
         },
       }),
@@ -239,14 +373,18 @@ export class FinanceService implements OnModuleInit {
         approvedBy: { select: { id: true, name: true } },
       },
     });
-    if (!entry) throw new NotFoundException('Lançamento financeiro não encontrado.');
+    if (!entry)
+      throw new NotFoundException('Lançamento financeiro não encontrado.');
     return entry;
   }
 
   async createEntry(dto: CreateFinancialEntryDto, userId?: string) {
-    const installments = dto.installments && dto.installments > 1 ? dto.installments : 1;
+    const installments =
+      dto.installments && dto.installments > 1 ? dto.installments : 1;
     const baseDueDate = new Date(dto.dueDate);
-    const baseCompetenceDate = dto.competenceDate ? new Date(dto.competenceDate) : baseDueDate;
+    const baseCompetenceDate = dto.competenceDate
+      ? new Date(dto.competenceDate)
+      : baseDueDate;
     const recurrenceGroupId = installments > 1 ? randomUUID() : undefined;
 
     const createdEntries = [];
@@ -258,7 +396,8 @@ export class FinanceService implements OnModuleInit {
       const competenceDate = new Date(baseCompetenceDate);
       competenceDate.setMonth(competenceDate.getMonth() + (i - 1));
 
-      const title = installments > 1 ? `${dto.title} (${i}/${installments})` : dto.title;
+      const title =
+        installments > 1 ? `${dto.title} (${i}/${installments})` : dto.title;
 
       const entry = await this.prisma.financialEntry.create({
         data: {
@@ -294,7 +433,9 @@ export class FinanceService implements OnModuleInit {
       createdEntries.push(entry);
     }
 
-    return installments === 1 ? createdEntries[0] : { count: createdEntries.length, entries: createdEntries };
+    return installments === 1
+      ? createdEntries[0]
+      : { count: createdEntries.length, entries: createdEntries };
   }
 
   async updateEntry(id: string, dto: UpdateFinancialEntryDto) {
@@ -308,8 +449,15 @@ export class FinanceService implements OnModuleInit {
         nominalAmountCents: dto.nominalAmountCents,
         status: dto.status,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-        competenceDate: dto.competenceDate ? new Date(dto.competenceDate) : undefined,
-        paidAt: dto.paidAt !== undefined ? (dto.paidAt ? new Date(dto.paidAt) : null) : undefined,
+        competenceDate: dto.competenceDate
+          ? new Date(dto.competenceDate)
+          : undefined,
+        paidAt:
+          dto.paidAt !== undefined
+            ? dto.paidAt
+              ? new Date(dto.paidAt)
+              : null
+            : undefined,
         categoryId: dto.categoryId,
         costCenterId: dto.costCenterId,
         accountId: dto.accountId,
@@ -342,11 +490,16 @@ export class FinanceService implements OnModuleInit {
     const paidAt = new Date(dto.paidAt);
     const accountId = dto.accountId || entry.accountId;
     const isFullPayment = dto.paidAmountCents >= entry.nominalAmountCents;
-    const newStatus = isFullPayment ? FinancialEntryStatus.PAID : FinancialEntryStatus.PARTIALLY_PAID;
+    const newStatus = isFullPayment
+      ? FinancialEntryStatus.PAID
+      : FinancialEntryStatus.PARTIALLY_PAID;
 
     // Atualiza saldo bancário se uma conta for informada
     if (accountId) {
-      const balanceDelta = entry.type === FinancialEntryType.INCOME ? dto.paidAmountCents : -dto.paidAmountCents;
+      const balanceDelta =
+        entry.type === FinancialEntryType.INCOME
+          ? dto.paidAmountCents
+          : -dto.paidAmountCents;
       await this.prisma.financialAccount.update({
         where: { id: accountId },
         data: { currentBalanceCents: { increment: balanceDelta } },
@@ -386,7 +539,9 @@ export class FinanceService implements OnModuleInit {
   async deleteEntry(id: string) {
     const entry = await this.getEntryById(id);
     if (entry.status === FinancialEntryStatus.PAID && entry.chargeId) {
-      throw new BadRequestException('Não é permitido excluir uma cobrança oficial do Asaas já liquidada.');
+      throw new BadRequestException(
+        'Não é permitido excluir uma cobrança oficial do Asaas já liquidada.',
+      );
     }
     return this.prisma.financialEntry.delete({ where: { id } });
   }
@@ -398,13 +553,24 @@ export class FinanceService implements OnModuleInit {
   async getStats() {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
     // Contas bancárias
     const accounts = await this.prisma.financialAccount.findMany({
       orderBy: { isDefault: 'desc' },
     });
-    const totalCashCents = accounts.reduce((acc, a) => acc + a.currentBalanceCents, 0);
+    const totalCashCents = accounts.reduce(
+      (acc, a) => acc + a.currentBalanceCents,
+      0,
+    );
 
     // Lançamentos do mês
     const monthEntries = await this.prisma.financialEntry.findMany({
@@ -422,10 +588,12 @@ export class FinanceService implements OnModuleInit {
     for (const e of monthEntries) {
       if (e.type === FinancialEntryType.INCOME) {
         totalReceivableMonthCents += e.nominalAmountCents;
-        if (e.status === FinancialEntryStatus.PAID) totalReceivedMonthCents += e.paidAmountCents;
+        if (e.status === FinancialEntryStatus.PAID)
+          totalReceivedMonthCents += e.paidAmountCents;
       } else {
         totalPayableMonthCents += e.nominalAmountCents;
-        if (e.status === FinancialEntryStatus.PAID) totalPaidMonthCents += e.paidAmountCents;
+        if (e.status === FinancialEntryStatus.PAID)
+          totalPaidMonthCents += e.paidAmountCents;
       }
     }
 
@@ -454,11 +622,18 @@ export class FinanceService implements OnModuleInit {
       },
     });
 
-    const totalPastExpenses = pastExpenses.reduce((sum, e) => sum + e.nominalAmountCents, 0);
-    const burnRateCents = Math.round(totalPastExpenses / 3) || totalPayableMonthCents || 1;
+    const totalPastExpenses = pastExpenses.reduce(
+      (sum, e) => sum + e.nominalAmountCents,
+      0,
+    );
+    const burnRateCents =
+      Math.round(totalPastExpenses / 3) || totalPayableMonthCents || 1;
 
     // Runway em meses
-    const runwayMonths = burnRateCents > 0 ? Number((totalCashCents / burnRateCents).toFixed(1)) : 0;
+    const runwayMonths =
+      burnRateCents > 0
+        ? Number((totalCashCents / burnRateCents).toFixed(1))
+        : 0;
 
     // Cálculo do Health Score (0 - 100)
     let score = 50;
@@ -466,15 +641,21 @@ export class FinanceService implements OnModuleInit {
     else if (runwayMonths >= 3) score += 15;
     else if (runwayMonths < 1) score -= 20;
 
-    const projectedMargin = totalReceivableMonthCents > 0
-      ? ((totalReceivableMonthCents - totalPayableMonthCents) / totalReceivableMonthCents) * 100
-      : 0;
+    const projectedMargin =
+      totalReceivableMonthCents > 0
+        ? ((totalReceivableMonthCents - totalPayableMonthCents) /
+            totalReceivableMonthCents) *
+          100
+        : 0;
 
     if (projectedMargin >= 25) score += 20;
     else if (projectedMargin >= 10) score += 10;
     else if (projectedMargin < 0) score -= 25;
 
-    const defaultRate = totalReceivableMonthCents > 0 ? (overdueReceivableCents / totalReceivableMonthCents) * 100 : 0;
+    const defaultRate =
+      totalReceivableMonthCents > 0
+        ? (overdueReceivableCents / totalReceivableMonthCents) * 100
+        : 0;
     if (defaultRate <= 5) score += 15;
     else if (defaultRate > 20) score -= 20;
 
@@ -486,7 +667,8 @@ export class FinanceService implements OnModuleInit {
       totalReceivedMonthCents,
       totalPayableMonthCents,
       totalPaidMonthCents,
-      projectedResultMonthCents: totalReceivableMonthCents - totalPayableMonthCents,
+      projectedResultMonthCents:
+        totalReceivableMonthCents - totalPayableMonthCents,
       realizedResultMonthCents: totalReceivedMonthCents - totalPaidMonthCents,
       overdueReceivableCents,
       overduePayableCents,
@@ -563,7 +745,10 @@ export class FinanceService implements OnModuleInit {
       m.grossProfitCents = m.netRevenueCents - m.directCostsCents;
       m.ebitdaCents = m.grossProfitCents - m.operatingExpensesCents;
       m.netProfitCents = m.ebitdaCents + m.financialResultCents;
-      m.marginPercent = m.netRevenueCents > 0 ? Number(((m.netProfitCents / m.netRevenueCents) * 100).toFixed(1)) : 0;
+      m.marginPercent =
+        m.netRevenueCents > 0
+          ? Number(((m.netProfitCents / m.netRevenueCents) * 100).toFixed(1))
+          : 0;
     }
 
     return {
@@ -575,9 +760,15 @@ export class FinanceService implements OnModuleInit {
         netRevenueCents: months.reduce((s, m) => s + m.netRevenueCents, 0),
         directCostsCents: months.reduce((s, m) => s + m.directCostsCents, 0),
         grossProfitCents: months.reduce((s, m) => s + m.grossProfitCents, 0),
-        operatingExpensesCents: months.reduce((s, m) => s + m.operatingExpensesCents, 0),
+        operatingExpensesCents: months.reduce(
+          (s, m) => s + m.operatingExpensesCents,
+          0,
+        ),
         ebitdaCents: months.reduce((s, m) => s + m.ebitdaCents, 0),
-        financialResultCents: months.reduce((s, m) => s + m.financialResultCents, 0),
+        financialResultCents: months.reduce(
+          (s, m) => s + m.financialResultCents,
+          0,
+        ),
         netProfitCents: months.reduce((s, m) => s + m.netProfitCents, 0),
       },
     };
@@ -589,22 +780,33 @@ export class FinanceService implements OnModuleInit {
 
   async getCashFlow(startDateStr?: string, endDateStr?: string) {
     const now = new Date();
-    const startDate = startDateStr ? new Date(startDateStr) : new Date(now.getFullYear(), now.getMonth(), 1);
-    const endDate = endDateStr ? new Date(endDateStr) : new Date(now.getFullYear(), now.getMonth() + 2, 0);
+    const startDate = startDateStr
+      ? new Date(startDateStr)
+      : new Date(now.getFullYear(), now.getMonth(), 1);
+    const endDate = endDateStr
+      ? new Date(endDateStr)
+      : new Date(now.getFullYear(), now.getMonth() + 2, 0);
 
     const [realizedEntries, pendingEntries] = await Promise.all([
       // Realizado: usa paidAt
       this.prisma.financialEntry.findMany({
         where: {
           paidAt: { gte: startDate, lte: endDate },
-          status: { in: [FinancialEntryStatus.PAID, FinancialEntryStatus.PARTIALLY_PAID] },
+          status: {
+            in: [
+              FinancialEntryStatus.PAID,
+              FinancialEntryStatus.PARTIALLY_PAID,
+            ],
+          },
         },
       }),
       // Previsto / Em aberto: usa dueDate
       this.prisma.financialEntry.findMany({
         where: {
           dueDate: { gte: startDate, lte: endDate },
-          status: { in: [FinancialEntryStatus.PENDING, FinancialEntryStatus.OVERDUE] },
+          status: {
+            in: [FinancialEntryStatus.PENDING, FinancialEntryStatus.OVERDUE],
+          },
         },
       }),
     ]);
@@ -612,14 +814,16 @@ export class FinanceService implements OnModuleInit {
     let totalRealizedInflow = 0;
     let totalRealizedOutflow = 0;
     for (const e of realizedEntries) {
-      if (e.type === FinancialEntryType.INCOME) totalRealizedInflow += e.paidAmountCents;
+      if (e.type === FinancialEntryType.INCOME)
+        totalRealizedInflow += e.paidAmountCents;
       else totalRealizedOutflow += e.paidAmountCents;
     }
 
     let totalProjectedInflow = 0;
     let totalProjectedOutflow = 0;
     for (const e of pendingEntries) {
-      if (e.type === FinancialEntryType.INCOME) totalProjectedInflow += e.nominalAmountCents;
+      if (e.type === FinancialEntryType.INCOME)
+        totalProjectedInflow += e.nominalAmountCents;
       else totalProjectedOutflow += e.nominalAmountCents;
     }
 
@@ -636,7 +840,10 @@ export class FinanceService implements OnModuleInit {
         outflowCents: totalProjectedOutflow,
         netCents: totalProjectedInflow - totalProjectedOutflow,
       },
-      totalForecastCents: (totalRealizedInflow + totalProjectedInflow) - (totalRealizedOutflow + totalProjectedOutflow),
+      totalForecastCents:
+        totalRealizedInflow +
+        totalProjectedInflow -
+        (totalRealizedOutflow + totalProjectedOutflow),
     };
   }
 
@@ -656,7 +863,9 @@ export class FinanceService implements OnModuleInit {
   }
 
   async listCostCenters() {
-    return this.prisma.financialCostCenter.findMany({ orderBy: { name: 'asc' } });
+    return this.prisma.financialCostCenter.findMany({
+      orderBy: { name: 'asc' },
+    });
   }
 
   async createCostCenter(dto: CreateCostCenterDto) {
@@ -664,7 +873,9 @@ export class FinanceService implements OnModuleInit {
   }
 
   async listAccounts() {
-    return this.prisma.financialAccount.findMany({ orderBy: { isDefault: 'desc' } });
+    return this.prisma.financialAccount.findMany({
+      orderBy: { isDefault: 'desc' },
+    });
   }
 
   async createAccount(dto: CreateAccountDto) {

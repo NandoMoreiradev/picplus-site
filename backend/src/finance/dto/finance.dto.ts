@@ -6,12 +6,10 @@ import {
 } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
 import {
-  IsArray,
   IsBoolean,
   IsEnum,
   IsInt,
   IsISO8601,
-  IsNumber,
   IsOptional,
   IsString,
   MaxLength,
