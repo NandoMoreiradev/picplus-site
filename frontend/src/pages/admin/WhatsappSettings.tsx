@@ -183,7 +183,7 @@ export default function WhatsappSettings() {
           $active={activeTab === 'AI'}
           onClick={() => setActiveTab('AI')}
         >
-          <Bot size={16} /> Chatbot com IA (Cloe)
+          <Bot size={16} /> Chatbot com IA Cloe
         </NavTabButton>
       </TabNavigation>
 
