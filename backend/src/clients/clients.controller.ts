@@ -44,6 +44,18 @@ export class ClientsController {
     return this.clients.getStats();
   }
 
+  @RequirePermissions('clients.view')
+  @Get('asaas/status')
+  testAsaasConnection() {
+    return this.clients.testAsaasConnection();
+  }
+
+  @RequirePermissions('clients.create')
+  @Post('asaas/import')
+  importFromAsaas() {
+    return this.clients.importFromAsaas();
+  }
+
   @Get('lookup/cnpj/:cnpj')
   lookupCnpj(@Param('cnpj') cnpj: string) {
     return this.clients.lookupCnpj(cnpj);

@@ -4,8 +4,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ChargeStatus, ClientStatus, Prisma } from '@prisma/client';
-import { AsaasService } from '../asaas/asaas.service';
+import { ChargeBillingType, ChargeStatus, ClientStatus, Prisma } from '@prisma/client';
+import {
+  AsaasCustomerRecord,
+  AsaasPaymentRecord,
+  AsaasService,
+} from '../asaas/asaas.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ConvertContactToClientDto,
@@ -35,6 +39,105 @@ export class ClientsService {
     private readonly prisma: PrismaService,
     private readonly asaas: AsaasService,
   ) {}
+
+  testAsaasConnection() {
+    return this.asaas.testConnection();
+  }
+
+  /** Importa dados existentes no Asaas sem criar novos recursos lá. */
+  async importFromAsaas() {
+    const [customers, payments] = await Promise.all([
+      this.asaas.listCustomers(),
+      this.asaas.listPayments(),
+    ]);
+    const clients = await this.prisma.client.findMany({
+      where: { deletedAt: null },
+      include: { contacts: true },
+    });
+    const byAsaasId = new Map(clients.filter((c) => c.asaasCustomerId).map((c) => [c.asaasCustomerId!, c]));
+    const byDocument = new Map(clients.map((c) => [c.cnpjCpf.replace(/\D/g, ''), c]));
+    const customerMap = new Map<string, string>();
+    let clientsCreated = 0;
+    let clientsLinked = 0;
+    let clientsSkipped = 0;
+
+    for (const customer of customers as AsaasCustomerRecord[]) {
+      const document = (customer.cpfCnpj ?? '').replace(/\D/g, '');
+      let client = byAsaasId.get(customer.id) ?? (document ? byDocument.get(document) : undefined);
+      if (!client && !document) {
+        clientsSkipped++;
+        continue;
+      }
+      if (!client) {
+        client = await this.prisma.client.create({
+          data: {
+            corporateName: customer.name,
+            tradeName: customer.name,
+            cnpjCpf: document,
+            asaasCustomerId: customer.id,
+            contacts: customer.email
+              ? { create: { name: customer.name, email: customer.email, phone: customer.phone ?? customer.mobilePhone, isPrimary: true, isFinancial: true } }
+              : undefined,
+          },
+          include: { contacts: true },
+        });
+        clientsCreated++;
+        byDocument.set(document, client);
+      } else if (!client.asaasCustomerId) {
+        client = await this.prisma.client.update({
+          where: { id: client.id },
+          data: { asaasCustomerId: customer.id },
+          include: { contacts: true },
+        });
+        clientsLinked++;
+      }
+      customerMap.set(customer.id, client.id);
+    }
+
+    let chargesCreated = 0;
+    let chargesSkipped = 0;
+    for (const payment of payments as AsaasPaymentRecord[]) {
+      const clientId = customerMap.get(payment.customer) ??
+        (payment.externalReference?.startsWith('client_') ? payment.externalReference.slice(7) : undefined);
+      if (!clientId) {
+        chargesSkipped++;
+        continue;
+      }
+      const existing = await this.prisma.clientCharge.findUnique({ where: { asaasPaymentId: payment.id } });
+      if (existing) continue;
+      await this.prisma.clientCharge.create({
+        data: {
+          clientId,
+          description: payment.description || `Cobrança Asaas ${payment.id}`,
+          valueCents: Math.round(Number(payment.value) * 100),
+          dueDate: new Date(`${payment.dueDate}T12:00:00.000Z`),
+          billingType: this.mapBillingType(payment.billingType),
+          status: this.mapChargeStatus(payment.status),
+          asaasPaymentId: payment.id,
+          invoiceUrl: payment.invoiceUrl,
+          bankSlipUrl: payment.bankSlipUrl,
+          paidAt: payment.paymentDate ? new Date(payment.paymentDate) : null,
+        },
+      });
+      chargesCreated++;
+    }
+    return { customersRead: customers.length, paymentsRead: payments.length, clientsCreated, clientsLinked, clientsSkipped, chargesCreated, chargesSkipped };
+  }
+
+  private mapBillingType(value?: string | null): ChargeBillingType {
+    return ['BOLETO', 'PIX', 'CREDIT_CARD'].includes(value ?? '')
+      ? (value as ChargeBillingType)
+      : ChargeBillingType.UNDEFINED;
+  }
+
+  private mapChargeStatus(value?: string | null): ChargeStatus {
+    if (value === 'RECEIVED' || value === 'RECEIVED_IN_CASH') return ChargeStatus.RECEIVED;
+    if (value === 'CONFIRMED') return ChargeStatus.CONFIRMED;
+    if (value === 'OVERDUE') return ChargeStatus.OVERDUE;
+    if (value === 'REFUNDED') return ChargeStatus.REFUNDED;
+    if (value === 'DELETED') return ChargeStatus.CANCELED;
+    return ChargeStatus.PENDING;
+  }
 
   /**
    * Listagem paginada de clientes com busca e filtros.

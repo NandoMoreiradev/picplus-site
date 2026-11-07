@@ -86,6 +86,42 @@ interface AsaasSubscriptionResponse {
   status: string;
 }
 
+interface AsaasAccountResponse {
+  id?: string;
+  name?: string;
+  email?: string;
+  commercialInfo?: { name?: string };
+}
+
+export interface AsaasCustomerRecord {
+  id: string;
+  name: string;
+  cpfCnpj?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  mobilePhone?: string | null;
+  postalCode?: string | null;
+  address?: string | null;
+  addressNumber?: string | null;
+  complement?: string | null;
+  province?: string | null;
+  externalReference?: string | null;
+}
+
+export interface AsaasPaymentRecord {
+  id: string;
+  customer: string;
+  value: number;
+  billingType?: string | null;
+  status?: string | null;
+  dueDate: string;
+  description?: string | null;
+  invoiceUrl?: string | null;
+  bankSlipUrl?: string | null;
+  externalReference?: string | null;
+  paymentDate?: string | null;
+}
+
 @Injectable()
 export class AsaasService {
   private readonly logger = new Logger(AsaasService.name);
@@ -100,12 +136,76 @@ export class AsaasService {
       : 'https://api.asaas.com/v3';
   }
 
+  async testConnection(): Promise<{
+    connected: true;
+    sandbox: boolean;
+    account: { id?: string; name?: string; email?: string };
+  }> {
+    if (!this.isConfigured) {
+      throw new BadGatewayException('ASAAS_API_KEY não configurada.');
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/myAccount`, {
+        headers: this.headers,
+      });
+      const data = (await response.json().catch(() => ({}))) as AsaasAccountResponse;
+      if (!response.ok) {
+        throw new BadGatewayException(
+          `Asaas recusou a conexão: ${data?.email ?? response.statusText}`,
+        );
+      }
+      return {
+        connected: true,
+        sandbox: config.asaas.isSandbox,
+        account: { id: data.id, name: data.name, email: data.email },
+      };
+    } catch (err) {
+      if (err instanceof BadGatewayException) throw err;
+      this.logger.error(`Falha ao testar conexão com Asaas: ${err}`);
+      throw new BadGatewayException('Não foi possível conectar com o Asaas.');
+    }
+  }
+
   private get headers(): Record<string, string> {
     return {
       'Content-Type': 'application/json',
       'User-Agent': 'PicPlus-Agency',
       access_token: config.asaas.apiKey,
     };
+  }
+
+  private async list<T>(resource: string): Promise<T[]> {
+    if (!this.isConfigured) throw new BadGatewayException('ASAAS_API_KEY não configurada.');
+    const result: T[] = [];
+    const limit = 100;
+    for (let offset = 0; offset < 10000; offset += limit) {
+      const response = await fetch(
+        `${this.baseUrl}/${resource}?limit=${limit}&offset=${offset}`,
+        { headers: this.headers },
+      );
+      const data = (await response.json().catch(() => ({}))) as {
+        data?: T[];
+        errors?: Array<{ description?: string }>;
+      };
+      if (!response.ok) {
+        throw new BadGatewayException(
+          `Asaas recusou a importação: ${data.errors?.[0]?.description ?? response.statusText}`,
+        );
+      }
+      const page = data.data ?? [];
+      result.push(...page);
+      if (page.length < limit) break;
+    }
+    return result;
+  }
+
+  listCustomers() {
+    return this.list<AsaasCustomerRecord>('customers');
+  }
+
+  listPayments() {
+    return this.list<AsaasPaymentRecord>('payments');
   }
 
   async syncCustomer(
@@ -322,9 +422,9 @@ export class AsaasService {
     const configuredToken = config.asaas.webhookSecret;
     if (!configuredToken) {
       this.logger.warn(
-        'ASAAS_WEBHOOK_SECRET não configurado. Aceitando webhook sem validação estrita.',
+        'ASAAS_WEBHOOK_SECRET não configurado. Webhook rejeitado.',
       );
-      return true;
+      return false;
     }
     if (!receivedToken) return false;
 

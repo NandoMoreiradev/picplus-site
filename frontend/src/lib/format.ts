@@ -20,6 +20,17 @@ const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
 export const formatDate = (iso?: string | null) => (iso ? dateFormatter.format(new Date(iso)) : '');
 export const formatShortDate = (iso?: string | null) =>
   iso ? shortDateFormatter.format(new Date(iso)) : '';
+
+/** Formata datas de calendário (YYYY-MM-DD armazenado em DateTime) sem conversão de fuso. */
+export const formatDateOnly = (iso?: string | null) => {
+  if (!iso) return '';
+  const match = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return shortDateFormatter.format(new Date(iso));
+  const [, year, month, day] = match;
+  return shortDateFormatter.format(
+    new Date(Number(year), Number(month) - 1, Number(day)),
+  );
+};
 export const formatDateTime = (iso?: string | null) =>
   iso ? dateTimeFormatter.format(new Date(iso)) : '';
 

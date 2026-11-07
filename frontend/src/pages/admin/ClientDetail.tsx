@@ -35,7 +35,7 @@ import { api } from '../../lib/api';
 import {
   formatCents,
   formatDateTime,
-  formatShortDate,
+  formatDateOnly,
   maskCnpjCpf,
   maskPhone,
   parseBRLToCents,
@@ -609,7 +609,7 @@ export function ClientDetail() {
                         <td>
                           <span style={{ fontWeight: 800 }}>{formatCents(charge.valueCents)}</span>
                         </td>
-                        <td>{formatShortDate(charge.dueDate)}</td>
+                        <td>{formatDateOnly(charge.dueDate)}</td>
                         <td>
                           <span style={{ fontSize: '0.85rem' }}>{charge.billingType}</span>
                         </td>

@@ -8,6 +8,7 @@ import {
   DollarSign,
   Eye,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
 } from 'lucide-react';
@@ -182,6 +183,7 @@ export function Clients() {
   const [form, setForm] = useState<ClientFormState>(INITIAL_FORM);
   const [monthlyFeeInput, setMonthlyFeeInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [searchingCnpj, setSearchingCnpj] = useState(false);
   const [searchingCep, setSearchingCep] = useState(false);
   const [clientToDelete, setClientToDelete] = useState<ClientSummary | null>(null);
@@ -328,6 +330,29 @@ export function Clients() {
     }
   };
 
+  const handleImportAsaas = async () => {
+    try {
+      setImporting(true);
+      const result = await api.post<{
+        customersRead: number;
+        paymentsRead: number;
+        clientsCreated: number;
+        clientsLinked: number;
+        chargesCreated: number;
+        clientsSkipped: number;
+        chargesSkipped: number;
+      }>('/admin/clients/asaas/import', {});
+      toast.success(
+        `Importação concluída: ${result.clientsCreated} clientes e ${result.chargesCreated} cobranças adicionados.`,
+      );
+      reload();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Não foi possível importar os dados do Asaas.'));
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -335,9 +360,14 @@ export function Clients() {
         description="Gestão 360° dos clientes da agência: contratos, demandas operacionais e cobranças via Asaas."
         actions={
           canEdit && (
-            <Button onClick={handleOpenCreate}>
-              <Plus size={18} /> Novo Cliente
-            </Button>
+            <>
+              <Button variant="secondary" onClick={handleImportAsaas} disabled={importing}>
+                <RefreshCw size={18} /> {importing ? 'Importando…' : 'Importar do Asaas'}
+              </Button>
+              <Button onClick={handleOpenCreate}>
+                <Plus size={18} /> Novo Cliente
+              </Button>
+            </>
           )
         }
       />
