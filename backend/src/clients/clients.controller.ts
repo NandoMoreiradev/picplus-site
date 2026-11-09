@@ -25,6 +25,7 @@ import {
   CreateClientContactDto,
   CreateClientDto,
   CreateClientNoteDto,
+  EmitChargeInvoiceDto,
   ListClientsQueryDto,
   UpdateClientDto,
 } from './dto/client.dto';
@@ -112,6 +113,25 @@ export class ClientsController {
   @Post(':id/charges')
   createCharge(@Param('id') id: string, @Body() dto: CreateClientChargeDto) {
     return this.clients.createCharge(id, dto);
+  }
+
+  @RequirePermissions('clients.financial')
+  @Post(':id/charges/:chargeId/invoice')
+  emitChargeInvoice(
+    @Param('id') id: string,
+    @Param('chargeId') chargeId: string,
+    @Body() dto: EmitChargeInvoiceDto,
+  ) {
+    return this.clients.emitChargeInvoice(id, chargeId, dto);
+  }
+
+  @RequirePermissions('clients.financial')
+  @Get(':id/charges/:chargeId/invoice')
+  syncChargeInvoice(
+    @Param('id') id: string,
+    @Param('chargeId') chargeId: string,
+  ) {
+    return this.clients.syncChargeInvoice(id, chargeId);
   }
 
   @RequirePermissions('clients.create')

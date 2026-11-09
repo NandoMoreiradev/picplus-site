@@ -231,6 +231,53 @@ export class CreateClientChargeDto {
   @IsOptional()
   @IsEnum(ChargeBillingType)
   billingType?: ChargeBillingType;
+
+  // Modalidade de Cobrança: Única, Assinatura Recorrente ou Parcelada
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  chargeKind?: 'SINGLE' | 'RECURRENT' | 'INSTALLMENT';
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  cycle?: 'MONTHLY' | 'BIMONTHLY' | 'QUARTERLY' | 'SEMIANNUALLY' | 'YEARLY';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(2)
+  @Max(24)
+  installmentCount?: number;
+
+  // Emissão de Nota Fiscal de Serviço (NFS-e)
+  @IsOptional()
+  @IsBoolean()
+  emitInvoice?: boolean;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(1000)
+  invoiceServiceDescription?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  invoiceEffectiveDate?: string;
+}
+
+export class EmitChargeInvoiceDto {
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MaxLength(1000)
+  serviceDescription?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  effectiveDate?: string;
 }
 
 export class ConvertContactToClientDto {

@@ -25,6 +25,9 @@ export interface AsaasPaymentInput {
   description: string;
   externalReference?: string;
   postalService?: boolean;
+  installmentCount?: number;
+  installmentValue?: number;
+  totalValue?: number;
 }
 
 export interface AsaasPaymentResult {
@@ -37,6 +40,8 @@ export interface AsaasPaymentResult {
   dueDate: string;
   invoiceUrl: string;
   bankSlipUrl?: string | null;
+  installmentCount?: number | null;
+  installmentNumber?: number | null;
   simulated?: boolean;
 }
 
@@ -47,6 +52,40 @@ export interface AsaasSubscriptionInput {
   nextDueDate: string;
   cycle: 'MONTHLY' | 'BIMONTHLY' | 'QUARTERLY' | 'SEMIANNUALLY' | 'YEARLY';
   description: string;
+  externalReference?: string;
+}
+
+export interface AsaasInvoiceInput {
+  payment?: string;
+  customer?: string;
+  serviceDescription: string;
+  value: number;
+  effectiveDate: string; // YYYY-MM-DD
+  municipalServiceId?: string;
+  municipalServiceCode?: string;
+  municipalServiceName?: string;
+  taxes?: {
+    retainIss?: boolean;
+    iss?: number;
+    cofins?: number;
+    csll?: number;
+    inss?: number;
+    ir?: number;
+    pis?: number;
+  };
+}
+
+export interface AsaasInvoiceResult {
+  id: string;
+  status: string; // 'SCHEDULED' | 'SYNCHRONIZED' | 'AUTHORIZED' | 'PROCESSING_CANCELLATION' | 'CANCELED' | 'ERROR'
+  customer: string;
+  payment?: string;
+  effectiveDate: string;
+  number?: string | null;
+  pdfUrl?: string | null;
+  xmlUrl?: string | null;
+  value: number;
+  simulated?: boolean;
 }
 
 export interface AsaasPixQrCodeResult {
@@ -321,6 +360,9 @@ export class AsaasService {
           description: input.description,
           externalReference: input.externalReference,
           postalService: input.postalService ?? false,
+          installmentCount: input.installmentCount,
+          installmentValue: input.installmentValue,
+          totalValue: input.totalValue,
         }),
       });
 
@@ -396,9 +438,9 @@ export class AsaasService {
 
   async createSubscription(
     input: AsaasSubscriptionInput,
-  ): Promise<{ id: string; status: string }> {
+  ): Promise<{ id: string; status: string; simulated?: boolean }> {
     if (!this.isConfigured) {
-      return { id: `sim_sub_${Date.now()}`, status: 'ACTIVE' };
+      return { id: `sim_sub_${Date.now()}`, status: 'ACTIVE', simulated: true };
     }
 
     try {
@@ -413,6 +455,7 @@ export class AsaasService {
           nextDueDate: input.nextDueDate,
           cycle: input.cycle,
           description: input.description,
+          externalReference: input.externalReference,
         }),
       });
 
@@ -432,6 +475,160 @@ export class AsaasService {
       throw new BadRequestException(
         'Falha de conexão com a API de assinaturas do Asaas.',
       );
+    }
+  }
+
+  async getSubscriptionPayments(
+    subscriptionId: string,
+  ): Promise<AsaasPaymentRecord[]> {
+    if (!this.isConfigured || subscriptionId.startsWith('sim_')) {
+      return [];
+    }
+
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/subscriptions/${subscriptionId}/payments`,
+        { headers: this.headers },
+      );
+      if (!response.ok) return [];
+      const data = (await response.json().catch(() => ({}))) as {
+        data?: AsaasPaymentRecord[];
+      };
+      return data.data ?? [];
+    } catch {
+      return [];
+    }
+  }
+
+  async createInvoice(input: AsaasInvoiceInput): Promise<AsaasInvoiceResult> {
+    if (!this.isConfigured) {
+      this.logger.warn(
+        `[Asaas Simulado] Agendando emissão de NFS-e para cobrança ${input.payment}`,
+      );
+      const simId = `sim_inv_${Date.now()}`;
+      return {
+        id: simId,
+        status: 'SCHEDULED',
+        customer: input.customer || '',
+        payment: input.payment,
+        effectiveDate: input.effectiveDate,
+        number: `NFE-${Math.floor(1000 + Math.random() * 9000)}`,
+        pdfUrl: `https://picplus.com.br/nfe-simulada/${simId}.pdf`,
+        xmlUrl: `https://picplus.com.br/nfe-simulada/${simId}.xml`,
+        value: input.value,
+        simulated: true,
+      };
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/invoices`, {
+        method: 'POST',
+        headers: this.headers,
+        body: JSON.stringify({
+          payment: input.payment,
+          customer: input.customer,
+          serviceDescription: input.serviceDescription,
+          value: input.value,
+          effectiveDate: input.effectiveDate,
+          municipalServiceId: input.municipalServiceId,
+          municipalServiceCode: input.municipalServiceCode,
+          municipalServiceName: input.municipalServiceName,
+          taxes: input.taxes,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = (await response
+          .json()
+          .catch(() => ({}))) as AsaasApiError;
+        this.logger.error(
+          `Erro ao emitir NFS-e no Asaas: ${JSON.stringify(errorData)}`,
+        );
+        throw new BadRequestException(
+          `Asaas recusou a emissão da NFS-e: ${errorData.errors?.[0]?.description ?? response.statusText}`,
+        );
+      }
+
+      const data = (await response.json()) as {
+        id: string;
+        status: string;
+        customer: string;
+        payment?: string;
+        effectiveDate: string;
+        number?: string | null;
+        pdfUrl?: string | null;
+        xmlUrl?: string | null;
+        value: number;
+      };
+      return {
+        id: data.id,
+        status: data.status,
+        customer: data.customer,
+        payment: data.payment,
+        effectiveDate: data.effectiveDate,
+        number: data.number,
+        pdfUrl: data.pdfUrl,
+        xmlUrl: data.xmlUrl,
+        value: data.value,
+      };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(
+        `Falha ao conectar com o Asaas para emissão de NFS-e: ${err}`,
+      );
+      throw new BadRequestException(
+        'Falha de conexão com a API de Notas Fiscais do Asaas.',
+      );
+    }
+  }
+
+  async getInvoice(invoiceId: string): Promise<AsaasInvoiceResult> {
+    if (!this.isConfigured || invoiceId.startsWith('sim_')) {
+      return {
+        id: invoiceId,
+        status: 'AUTHORIZED',
+        customer: '',
+        effectiveDate: new Date().toISOString().split('T')[0],
+        number: '1234',
+        pdfUrl: `https://picplus.com.br/nfe-simulada/${invoiceId}.pdf`,
+        xmlUrl: `https://picplus.com.br/nfe-simulada/${invoiceId}.xml`,
+        value: 0,
+        simulated: true,
+      };
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/invoices/${invoiceId}`, {
+        headers: this.headers,
+      });
+      if (!response.ok) {
+        throw new BadRequestException('Nota fiscal não encontrada no Asaas.');
+      }
+      const data = (await response.json()) as {
+        id: string;
+        status: string;
+        customer: string;
+        payment?: string;
+        effectiveDate: string;
+        number?: string | null;
+        pdfUrl?: string | null;
+        xmlUrl?: string | null;
+        value: number;
+      };
+      return {
+        id: data.id,
+        status: data.status,
+        customer: data.customer,
+        payment: data.payment,
+        effectiveDate: data.effectiveDate,
+        number: data.number,
+        pdfUrl: data.pdfUrl,
+        xmlUrl: data.xmlUrl,
+        value: data.value,
+      };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      throw new BadRequestException('Erro ao consultar Nota Fiscal no Asaas.');
     }
   }
 

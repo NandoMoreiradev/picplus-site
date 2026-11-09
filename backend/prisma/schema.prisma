@@ -846,6 +846,18 @@ model ClientCharge {
   pixPayload     String?           @db.Text
   paidAt         DateTime?
 
+  // Nota Fiscal de Serviço (NFS-e Asaas)
+  nfeId          String?
+  nfeStatus      String?
+  nfeNumber      String?
+  nfePdfUrl      String?
+  nfeXmlUrl      String?
+
+  // Recorrência / Assinatura / Parcelamento Asaas
+  asaasSubscriptionId String?
+  installmentCount    Int?
+  installmentNumber   Int?
+
   financialEntry FinancialEntry?
 
   createdAt      DateTime          @default(now())

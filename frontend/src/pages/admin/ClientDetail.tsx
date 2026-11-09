@@ -6,11 +6,13 @@ import {
   Copy,
   DollarSign,
   ExternalLink,
+  FileText,
   Mail,
   Pencil,
   Phone,
   Plus,
   QrCode,
+  RefreshCw,
   Search,
   Send,
 } from 'lucide-react';
@@ -27,7 +29,7 @@ import {
 import { Button, ButtonAnchor } from '../../components/ui/Button';
 import { EmptyState, ErrorState, PageLoader } from '../../components/ui/Feedback';
 import type { Tone } from '../../components/ui/Feedback';
-import { CurrencyField, SelectField, TextArea, TextField } from '../../components/ui/Form';
+import { CurrencyField, SelectField, Switch, TextArea, TextField } from '../../components/ui/Form';
 import { WhatsAppIcon } from '../../components/ui/icons';
 import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
@@ -214,13 +216,24 @@ export function ClientDetail() {
 
   const [activeTab, setActiveTab] = useState<TabKey>('OVERVIEW');
 
-  // Modais
+  // Modais de Cobrança
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
   const [chargeDescription, setChargeDescription] = useState('');
   const [chargeValueInput, setChargeValueInput] = useState('');
   const [chargeDueDate, setChargeDueDate] = useState('');
   const [chargeBillingType, setChargeBillingType] = useState<ChargeBillingType>('PIX');
+  const [chargeKind, setChargeKind] = useState<'SINGLE' | 'RECURRENT' | 'INSTALLMENT'>('SINGLE');
+  const [chargeCycle, setChargeCycle] = useState<'MONTHLY' | 'BIMONTHLY' | 'QUARTERLY' | 'SEMIANNUALLY' | 'YEARLY'>('MONTHLY');
+  const [chargeInstallments, setChargeInstallments] = useState(2);
+  const [chargeEmitInvoice, setChargeEmitInvoice] = useState(false);
+  const [chargeInvoiceDesc, setChargeInvoiceDesc] = useState('');
   const [creatingCharge, setCreatingCharge] = useState(false);
+
+  // Modal de Emissão manual de NFS-e para cobrança existente
+  const [invoiceModalCharge, setInvoiceModalCharge] = useState<ClientCharge | null>(null);
+  const [invoiceCustomDesc, setInvoiceCustomDesc] = useState('');
+  const [emittingInvoice, setEmittingInvoice] = useState(false);
+  const [syncingInvoiceId, setSyncingInvoiceId] = useState<string | null>(null);
 
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactName, setContactName] = useState('');
@@ -347,7 +360,7 @@ export function ClientDetail() {
     tone: 'neutral',
   };
 
-  // Gerar Nova Cobrança no Asaas
+  // Gerar Nova Cobrança no Asaas (Única, Recorrente ou Parcelada + NFS-e)
   const handleCreateCharge = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanValue = parseBRLToCents(chargeValueInput);
@@ -363,13 +376,26 @@ export function ClientDetail() {
         valueCents: cleanValue,
         dueDate: chargeDueDate,
         billingType: chargeBillingType,
+        chargeKind,
+        cycle: chargeKind === 'RECURRENT' ? chargeCycle : undefined,
+        installmentCount: chargeKind === 'INSTALLMENT' ? Number(chargeInstallments) : undefined,
+        emitInvoice: chargeEmitInvoice,
+        invoiceServiceDescription:
+          chargeEmitInvoice && chargeInvoiceDesc.trim() ? chargeInvoiceDesc.trim() : undefined,
       });
 
-      toast.success('Cobrança gerada com sucesso via Asaas v3!');
+      toast.success(
+        chargeEmitInvoice
+          ? 'Cobrança gerada e emissão da NFS-e iniciada no Asaas!'
+          : 'Cobrança gerada com sucesso via Asaas v3!'
+      );
       setChargeModalOpen(false);
       setChargeDescription('');
       setChargeValueInput('');
       setChargeDueDate('');
+      setChargeKind('SINGLE');
+      setChargeEmitInvoice(false);
+      setChargeInvoiceDesc('');
       reload();
 
       if (res.billingType === 'PIX' && (res.pixPayload || res.pixQrCodeUrl)) {
@@ -382,6 +408,41 @@ export function ClientDetail() {
       toast.error(errorMessage(err, 'Falha ao gerar cobrança no Asaas.'));
     } finally {
       setCreatingCharge(false);
+    }
+  };
+
+  const handleEmitInvoice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invoiceModalCharge) return;
+
+    try {
+      setEmittingInvoice(true);
+      await api.post(`/admin/clients/${client.id}/charges/${invoiceModalCharge.id}/invoice`, {
+        serviceDescription: invoiceCustomDesc.trim() || undefined,
+      });
+      toast.success('Solicitação de emissão de NFS-e transmitida com sucesso!');
+      setInvoiceModalCharge(null);
+      setInvoiceCustomDesc('');
+      reload();
+    } catch (err) {
+      toast.error(
+        errorMessage(err, 'Falha ao emitir NFS-e. Verifique as configurações fiscais no Asaas.')
+      );
+    } finally {
+      setEmittingInvoice(false);
+    }
+  };
+
+  const handleSyncInvoice = async (chargeId: string) => {
+    try {
+      setSyncingInvoiceId(chargeId);
+      await api.get(`/admin/clients/${client.id}/charges/${chargeId}/invoice`);
+      toast.success('Status da NFS-e atualizado!');
+      reload();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Não foi possível atualizar o status da NFS-e.'));
+    } finally {
+      setSyncingInvoiceId(null);
     }
   };
 
@@ -727,8 +788,8 @@ export function ClientDetail() {
                     <th>Vencimento</th>
                     <th>Forma</th>
                     <th>Status</th>
-                    <th>Asaas</th>
-                    <th>Comprovante / Pagamento</th>
+                    <th>Nota Fiscal (NFS-e)</th>
+                    <th>Fatura & Pagamento</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -740,7 +801,46 @@ export function ClientDetail() {
                     return (
                       <tr key={charge.id}>
                         <td>
-                          <strong>{charge.description}</strong>
+                          <div>
+                            <strong>{charge.description}</strong>
+                            {charge.asaasSubscriptionId && (
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  marginLeft: '0.5rem',
+                                  fontSize: '0.72rem',
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: '4px',
+                                  background: 'rgba(59, 130, 246, 0.15)',
+                                  color: '#60a5fa',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Recorrente
+                              </span>
+                            )}
+                            {charge.installmentCount && (
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  marginLeft: '0.5rem',
+                                  fontSize: '0.72rem',
+                                  padding: '0.15rem 0.45rem',
+                                  borderRadius: '4px',
+                                  background: 'rgba(168, 85, 247, 0.15)',
+                                  color: '#c084fc',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Parcela {charge.installmentNumber || 1}/{charge.installmentCount}
+                              </span>
+                            )}
+                          </div>
+                          {charge.asaasPaymentId && (
+                            <small style={{ fontFamily: 'monospace', color: '#737373', display: 'block', marginTop: '0.2rem' }}>
+                              ID: {charge.asaasPaymentId}
+                            </small>
+                          )}
                         </td>
                         <td>
                           <span style={{ fontWeight: 800 }}>{formatCents(charge.valueCents)}</span>
@@ -753,12 +853,86 @@ export function ClientDetail() {
                           <StatusPill tone={chargeStatus.tone}>{chargeStatus.label}</StatusPill>
                         </td>
                         <td>
-                          <small style={{ fontFamily: 'monospace', color: '#888' }}>
-                            {charge.asaasPaymentId || '—'}
-                          </small>
+                          {charge.nfeStatus === 'AUTHORIZED' ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                              <StatusPill tone="success">
+                                NFS-e {charge.nfeNumber ? `#${charge.nfeNumber}` : 'Autorizada'}
+                              </StatusPill>
+                              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                                {charge.nfePdfUrl && (
+                                  <ButtonAnchor
+                                    href={charge.nfePdfUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    $size="sm"
+                                    $variant="secondary"
+                                    title="Visualizar PDF da NFS-e"
+                                  >
+                                    <FileText size={11} /> PDF
+                                  </ButtonAnchor>
+                                )}
+                                {charge.nfeXmlUrl && (
+                                  <ButtonAnchor
+                                    href={charge.nfeXmlUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    $size="sm"
+                                    $variant="secondary"
+                                    title="Baixar XML da NFS-e"
+                                  >
+                                    XML
+                                  </ButtonAnchor>
+                                )}
+                              </div>
+                            </div>
+                          ) : charge.nfeStatus === 'SCHEDULED' || charge.nfeStatus === 'SYNCHRONIZED' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              <StatusPill tone="info">Processando</StatusPill>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => handleSyncInvoice(charge.id)}
+                                disabled={syncingInvoiceId === charge.id}
+                                title="Atualizar status da NFS-e junto ao Asaas"
+                              >
+                                <RefreshCw size={11} />
+                              </Button>
+                            </div>
+                          ) : charge.nfeStatus === 'ERROR' ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                              <StatusPill tone="danger">Erro Emissão</StatusPill>
+                              {canFinancial && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setInvoiceModalCharge(charge);
+                                    setInvoiceCustomDesc(charge.description);
+                                  }}
+                                  title="Tentar emitir NFS-e novamente"
+                                >
+                                  <FileText size={11} /> Reemitir
+                                </Button>
+                              )}
+                            </div>
+                          ) : (
+                            canFinancial && charge.asaasPaymentId && (
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                  setInvoiceModalCharge(charge);
+                                  setInvoiceCustomDesc(charge.description);
+                                }}
+                                title="Emitir NFS-e antes do pagamento"
+                              >
+                                <FileText size={11} /> Emitir NFS-e
+                              </Button>
+                            )
+                          )}
                         </td>
                         <td>
-                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
                             {charge.invoiceUrl && (
                               <ButtonAnchor
                                 href={charge.invoiceUrl}
@@ -842,10 +1016,73 @@ export function ClientDetail() {
         open={chargeModalOpen}
         onClose={() => setChargeModalOpen(false)}
         title="Gerar Cobrança no Asaas v3"
-        width="540px"
+        width="560px"
       >
         <form onSubmit={handleCreateCharge}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <SelectField
+              label="Modalidade da Cobrança"
+              value={chargeKind}
+              onChange={(e) =>
+                setChargeKind(e.target.value as 'SINGLE' | 'RECURRENT' | 'INSTALLMENT')
+              }
+              options={[
+                { value: 'SINGLE', label: 'Cobrança Única / Avulsa' },
+                { value: 'RECURRENT', label: 'Assinatura Recorrente (Mensalidade Contínua)' },
+                { value: 'INSTALLMENT', label: 'Parcelada (Carnê / N Parcelas)' },
+              ]}
+            />
+
+            {chargeKind === 'RECURRENT' && (
+              <SelectField
+                label="Periodicidade da Assinatura"
+                value={chargeCycle}
+                onChange={(e) =>
+                  setChargeCycle(
+                    e.target.value as
+                      | 'MONTHLY'
+                      | 'BIMONTHLY'
+                      | 'QUARTERLY'
+                      | 'SEMIANNUALLY'
+                      | 'YEARLY'
+                  )
+                }
+                options={[
+                  { value: 'MONTHLY', label: 'Mensal (Todo mês no dia do vencimento)' },
+                  { value: 'BIMONTHLY', label: 'Bimestral (A cada 2 meses)' },
+                  { value: 'QUARTERLY', label: 'Trimestral (A cada 3 meses)' },
+                  { value: 'SEMIANNUALLY', label: 'Semestral (A cada 6 meses)' },
+                  { value: 'YEARLY', label: 'Anual' },
+                ]}
+              />
+            )}
+
+            {chargeKind === 'INSTALLMENT' && (
+              <SelectField
+                label="Quantidade de Parcelas"
+                value={String(chargeInstallments)}
+                onChange={(e) => setChargeInstallments(Number(e.target.value))}
+                options={[
+                  { value: '2', label: '2x parcelas' },
+                  { value: '3', label: '3x parcelas' },
+                  { value: '4', label: '4x parcelas' },
+                  { value: '5', label: '5x parcelas' },
+                  { value: '6', label: '6x parcelas' },
+                  { value: '7', label: '7x parcelas' },
+                  { value: '8', label: '8x parcelas' },
+                  { value: '9', label: '9x parcelas' },
+                  { value: '10', label: '10x parcelas' },
+                  { value: '11', label: '11x parcelas' },
+                  { value: '12', label: '12x parcelas' },
+                ]}
+                hint={
+                  chargeValueInput
+                    ? `Valor total de ${chargeValueInput} dividido em ${chargeInstallments}x de R$ ${(parseBRLToCents(chargeValueInput) / (chargeInstallments * 100)).toFixed(2).replace('.', ',')}`
+                    : undefined
+                }
+              />
+            )}
+
             <TextField
               label="Descrição do Serviço ou Job"
               required
@@ -854,14 +1091,20 @@ export function ClientDetail() {
               onChange={(e) => setChargeDescription(e.target.value)}
             />
             <CurrencyField
-              label="Valor da Cobrança"
+              label={chargeKind === 'INSTALLMENT' ? 'Valor Total do Parcelamento' : 'Valor da Cobrança'}
               required
               placeholder="R$ 0,00"
               value={chargeValueInput}
               onChange={setChargeValueInput}
             />
             <TextField
-              label="Data de Vencimento"
+              label={
+                chargeKind === 'RECURRENT'
+                  ? 'Primeiro Vencimento da Assinatura'
+                  : chargeKind === 'INSTALLMENT'
+                    ? 'Vencimento da 1ª Parcela'
+                    : 'Data de Vencimento'
+              }
               type="date"
               required
               value={chargeDueDate}
@@ -878,6 +1121,35 @@ export function ClientDetail() {
                 { value: 'UNDEFINED', label: 'Deixar cliente escolher na fatura' },
               ]}
             />
+
+            <div
+              style={{
+                marginTop: '0.5rem',
+                padding: '0.85rem',
+                border: '1px solid #333',
+                borderRadius: '8px',
+                background: 'rgba(255, 255, 255, 0.02)',
+              }}
+            >
+              <Switch
+                checked={chargeEmitInvoice}
+                onChange={setChargeEmitInvoice}
+                label="Emitir Nota Fiscal (NFS-e) antes do pagamento"
+                description="Transmite a NFS-e à prefeitura de forma imediata para o cliente conferir antes de quitar a fatura."
+              />
+
+              {chargeEmitInvoice && (
+                <div style={{ marginTop: '0.85rem' }}>
+                  <TextField
+                    label="Discriminação dos Serviços na NFS-e"
+                    placeholder="Ex: Prestação de serviços de marketing digital e gestão de tráfego..."
+                    value={chargeInvoiceDesc}
+                    onChange={(e) => setChargeInvoiceDesc(e.target.value)}
+                    hint="Opcional. Se não preenchido, usará a descrição informada acima."
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           <div
@@ -903,6 +1175,73 @@ export function ClientDetail() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* MODAL: EMITIR NFS-E ANTECIPADA / MANUAL */}
+      <Modal
+        open={Boolean(invoiceModalCharge)}
+        onClose={() => setInvoiceModalCharge(null)}
+        title="Emitir Nota Fiscal de Serviço (NFS-e)"
+        width="520px"
+      >
+        {invoiceModalCharge && (
+          <form onSubmit={handleEmitInvoice}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div
+                style={{
+                  padding: '0.85rem',
+                  borderRadius: '6px',
+                  background: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid rgba(59, 130, 246, 0.25)',
+                  fontSize: '0.88rem',
+                  lineHeight: 1.5,
+                  color: '#cbd5e1',
+                }}
+              >
+                Cobrança selecionada:{' '}
+                <strong>{invoiceModalCharge.description}</strong> —{' '}
+                <span style={{ fontWeight: 800, color: '#fff' }}>
+                  {formatCents(invoiceModalCharge.valueCents)}
+                </span>
+                <p style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#94a3b8' }}>
+                  A NFS-e será transmitida de imediato à Prefeitura via Asaas, ficando autorizada
+                  antes da quitação da fatura para o cliente aprovar o pagamento.
+                </p>
+              </div>
+
+              <TextField
+                label="Discriminação do Serviço na Nota Fiscal"
+                required
+                value={invoiceCustomDesc}
+                onChange={(e) => setInvoiceCustomDesc(e.target.value)}
+                placeholder="Ex: Prestação de serviços de publicidade, design e gestão de anúncios..."
+              />
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+                marginTop: '1.5rem',
+                borderTop: '1px solid #262626',
+                paddingTop: '1rem',
+              }}
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setInvoiceModalCharge(null)}
+                disabled={emittingInvoice}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={emittingInvoice || !invoiceCustomDesc.trim()}>
+                {emittingInvoice ? 'Transmitindo à Prefeitura…' : 'Emitir NFS-e Imediata'}
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* MODAL: NOVO CONTATO */}

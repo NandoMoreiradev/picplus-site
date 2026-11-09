@@ -18,6 +18,7 @@ import {
   CreateClientContactDto,
   CreateClientDto,
   CreateClientNoteDto,
+  EmitChargeInvoiceDto,
   ListClientsQueryDto,
   UpdateClientDto,
 } from './dto/client.dto';
@@ -29,6 +30,14 @@ export interface AsaasWebhookPayload {
     paymentDate?: string;
     invoiceUrl?: string;
     bankSlipUrl?: string;
+  };
+  invoice?: {
+    id?: string;
+    status?: string;
+    payment?: string;
+    number?: string;
+    pdfUrl?: string;
+    xmlUrl?: string;
   };
 }
 
@@ -740,7 +749,8 @@ export class ClientsService {
   }
 
   /**
-   * Emite uma cobrança via Asaas v3 para o cliente.
+   * Emite uma cobrança via Asaas v3 para o cliente (Única, Recorrente ou Parcelada)
+   * e opcionalmente emite a Nota Fiscal de Serviço (NFS-e) de forma antecipada/imediata.
    */
   async createCharge(clientId: string, dto: CreateClientChargeDto) {
     const client = await this.getById(clientId);
@@ -768,21 +778,80 @@ export class ClientsService {
     }
 
     const valueInReais = Number((dto.valueCents / 100).toFixed(2));
-    const asaasPayment = await this.asaas.createPayment({
-      customerId,
-      billingType: dto.billingType || 'UNDEFINED',
-      value: valueInReais,
-      dueDate: dto.dueDate,
-      description: dto.description,
-      externalReference: `client_${clientId}`,
-    });
+    let asaasPaymentId: string | null = null;
+    let asaasSubscriptionId: string | null = null;
+    let invoiceUrl: string | null = null;
+    let bankSlipUrl: string | null = null;
+    let installmentCount: number | null = null;
+    let installmentNumber: number | null = null;
+    let finalValueCents = dto.valueCents;
+
+    if (dto.chargeKind === 'RECURRENT') {
+      const sub = await this.asaas.createSubscription({
+        customerId,
+        billingType: dto.billingType || 'UNDEFINED',
+        value: valueInReais,
+        nextDueDate: dto.dueDate,
+        cycle: dto.cycle || 'MONTHLY',
+        description: dto.description,
+        externalReference: `client_${clientId}`,
+      });
+      asaasSubscriptionId = sub.id;
+
+      // Busca a primeira cobrança gerada para a assinatura recém-criada
+      const payments = await this.asaas.getSubscriptionPayments(sub.id);
+      const firstPayment = payments?.[0];
+      if (firstPayment) {
+        asaasPaymentId = firstPayment.id;
+        invoiceUrl = firstPayment.invoiceUrl || null;
+        bankSlipUrl = firstPayment.bankSlipUrl || null;
+      } else {
+        asaasPaymentId = sub.id.startsWith('sim_')
+          ? `sim_pay_${Date.now()}`
+          : sub.id;
+        invoiceUrl = `https://picplus.com.br/fatura/${sub.id}`;
+      }
+    } else if (dto.chargeKind === 'INSTALLMENT') {
+      const count = dto.installmentCount || 2;
+      const installmentValue = Number((valueInReais / count).toFixed(2));
+      const asaasPayment = await this.asaas.createPayment({
+        customerId,
+        billingType: dto.billingType || 'UNDEFINED',
+        value: installmentValue,
+        installmentCount: count,
+        installmentValue,
+        totalValue: valueInReais,
+        dueDate: dto.dueDate,
+        description: `${dto.description} (Parcela 1/${count})`,
+        externalReference: `client_${clientId}`,
+      });
+      asaasPaymentId = asaasPayment.id;
+      invoiceUrl = asaasPayment.invoiceUrl;
+      bankSlipUrl = asaasPayment.bankSlipUrl ?? null;
+      installmentCount = count;
+      installmentNumber = 1;
+      finalValueCents = Math.round(dto.valueCents / count);
+    } else {
+      // Cobrança Única Padrão
+      const asaasPayment = await this.asaas.createPayment({
+        customerId,
+        billingType: dto.billingType || 'UNDEFINED',
+        value: valueInReais,
+        dueDate: dto.dueDate,
+        description: dto.description,
+        externalReference: `client_${clientId}`,
+      });
+      asaasPaymentId = asaasPayment.id;
+      invoiceUrl = asaasPayment.invoiceUrl;
+      bankSlipUrl = asaasPayment.bankSlipUrl ?? null;
+    }
 
     let pixQrCodeUrl: string | null = null;
     let pixPayload: string | null = null;
 
-    if (dto.billingType === 'PIX') {
+    if (dto.billingType === 'PIX' && asaasPaymentId) {
       try {
-        const pixData = await this.asaas.getPixQrCode(asaasPayment.id);
+        const pixData = await this.asaas.getPixQrCode(asaasPaymentId);
         pixQrCodeUrl = `data:image/png;base64,${pixData.encodedImage}`;
         pixPayload = pixData.payload;
       } catch (err) {
@@ -790,19 +859,136 @@ export class ClientsService {
       }
     }
 
+    // Emissão antecipada de Nota Fiscal de Serviço (NFS-e) antes do pagamento
+    let nfeId: string | null = null;
+    let nfeStatus: string | null = null;
+    let nfeNumber: string | null = null;
+    let nfePdfUrl: string | null = null;
+    let nfeXmlUrl: string | null = null;
+
+    if (dto.emitInvoice && asaasPaymentId) {
+      try {
+        const invoiceEffectiveDate =
+          dto.invoiceEffectiveDate || new Date().toISOString().split('T')[0];
+        const inv = await this.asaas.createInvoice({
+          payment: asaasPaymentId,
+          customer: customerId,
+          serviceDescription: dto.invoiceServiceDescription || dto.description,
+          value: Number((finalValueCents / 100).toFixed(2)),
+          effectiveDate: invoiceEffectiveDate,
+        });
+        nfeId = inv.id;
+        nfeStatus = inv.status;
+        nfeNumber = inv.number || null;
+        nfePdfUrl = inv.pdfUrl || null;
+        nfeXmlUrl = inv.xmlUrl || null;
+      } catch (nfeErr: any) {
+        this.logger.warn(
+          `Falha ao emitir NFS-e antecipada no Asaas: ${nfeErr?.message || nfeErr}`,
+        );
+        nfeStatus = 'ERROR';
+      }
+    }
+
     return this.prisma.clientCharge.create({
       data: {
         clientId,
         description: dto.description,
-        valueCents: dto.valueCents,
+        valueCents: finalValueCents,
         dueDate: new Date(dto.dueDate),
         billingType: dto.billingType || 'UNDEFINED',
         status: ChargeStatus.PENDING,
-        asaasPaymentId: asaasPayment.id,
-        invoiceUrl: asaasPayment.invoiceUrl,
-        bankSlipUrl: asaasPayment.bankSlipUrl,
+        asaasPaymentId,
+        asaasSubscriptionId,
+        installmentCount,
+        installmentNumber,
+        invoiceUrl,
+        bankSlipUrl,
         pixQrCodeUrl,
         pixPayload,
+        nfeId,
+        nfeStatus,
+        nfeNumber,
+        nfePdfUrl,
+        nfeXmlUrl,
+      },
+    });
+  }
+
+  /**
+   * Emite manualmente NFS-e para uma cobrança existente antes ou depois do pagamento.
+   */
+  async emitChargeInvoice(
+    clientId: string,
+    chargeId: string,
+    dto: EmitChargeInvoiceDto,
+  ) {
+    const charge = await this.prisma.clientCharge.findFirst({
+      where: { id: chargeId, clientId },
+      include: { client: true },
+    });
+    if (!charge) throw new NotFoundException('Cobrança não encontrada.');
+    if (!charge.asaasPaymentId) {
+      throw new BadRequestException(
+        'Esta cobrança não possui identificador Asaas válido.',
+      );
+    }
+    if (
+      charge.nfeId &&
+      (charge.nfeStatus === 'AUTHORIZED' || charge.nfeStatus === 'SCHEDULED')
+    ) {
+      throw new BadRequestException(
+        'Esta cobrança já possui uma Nota Fiscal emitida ou agendada.',
+      );
+    }
+
+    const valueInReais = Number((charge.valueCents / 100).toFixed(2));
+    const effectiveDate =
+      dto.effectiveDate || new Date().toISOString().split('T')[0];
+    const serviceDescription = dto.serviceDescription || charge.description;
+
+    const inv = await this.asaas.createInvoice({
+      payment: charge.asaasPaymentId,
+      customer: charge.client.asaasCustomerId || undefined,
+      serviceDescription,
+      value: valueInReais,
+      effectiveDate,
+    });
+
+    return this.prisma.clientCharge.update({
+      where: { id: charge.id },
+      data: {
+        nfeId: inv.id,
+        nfeStatus: inv.status,
+        nfeNumber: inv.number || null,
+        nfePdfUrl: inv.pdfUrl || null,
+        nfeXmlUrl: inv.xmlUrl || null,
+      },
+    });
+  }
+
+  /**
+   * Sincroniza o status da NFS-e junto ao Asaas (busca PDF, XML e status de autorização).
+   */
+  async syncChargeInvoice(clientId: string, chargeId: string) {
+    const charge = await this.prisma.clientCharge.findFirst({
+      where: { id: chargeId, clientId },
+    });
+    if (!charge) throw new NotFoundException('Cobrança não encontrada.');
+    if (!charge.nfeId) {
+      throw new BadRequestException(
+        'Esta cobrança não possui Nota Fiscal vinculada.',
+      );
+    }
+
+    const inv = await this.asaas.getInvoice(charge.nfeId);
+    return this.prisma.clientCharge.update({
+      where: { id: charge.id },
+      data: {
+        nfeStatus: inv.status,
+        nfeNumber: inv.number || charge.nfeNumber,
+        nfePdfUrl: inv.pdfUrl || charge.nfePdfUrl,
+        nfeXmlUrl: inv.xmlUrl || charge.nfeXmlUrl,
       },
     });
   }
@@ -820,12 +1006,45 @@ export class ClientsService {
     }
 
     const event = payload?.event;
+    this.logger.log(`[Webhook Asaas v3] Evento recebido: ${event}`);
+
+    // Se o webhook for de evento de NFS-e:
+    if (
+      payload?.invoice?.id ||
+      (payload?.event && payload.event.startsWith('INVOICE_'))
+    ) {
+      const invoiceData = payload.invoice;
+      const targetInvoiceId = invoiceData?.id;
+      const targetPaymentId = invoiceData?.payment;
+
+      if (targetInvoiceId || targetPaymentId) {
+        const chargeWithNfe = await this.prisma.clientCharge.findFirst({
+          where: {
+            OR: [
+              ...(targetInvoiceId ? [{ nfeId: targetInvoiceId }] : []),
+              ...(targetPaymentId ? [{ asaasPaymentId: targetPaymentId }] : []),
+            ],
+          },
+        });
+
+        if (chargeWithNfe) {
+          await this.prisma.clientCharge.update({
+            where: { id: chargeWithNfe.id },
+            data: {
+              ...(invoiceData?.id ? { nfeId: invoiceData.id } : {}),
+              ...(invoiceData?.status ? { nfeStatus: invoiceData.status } : {}),
+              ...(invoiceData?.number ? { nfeNumber: invoiceData.number } : {}),
+              ...(invoiceData?.pdfUrl ? { nfePdfUrl: invoiceData.pdfUrl } : {}),
+              ...(invoiceData?.xmlUrl ? { nfeXmlUrl: invoiceData.xmlUrl } : {}),
+            },
+          });
+          return { status: 'nfe_processed', invoiceId: targetInvoiceId };
+        }
+      }
+    }
+
     const payment = payload?.payment;
     if (!payment?.id) return { status: 'ignored' };
-
-    this.logger.log(
-      `[Webhook Asaas v3] Evento recebido: ${event} para cobrança ${payment.id}`,
-    );
 
     const charge = await this.prisma.clientCharge.findUnique({
       where: { asaasPaymentId: payment.id },

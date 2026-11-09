@@ -251,6 +251,14 @@ export interface ClientCharge {
   bankSlipUrl: string | null;
   pixQrCodeUrl: string | null;
   pixPayload: string | null;
+  nfeId: string | null;
+  nfeStatus: string | null;
+  nfeNumber: string | null;
+  nfePdfUrl: string | null;
+  nfeXmlUrl: string | null;
+  asaasSubscriptionId: string | null;
+  installmentCount: number | null;
+  installmentNumber: number | null;
   paidAt: string | null;
   createdAt: string;
 }
