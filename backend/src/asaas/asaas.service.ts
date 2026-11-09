@@ -1,4 +1,4 @@
-import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
 import { config } from '../config/configuration';
 
@@ -142,16 +142,21 @@ export class AsaasService {
     account: { id?: string; name?: string; email?: string };
   }> {
     if (!this.isConfigured) {
-      throw new BadGatewayException('ASAAS_API_KEY não configurada.');
+      throw new BadRequestException(
+        'A chave ASAAS_API_KEY não está configurada no servidor.',
+      );
     }
 
     try {
       const response = await fetch(`${this.baseUrl}/myAccount`, {
         headers: this.headers,
+        signal: AbortSignal.timeout(10000),
       });
-      const data = (await response.json().catch(() => ({}))) as AsaasAccountResponse;
+      const data = (await response
+        .json()
+        .catch(() => ({}))) as AsaasAccountResponse;
       if (!response.ok) {
-        throw new BadGatewayException(
+        throw new BadRequestException(
           `Asaas recusou a conexão: ${data?.email ?? response.statusText}`,
         );
       }
@@ -161,9 +166,9 @@ export class AsaasService {
         account: { id: data.id, name: data.name, email: data.email },
       };
     } catch (err) {
-      if (err instanceof BadGatewayException) throw err;
+      if (err instanceof BadRequestException) throw err;
       this.logger.error(`Falha ao testar conexão com Asaas: ${err}`);
-      throw new BadGatewayException('Não foi possível conectar com o Asaas.');
+      throw new BadRequestException('Não foi possível conectar com o Asaas.');
     }
   }
 
@@ -176,28 +181,40 @@ export class AsaasService {
   }
 
   private async list<T>(resource: string): Promise<T[]> {
-    if (!this.isConfigured) throw new BadGatewayException('ASAAS_API_KEY não configurada.');
+    if (!this.isConfigured) {
+      throw new BadRequestException(
+        'A chave ASAAS_API_KEY não está configurada no servidor.',
+      );
+    }
     const result: T[] = [];
     const limit = 100;
-    for (let offset = 0; offset < 10000; offset += limit) {
-      const response = await fetch(
-        `${this.baseUrl}/${resource}?limit=${limit}&offset=${offset}`,
-        { headers: this.headers },
-      );
-      const data = (await response.json().catch(() => ({}))) as {
-        data?: T[];
-        errors?: Array<{ description?: string }>;
-      };
-      if (!response.ok) {
-        throw new BadGatewayException(
-          `Asaas recusou a importação: ${data.errors?.[0]?.description ?? response.statusText}`,
+    try {
+      for (let offset = 0; offset < 10000; offset += limit) {
+        const response = await fetch(
+          `${this.baseUrl}/${resource}?limit=${limit}&offset=${offset}`,
+          { headers: this.headers, signal: AbortSignal.timeout(15000) },
         );
+        const data = (await response.json().catch(() => ({}))) as {
+          data?: T[];
+          errors?: Array<{ description?: string }>;
+        };
+        if (!response.ok) {
+          throw new BadRequestException(
+            `Asaas recusou a importação: ${data.errors?.[0]?.description ?? response.statusText}`,
+          );
+        }
+        const page = data.data ?? [];
+        result.push(...page);
+        if (page.length < limit) break;
       }
-      const page = data.data ?? [];
-      result.push(...page);
-      if (page.length < limit) break;
+      return result;
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Falha ao importar ${resource} do Asaas: ${err}`);
+      throw new BadRequestException(
+        `Não foi possível comunicar com o Asaas ao listar ${resource}. Verifique a chave de API e a conexão.`,
+      );
     }
-    return result;
   }
 
   listCustomers() {
@@ -255,7 +272,7 @@ export class AsaasService {
         this.logger.error(
           `Erro ao criar cliente no Asaas: ${JSON.stringify(errorData)}`,
         );
-        throw new BadGatewayException(
+        throw new BadRequestException(
           `Asaas recusou o cadastro do cliente: ${errorData.errors?.[0]?.description ?? response.statusText}`,
         );
       }
@@ -263,9 +280,9 @@ export class AsaasService {
       const data = (await response.json()) as AsaasCustomerResponse;
       return { id: data.id };
     } catch (err) {
-      if (err instanceof BadGatewayException) throw err;
+      if (err instanceof BadRequestException) throw err;
       this.logger.error(`Falha de comunicação com Asaas: ${err}`);
-      throw new BadGatewayException(
+      throw new BadRequestException(
         'Não foi possível conectar com a API do Asaas.',
       );
     }
@@ -314,7 +331,7 @@ export class AsaasService {
         this.logger.error(
           `Erro ao criar cobrança no Asaas: ${JSON.stringify(errorData)}`,
         );
-        throw new BadGatewayException(
+        throw new BadRequestException(
           `Asaas recusou a geração da cobrança: ${errorData.errors?.[0]?.description ?? response.statusText}`,
         );
       }
@@ -332,9 +349,9 @@ export class AsaasService {
         bankSlipUrl: data.bankSlipUrl,
       };
     } catch (err) {
-      if (err instanceof BadGatewayException) throw err;
+      if (err instanceof BadRequestException) throw err;
       this.logger.error(`Falha ao conectar com o Asaas: ${err}`);
-      throw new BadGatewayException(
+      throw new BadRequestException(
         'Falha de conexão com a API de pagamentos do Asaas.',
       );
     }
@@ -360,7 +377,7 @@ export class AsaasService {
       );
 
       if (!response.ok) {
-        throw new BadGatewayException(
+        throw new BadRequestException(
           'Não foi possível obter os dados PIX da cobrança.',
         );
       }
@@ -373,7 +390,7 @@ export class AsaasService {
       };
     } catch (err) {
       this.logger.error(`Erro ao buscar PIX QR Code: ${err}`);
-      throw new BadGatewayException('Erro ao consultar dados de PIX no Asaas.');
+      throw new BadRequestException('Erro ao consultar dados de PIX no Asaas.');
     }
   }
 
@@ -403,7 +420,7 @@ export class AsaasService {
         const errorData = (await response
           .json()
           .catch(() => ({}))) as AsaasApiError;
-        throw new BadGatewayException(
+        throw new BadRequestException(
           `Erro ao criar assinatura no Asaas: ${errorData.errors?.[0]?.description ?? response.statusText}`,
         );
       }
@@ -411,8 +428,8 @@ export class AsaasService {
       const data = (await response.json()) as AsaasSubscriptionResponse;
       return { id: data.id, status: data.status };
     } catch (err) {
-      if (err instanceof BadGatewayException) throw err;
-      throw new BadGatewayException(
+      if (err instanceof BadRequestException) throw err;
+      throw new BadRequestException(
         'Falha de conexão com a API de assinaturas do Asaas.',
       );
     }

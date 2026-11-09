@@ -226,10 +226,12 @@ export function AdminUserMenu({ user, rail = false, onLogout, onNavigate }: Admi
 
   const roleLabel = user.isOwner ? 'Proprietário' : (user.role?.name ?? 'Sem cargo');
 
-  // Close when pathname changes
-  useEffect(() => {
+  // Close when pathname changes without cascading effect
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+  if (prevPathname !== location.pathname) {
+    setPrevPathname(location.pathname);
     setOpen(false);
-  }, [location.pathname]);
+  }
 
   // Position calculation
   useLayoutEffect(() => {

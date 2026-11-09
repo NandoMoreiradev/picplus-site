@@ -1,13 +1,38 @@
 import 'dotenv/config';
 import { join } from 'node:path';
 
-const toList = (value: string | undefined, fallback: string[]) =>
-  value
+const toList = (value: string | undefined, fallback: string[]) => {
+  const raw = value
     ? value
         .split(',')
-        .map((item) => item.trim())
+        .map((item) => item.trim().replace(/\/+$/, ''))
         .filter(Boolean)
     : fallback;
+
+  const set = new Set<string>();
+  for (const item of raw) {
+    const clean = item.replace(/\/+$/, '');
+    set.add(clean);
+    try {
+      const parsed = new URL(clean);
+      if (parsed.hostname.startsWith('www.')) {
+        set.add(
+          `${parsed.protocol}//${parsed.hostname.replace(/^www\./, '')}${parsed.port ? `:${parsed.port}` : ''}`,
+        );
+      } else if (
+        !parsed.hostname.includes('localhost') &&
+        !parsed.hostname.includes('127.0.0.1')
+      ) {
+        set.add(
+          `${parsed.protocol}//www.${parsed.hostname}${parsed.port ? `:${parsed.port}` : ''}`,
+        );
+      }
+    } catch {
+      /* ignore invalid URLs */
+    }
+  }
+  return Array.from(set);
+};
 
 export const config = {
   port: Number(process.env.PORT ?? 3000),
