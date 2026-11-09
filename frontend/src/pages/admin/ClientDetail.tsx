@@ -7,9 +7,11 @@ import {
   DollarSign,
   ExternalLink,
   Mail,
+  Pencil,
   Phone,
   Plus,
   QrCode,
+  Search,
   Send,
 } from 'lucide-react';
 import {
@@ -175,6 +177,24 @@ const NoteItem = styled.div`
   }
 `;
 
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+`;
+
+const SectionTitle = styled.h4`
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: ${({ theme }) => theme.colors.primary};
+  margin: 1.2rem 0 0.6rem;
+  grid-column: 1 / -1;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  padding-bottom: 0.4rem;
+`;
+
 const whatsappLink = (phone: string, name: string) => {
   let digits = phone.replace(/\D/g, '');
   if (digits.length <= 11) digits = `55${digits}`;
@@ -214,6 +234,110 @@ export function ClientDetail() {
   const [savingNote, setSavingNote] = useState(false);
 
   const [pixModalData, setPixModalData] = useState<{ payload: string; qrCodeUrl: string } | null>(null);
+
+  // Edição do Cliente e Parâmetros de Contrato
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    corporateName: '',
+    tradeName: '',
+    cnpjCpf: '',
+    segment: '',
+    website: '',
+    status: 'ACTIVE' as ClientStatus,
+    contractType: 'RETAINER_FEE' as ContractType,
+    monthlyFeeCents: 0,
+    dueDay: 10,
+    postalCode: '',
+    address: '',
+    addressNumber: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+  });
+  const [editMonthlyFeeInput, setEditMonthlyFeeInput] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [searchingCep, setSearchingCep] = useState(false);
+
+  const handleOpenEdit = () => {
+    if (!client) return;
+    setEditForm({
+      corporateName: client.corporateName || '',
+      tradeName: client.tradeName || '',
+      cnpjCpf: maskCnpjCpf(client.cnpjCpf || ''),
+      segment: client.segment || '',
+      website: client.website || '',
+      status: client.status || 'ACTIVE',
+      contractType: client.contractType || 'RETAINER_FEE',
+      monthlyFeeCents: client.monthlyFeeCents || 0,
+      dueDay: client.dueDay || 10,
+      postalCode: client.postalCode || '',
+      address: client.address || '',
+      addressNumber: client.addressNumber || '',
+      complement: client.complement || '',
+      neighborhood: client.neighborhood || '',
+      city: client.city || '',
+      state: client.state || '',
+    });
+    setEditMonthlyFeeInput(client.monthlyFeeCents ? formatCents(client.monthlyFeeCents) : '');
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+    if (!editForm.tradeName.trim() || !editForm.cnpjCpf.trim()) {
+      toast.error('Preencha ao menos o Nome Fantasia e o CNPJ/CPF.');
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      const cleanFee = parseBRLToCents(editMonthlyFeeInput);
+
+      await api.put(`/admin/clients/${client.id}`, {
+        ...editForm,
+        monthlyFeeCents: cleanFee,
+      });
+
+      toast.success('Cliente e contrato atualizados com sucesso!');
+      setEditModalOpen(false);
+      reload();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao atualizar dados do cliente.'));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleLookupCep = async () => {
+    const clean = editForm.postalCode.replace(/\D/g, '');
+    if (clean.length !== 8) {
+      toast.error('Informe um CEP válido com 8 dígitos.');
+      return;
+    }
+    try {
+      setSearchingCep(true);
+      const res = await api.get<{
+        address: string;
+        neighborhood: string;
+        city: string;
+        state: string;
+      }>(`/admin/clients/lookup/cep/${clean}`);
+      setEditForm((prev) => ({
+        ...prev,
+        address: res.address || prev.address,
+        neighborhood: res.neighborhood || prev.neighborhood,
+        city: res.city || prev.city,
+        state: res.state || prev.state,
+      }));
+      toast.success('Endereço preenchido via CEP!');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Não foi possível buscar o endereço deste CEP.'));
+    } finally {
+      setSearchingCep(false);
+    }
+  };
 
   if (loading) return <PageLoader />;
   if (error || !client) return <ErrorState message="Cliente não encontrado." />;
@@ -327,6 +451,11 @@ export function ClientDetail() {
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
             <StatusPill tone={statusCfg.tone}>{statusCfg.label}</StatusPill>
+            {canEdit && (
+              <Button variant="secondary" onClick={handleOpenEdit}>
+                <Pencil size={15} /> Editar Cliente
+              </Button>
+            )}
             {canFinancial && (
               <Button onClick={() => setChargeModalOpen(true)}>
                 <DollarSign size={16} /> Nova Cobrança (Asaas)
@@ -471,7 +600,14 @@ export function ClientDetail() {
           {/* Lateral */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             <Card>
-              <h3>Parâmetros de Contrato</h3>
+              <h3>
+                Parâmetros de Contrato
+                {canEdit && (
+                  <Button size="sm" variant="secondary" onClick={handleOpenEdit}>
+                    <Pencil size={13} /> Editar Contrato
+                  </Button>
+                )}
+              </h3>
               <DetailList>
                 <dt>Modelo</dt>
                 <dd>{CONTRACT_CONFIG[client.contractType]}</dd>
@@ -886,6 +1022,165 @@ export function ClientDetail() {
             </Button>
           </div>
         )}
+      </Modal>
+
+      {/* Modal de Edição do Cliente e Contrato */}
+      <Modal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title={`Editar Cliente: ${client.tradeName}`}
+        width="760px"
+      >
+        <form onSubmit={handleSaveEdit}>
+          <FormGrid>
+            <SectionTitle>Parâmetros do Contrato & Asaas</SectionTitle>
+            <CurrencyField
+              label="Fee Mensal / Valor do Contrato"
+              value={editMonthlyFeeInput}
+              onChange={setEditMonthlyFeeInput}
+              placeholder="R$ 0,00"
+            />
+            <SelectField
+              label="Modelo de Contrato"
+              value={editForm.contractType}
+              onChange={(e) => setEditForm({ ...editForm, contractType: e.target.value as ContractType })}
+              options={[
+                { value: 'RETAINER_FEE', label: 'Fee Mensal (Assessoria / Recorrente)' },
+                { value: 'FIXED_SCOPE', label: 'Projeto Fechado (Job Pontual)' },
+                { value: 'ON_DEMAND', label: 'Por Demanda / Horas' },
+              ]}
+            />
+            <TextField
+              label="Dia do Vencimento"
+              type="number"
+              min={1}
+              max={31}
+              value={String(editForm.dueDay)}
+              onChange={(e) => setEditForm({ ...editForm, dueDay: Number(e.target.value) || 10 })}
+            />
+
+            <SectionTitle>Dados da Empresa</SectionTitle>
+            <TextField
+              label="Nome Fantasia"
+              required
+              value={editForm.tradeName}
+              onChange={(e) => setEditForm({ ...editForm, tradeName: e.target.value })}
+            />
+            <TextField
+              label="Razão Social"
+              required
+              value={editForm.corporateName}
+              onChange={(e) => setEditForm({ ...editForm, corporateName: e.target.value })}
+            />
+            <TextField
+              label="CNPJ ou CPF"
+              required
+              value={editForm.cnpjCpf}
+              onChange={(e) => setEditForm({ ...editForm, cnpjCpf: maskCnpjCpf(e.target.value) })}
+            />
+            <TextField
+              label="Segmento / Nicho"
+              value={editForm.segment}
+              onChange={(e) => setEditForm({ ...editForm, segment: e.target.value })}
+              placeholder="Ex: E-commerce de Moda"
+            />
+            <TextField
+              label="Website / Loja"
+              value={editForm.website}
+              onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+              placeholder="https://..."
+            />
+            <SelectField
+              label="Status do Cliente"
+              value={editForm.status}
+              onChange={(e) => setEditForm({ ...editForm, status: e.target.value as ClientStatus })}
+              options={[
+                { value: 'ACTIVE', label: 'Ativo' },
+                { value: 'PROSPECT', label: 'Prospect (Em negociação)' },
+                { value: 'ONBOARDING', label: 'Onboarding' },
+                { value: 'PAUSED', label: 'Pausado' },
+                { value: 'CHURNED', label: 'Cancelado' },
+              ]}
+            />
+
+            <SectionTitle>Endereço Fiscal</SectionTitle>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <TextField
+                  label="CEP"
+                  value={editForm.postalCode}
+                  onChange={(e) => setEditForm({ ...editForm, postalCode: e.target.value })}
+                  placeholder="00000-000"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                style={{ height: '42px', marginBottom: '2px', whiteSpace: 'nowrap' }}
+                disabled={searchingCep || editForm.postalCode.replace(/\D/g, '').length !== 8}
+                onClick={handleLookupCep}
+                title="Buscar endereço por CEP"
+              >
+                <Search size={14} /> {searchingCep ? 'Buscando…' : 'Buscar CEP'}
+              </Button>
+            </div>
+            <TextField
+              label="Logradouro"
+              value={editForm.address}
+              onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+              placeholder="Av. Paulista"
+            />
+            <TextField
+              label="Número"
+              value={editForm.addressNumber}
+              onChange={(e) => setEditForm({ ...editForm, addressNumber: e.target.value })}
+              placeholder="1000"
+            />
+            <TextField
+              label="Bairro"
+              value={editForm.neighborhood}
+              onChange={(e) => setEditForm({ ...editForm, neighborhood: e.target.value })}
+              placeholder="Bela Vista"
+            />
+            <TextField
+              label="Cidade"
+              value={editForm.city}
+              onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+              placeholder="São Paulo"
+            />
+            <TextField
+              label="UF (Estado)"
+              maxLength={2}
+              value={editForm.state}
+              onChange={(e) => setEditForm({ ...editForm, state: e.target.value.toUpperCase() })}
+              placeholder="SP"
+            />
+          </FormGrid>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              marginTop: '1.5rem',
+              borderTop: '1px solid #262626',
+              paddingTop: '1rem',
+            }}
+          >
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setEditModalOpen(false)}
+              disabled={savingEdit}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={savingEdit}>
+              {savingEdit ? 'Salvando alterações…' : 'Salvar Alterações'}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </>
   );

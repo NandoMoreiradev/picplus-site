@@ -7,6 +7,7 @@ import {
   Calendar,
   DollarSign,
   Eye,
+  Pencil,
   Plus,
   RefreshCw,
   Search,
@@ -39,6 +40,7 @@ import { usePage } from '../../hooks/usePage';
 import { api } from '../../lib/api';
 import { formatCents, maskCnpjCpf, maskPhone, parseBRLToCents } from '../../lib/format';
 import type {
+  ClientDetail as ClientDetailType,
   ClientStats,
   ClientStatus,
   ClientSummary,
@@ -180,6 +182,8 @@ export function Clients() {
   const [page, setPage] = usePage('clients');
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
+  const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
   const [form, setForm] = useState<ClientFormState>(INITIAL_FORM);
   const [monthlyFeeInput, setMonthlyFeeInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -287,9 +291,46 @@ export function Clients() {
   const meta = data?.meta;
 
   const handleOpenCreate = () => {
+    setEditingClientId(null);
     setForm(INITIAL_FORM);
     setMonthlyFeeInput('');
     setModalOpen(true);
+  };
+
+  const handleOpenEdit = async (c: ClientSummary) => {
+    try {
+      setLoadingEditId(c.id);
+      const full = await api.get<ClientDetailType>(`/admin/clients/${c.id}`);
+      setEditingClientId(full.id);
+      setForm({
+        corporateName: full.corporateName || '',
+        tradeName: full.tradeName || '',
+        cnpjCpf: maskCnpjCpf(full.cnpjCpf || ''),
+        segment: full.segment || '',
+        website: full.website || '',
+        status: full.status || 'ACTIVE',
+        contractType: full.contractType || 'RETAINER_FEE',
+        monthlyFeeCents: full.monthlyFeeCents || 0,
+        dueDay: full.dueDay || 10,
+        postalCode: full.postalCode || '',
+        address: full.address || '',
+        addressNumber: full.addressNumber || '',
+        complement: full.complement || '',
+        neighborhood: full.neighborhood || '',
+        city: full.city || '',
+        state: full.state || '',
+        primaryContactName: '',
+        primaryContactEmail: '',
+        primaryContactPhone: '',
+        primaryContactRole: 'Responsável',
+      });
+      setMonthlyFeeInput(full.monthlyFeeCents ? formatCents(full.monthlyFeeCents) : '');
+      setModalOpen(true);
+    } catch (err) {
+      toast.error(errorMessage(err, 'Não foi possível carregar os dados para edição.'));
+    } finally {
+      setLoadingEditId(null);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -303,16 +344,27 @@ export function Clients() {
       setSaving(true);
       const cleanFee = parseBRLToCents(monthlyFeeInput);
 
-      await api.post('/admin/clients', {
-        ...form,
-        monthlyFeeCents: cleanFee,
-      });
+      if (editingClientId) {
+        await api.put(`/admin/clients/${editingClientId}`, {
+          ...form,
+          monthlyFeeCents: cleanFee,
+        });
+        toast.success('Cliente e contrato atualizados com sucesso!');
+      } else {
+        await api.post('/admin/clients', {
+          ...form,
+          monthlyFeeCents: cleanFee,
+        });
+        toast.success('Cliente cadastrado e sincronizado com o Asaas!');
+      }
 
-      toast.success('Cliente cadastrado e sincronizado com o Asaas!');
       setModalOpen(false);
+      setEditingClientId(null);
       reload();
     } catch (err) {
-      toast.error(errorMessage(err, 'Erro ao cadastrar cliente.'));
+      toast.error(
+        errorMessage(err, editingClientId ? 'Erro ao atualizar cliente.' : 'Erro ao cadastrar cliente.'),
+      );
     } finally {
       setSaving(false);
     }
@@ -550,6 +602,15 @@ export function Clients() {
                           <Link to={`/admin/clientes/${c.id}`} title="Ver Ficha Completa">
                             <Eye size={17} />
                           </Link>
+                          {canEdit && (
+                            <IconButton
+                              label="Editar cliente"
+                              onClick={() => handleOpenEdit(c)}
+                              disabled={loadingEditId === c.id}
+                            >
+                              <Pencil size={17} />
+                            </IconButton>
+                          )}
                           {canDelete && (
                             <IconButton
                               label="Remover cliente"
@@ -578,11 +639,14 @@ export function Clients() {
         </>
       )}
 
-      {/* Modal de Criação de Cliente */}
+      {/* Modal de Criação / Edição de Cliente */}
       <Modal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        title="Novo Cliente da Agência"
+        onClose={() => {
+          setModalOpen(false);
+          setEditingClientId(null);
+        }}
+        title={editingClientId ? `Editar Cliente: ${form.tradeName || 'Cliente'}` : 'Novo Cliente da Agência'}
         width="760px"
       >
         <form onSubmit={handleSave}>
@@ -637,13 +701,15 @@ export function Clients() {
               placeholder="https://..."
             />
             <SelectField
-              label="Status Inicial"
+              label={editingClientId ? 'Status do Cliente' : 'Status Inicial'}
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value as ClientStatus })}
               options={[
                 { value: 'ACTIVE', label: 'Ativo' },
                 { value: 'PROSPECT', label: 'Prospect (Em negociação)' },
                 { value: 'ONBOARDING', label: 'Onboarding' },
+                { value: 'PAUSED', label: 'Pausado' },
+                { value: 'CHURNED', label: 'Cancelado' },
               ]}
             />
 
@@ -673,32 +739,36 @@ export function Clients() {
               onChange={(e) => setForm({ ...form, dueDay: Number(e.target.value) || 10 })}
             />
 
-            <SectionTitle>Contato Principal (Notificações e Cobrança)</SectionTitle>
-            <TextField
-              label="Nome do Contato"
-              value={form.primaryContactName}
-              onChange={(e) => setForm({ ...form, primaryContactName: e.target.value })}
-              placeholder="Ex: Mariana Silva"
-            />
-            <TextField
-              label="E-mail (Receberá Faturas Asaas)"
-              type="email"
-              value={form.primaryContactEmail}
-              onChange={(e) => setForm({ ...form, primaryContactEmail: e.target.value })}
-              placeholder="financeiro@empresa.com.br"
-            />
-            <TextField
-              label="Telefone / WhatsApp"
-              value={form.primaryContactPhone}
-              onChange={(e) => setForm({ ...form, primaryContactPhone: maskPhone(e.target.value) })}
-              placeholder="(11) 99999-9999"
-            />
-            <TextField
-              label="Cargo do Contato"
-              value={form.primaryContactRole}
-              onChange={(e) => setForm({ ...form, primaryContactRole: e.target.value })}
-              placeholder="Ex: Gerente de Marketing"
-            />
+            {!editingClientId && (
+              <>
+                <SectionTitle>Contato Principal (Notificações e Cobrança)</SectionTitle>
+                <TextField
+                  label="Nome do Contato"
+                  value={form.primaryContactName}
+                  onChange={(e) => setForm({ ...form, primaryContactName: e.target.value })}
+                  placeholder="Ex: Mariana Silva"
+                />
+                <TextField
+                  label="E-mail (Receberá Faturas Asaas)"
+                  type="email"
+                  value={form.primaryContactEmail}
+                  onChange={(e) => setForm({ ...form, primaryContactEmail: e.target.value })}
+                  placeholder="financeiro@empresa.com.br"
+                />
+                <TextField
+                  label="Telefone / WhatsApp"
+                  value={form.primaryContactPhone}
+                  onChange={(e) => setForm({ ...form, primaryContactPhone: maskPhone(e.target.value) })}
+                  placeholder="(11) 99999-9999"
+                />
+                <TextField
+                  label="Cargo do Contato"
+                  value={form.primaryContactRole}
+                  onChange={(e) => setForm({ ...form, primaryContactRole: e.target.value })}
+                  placeholder="Ex: Gerente de Marketing"
+                />
+              </>
+            )}
 
             <SectionTitle>Endereço Fiscal (Obrigatório para Emissão no Asaas)</SectionTitle>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
@@ -774,7 +844,11 @@ export function Clients() {
               Cancelar
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Cadastrando e sincronizando…' : 'Salvar Cliente'}
+              {saving
+                ? 'Salvando…'
+                : editingClientId
+                  ? 'Salvar Alterações'
+                  : 'Salvar Cliente'}
             </Button>
           </div>
         </form>
