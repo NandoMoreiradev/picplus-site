@@ -2,17 +2,13 @@ import { useEffect, useState } from 'react';
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import styled, { useTheme } from 'styled-components';
 import {
-  ExternalLink,
   ChevronDown,
-  KeyRound,
-  LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
   X,
 } from 'lucide-react';
 import { Logo } from '../../components/layout/Logo';
-import { Avatar } from '../../components/ui/Avatar';
 import { PageLoader } from '../../components/ui/Feedback';
 import { ToastProvider } from '../../components/ui/Toast';
 import { useAuth } from '../../context/auth-context';
@@ -21,6 +17,7 @@ import { usePersistentState } from '../../hooks/usePersistentState';
 import type { AdminStats } from '../../lib/types';
 import { NAV_GROUPS, NAV_TOP } from './adminNav';
 import type { NavItemDef } from './adminNav';
+import { AdminUserMenu } from './AdminUserMenu';
 
 const SIDEBAR_WIDTH = '264px';
 const RAIL_WIDTH = '76px';
@@ -52,13 +49,11 @@ const Sidebar = styled.aside<{ $open: boolean; $rail: boolean }>`
     $rail &&
     `
     && .label,
-    && .user .text,
     && .brand-logo,
     && .soon {
       display: none;
     }
     && a,
-    && button.logout,
     && .soon-item {
       justify-content: center;
       gap: 0;
@@ -75,10 +70,6 @@ const Sidebar = styled.aside<{ $open: boolean; $rail: boolean }>`
       padding: 0;
       font-size: 0;
       line-height: 0;
-    }
-    && .user {
-      justify-content: center;
-      padding: 0;
     }
   `}
 
@@ -240,49 +231,11 @@ const Item = styled(NavLink)`
   }
 `;
 
-const Footer = styled.div`
+const Footer = styled.div<{ $rail: boolean }>`
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 1rem;
+  padding-top: 0.75rem;
   border-top: 1px solid ${({ theme }) => theme.colors.border};
-
-  .user {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 0 0.75rem;
-    font-size: 0.85rem;
-    color: ${({ theme }) => theme.colors.textSecondary};
-  }
-  .user .text {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .user strong {
-    display: block;
-    color: ${({ theme }) => theme.colors.text};
-  }
-  a.ext,
-  button.logout {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    width: 100%;
-    padding: 0.6rem 0.75rem;
-    border-radius: ${({ theme }) => theme.radii.md};
-    color: ${({ theme }) => theme.colors.textSecondary};
-    font-weight: 700;
-    font-size: 0.9rem;
-    text-align: left;
-  }
-  a.ext:hover,
-  button.logout:hover {
-    background: ${({ theme }) => theme.colors.surfaceHover};
-    color: ${({ theme }) => theme.colors.text};
-  }
 `;
 
 const Main = styled.div<{ $rail: boolean }>`
@@ -509,23 +462,13 @@ export function AdminLayout() {
             })}
           </Nav>
 
-          <Footer>
-            <div className="user" title={rail ? `${user.name} · ${user.email}` : undefined}>
-              <Avatar key={user.avatarUrl ?? 'none'} src={user.avatarUrl} name={user.name} size={38} />
-              <div className="text">
-                <strong>{user.name}</strong>
-                {user.isOwner ? 'Proprietário' : (user.role?.name ?? 'Sem cargo')} · {user.email}
-              </div>
-            </div>
-            <Item to="/admin/conta" title={rail ? 'Minha conta' : undefined} aria-label={rail ? 'Minha conta' : undefined}>
-              <KeyRound size={19} aria-hidden /> <span className="label">Minha conta</span>
-            </Item>
-            <a className="ext" href="/" target="_blank" rel="noopener noreferrer" title={rail ? 'Ver o site' : undefined} aria-label={rail ? 'Ver o site' : undefined}>
-              <ExternalLink size={18} aria-hidden /> <span className="label">Ver o site</span>
-            </a>
-            <button type="button" className="logout" onClick={logout} title={rail ? 'Sair' : undefined} aria-label={rail ? 'Sair' : undefined}>
-              <LogOut size={18} aria-hidden /> <span className="label">Sair</span>
-            </button>
+          <Footer $rail={rail}>
+            <AdminUserMenu
+              user={user}
+              rail={rail}
+              onLogout={logout}
+              onNavigate={() => setOpen(false)}
+            />
           </Footer>
         </Sidebar>
 
