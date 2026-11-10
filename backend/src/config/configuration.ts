@@ -76,6 +76,20 @@ export const config = {
     isSandbox:
       process.env.ASAAS_SANDBOX === 'true' || !process.env.ASAAS_API_KEY,
     webhookSecret: process.env.ASAAS_WEBHOOK_SECRET ?? '',
+    defaultTaxes: {
+      retainIss: process.env.ASAAS_TAX_RETAIN_ISS === 'true',
+      iss: Number(process.env.ASAAS_TAX_ISS ?? 0),
+      cofins: Number(process.env.ASAAS_TAX_COFINS ?? 0),
+      csll: Number(process.env.ASAAS_TAX_CSLL ?? 0),
+      inss: Number(process.env.ASAAS_TAX_INSS ?? 0),
+      ir: Number(process.env.ASAAS_TAX_IR ?? 0),
+      pis: Number(process.env.ASAAS_TAX_PIS ?? 0),
+    },
+    defaultMunicipalService: {
+      id: process.env.ASAAS_MUNICIPAL_SERVICE_ID || undefined,
+      code: process.env.ASAAS_MUNICIPAL_SERVICE_CODE || undefined,
+      name: process.env.ASAAS_MUNICIPAL_SERVICE_NAME || undefined,
+    },
   },
 };
 

@@ -876,6 +876,10 @@ export class ClientsService {
           serviceDescription: dto.invoiceServiceDescription || dto.description,
           value: Number((finalValueCents / 100).toFixed(2)),
           effectiveDate: invoiceEffectiveDate,
+          municipalServiceId: dto.municipalServiceId,
+          municipalServiceCode: dto.municipalServiceCode,
+          municipalServiceName: dto.municipalServiceName,
+          taxes: dto.invoiceTaxes,
         });
         nfeId = inv.id;
         nfeStatus = inv.status;
@@ -953,6 +957,10 @@ export class ClientsService {
       serviceDescription,
       value: valueInReais,
       effectiveDate,
+      municipalServiceId: dto.municipalServiceId,
+      municipalServiceCode: dto.municipalServiceCode,
+      municipalServiceName: dto.municipalServiceName,
+      taxes: dto.taxes,
     });
 
     return this.prisma.clientCharge.update({

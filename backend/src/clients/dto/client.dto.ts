@@ -5,12 +5,14 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Max,
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 
@@ -265,6 +267,68 @@ export class CreateClientChargeDto {
   @Transform(trim)
   @IsString()
   invoiceEffectiveDate?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  municipalServiceId?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  municipalServiceCode?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  municipalServiceName?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => InvoiceTaxesDto)
+  invoiceTaxes?: InvoiceTaxesDto;
+}
+
+export class InvoiceTaxesDto {
+  @IsOptional()
+  @IsBoolean()
+  retainIss?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  iss?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  cofins?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  csll?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  inss?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  ir?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  pis?: number;
 }
 
 export class EmitChargeInvoiceDto {
@@ -278,6 +342,26 @@ export class EmitChargeInvoiceDto {
   @Transform(trim)
   @IsString()
   effectiveDate?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  municipalServiceId?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  municipalServiceCode?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  municipalServiceName?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => InvoiceTaxesDto)
+  taxes?: InvoiceTaxesDto;
 }
 
 export class ConvertContactToClientDto {

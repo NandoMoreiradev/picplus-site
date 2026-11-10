@@ -521,6 +521,32 @@ export class AsaasService {
     }
 
     try {
+      const taxes = {
+        retainIss:
+          input.taxes?.retainIss ??
+          config.asaas.defaultTaxes.retainIss ??
+          false,
+        iss: input.taxes?.iss ?? config.asaas.defaultTaxes.iss ?? 0,
+        cofins: input.taxes?.cofins ?? config.asaas.defaultTaxes.cofins ?? 0,
+        csll: input.taxes?.csll ?? config.asaas.defaultTaxes.csll ?? 0,
+        inss: input.taxes?.inss ?? config.asaas.defaultTaxes.inss ?? 0,
+        ir: input.taxes?.ir ?? config.asaas.defaultTaxes.ir ?? 0,
+        pis: input.taxes?.pis ?? config.asaas.defaultTaxes.pis ?? 0,
+      };
+
+      const municipalServiceId =
+        input.municipalServiceId ||
+        config.asaas.defaultMunicipalService.id ||
+        undefined;
+      const municipalServiceCode =
+        input.municipalServiceCode ||
+        config.asaas.defaultMunicipalService.code ||
+        undefined;
+      const municipalServiceName =
+        input.municipalServiceName ||
+        config.asaas.defaultMunicipalService.name ||
+        undefined;
+
       const response = await fetch(`${this.baseUrl}/invoices`, {
         method: 'POST',
         headers: this.headers,
@@ -530,10 +556,10 @@ export class AsaasService {
           serviceDescription: input.serviceDescription,
           value: input.value,
           effectiveDate: input.effectiveDate,
-          municipalServiceId: input.municipalServiceId,
-          municipalServiceCode: input.municipalServiceCode,
-          municipalServiceName: input.municipalServiceName,
-          taxes: input.taxes,
+          municipalServiceId,
+          municipalServiceCode,
+          municipalServiceName,
+          taxes,
         }),
       });
 
