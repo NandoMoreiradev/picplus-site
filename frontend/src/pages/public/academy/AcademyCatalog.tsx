@@ -1,19 +1,31 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import {
+  ArrowRight,
   Award,
   BookOpen,
+  Check,
   Clock,
   GraduationCap,
+  Layers,
   PlayCircle,
   Sparkles,
+  Target,
   UserCheck,
+  Zap,
 } from 'lucide-react';
 import { Button, ButtonLink } from '../../../components/ui/Button';
 import { Chip, Chips } from '../../../components/ui/Chips';
 import { EmptyState, ErrorState, Skeleton } from '../../../components/ui/Feedback';
-import { Container, Grid, Highlight, PageHero, Section } from '../../../components/ui/Layout';
+import {
+  Container,
+  Grid,
+  Highlight,
+  PageHero,
+  Section,
+  SectionHeader,
+} from '../../../components/ui/Layout';
 import { SearchInput } from '../../../components/ui/SearchInput';
 import { useStudentAuth } from '../../../context/student-auth-context';
 import { useFetch } from '../../../hooks/useFetch';
@@ -234,7 +246,171 @@ const CourseCard = styled(Link)`
   }
 `;
 
+const HeroActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+`;
+
+const HeroProof = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.textSecondary};
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  svg {
+    color: ${({ theme }) => theme.colors.primary};
+  }
+`;
+
+const Manifesto = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  text-align: center;
+  font-size: 1.15rem;
+  line-height: 1.75;
+  color: ${({ theme }) => theme.colors.textSecondary};
+
+  .strong {
+    color: ${({ theme }) => theme.colors.text};
+    font-weight: 700;
+  }
+`;
+
+const Pillar = styled.div`
+  padding: 1.75rem;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  background: ${({ theme }) => theme.colors.surface};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  transition: border-color ${({ theme }) => theme.transitions.fast};
+
+  &:hover {
+    border-color: ${({ theme }) => theme.colors.primaryBorder};
+  }
+
+  .icon {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: ${({ theme }) => theme.radii.md};
+    background: ${({ theme }) => theme.colors.primarySoft};
+    border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
+    color: ${({ theme }) => theme.colors.primary};
+    margin-bottom: 1.1rem;
+  }
+
+  h3 {
+    font-size: 1.15rem;
+    margin: 0 0 0.5rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: ${({ theme }) => theme.colors.textSecondary};
+  }
+`;
+
+const Step = styled(Pillar)`
+  .num {
+    display: inline-grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 1.1rem;
+    border-radius: 50%;
+    background: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.textDark};
+    font-weight: 800;
+  }
+`;
+
+const FinalCta = styled.div`
+  padding: 3.5rem 2rem;
+  text-align: center;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
+  background:
+    radial-gradient(ellipse 70% 120% at 50% -30%, rgba(182, 232, 41, 0.18), transparent 70%),
+    ${({ theme }) => theme.colors.surface};
+
+  h2 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 800;
+    margin: 0 0 1rem;
+  }
+
+  p {
+    max-width: 560px;
+    margin: 0 auto 1.75rem;
+    font-size: 1.05rem;
+    color: ${({ theme }) => theme.colors.textSecondary};
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.75rem;
+  }
+`;
+
+const PILLARS = [
+  {
+    icon: Target,
+    title: 'Feito por quem faz',
+    text: 'Instrutores que estão na linha de frente de campanhas, produções e criadores todos os dias. O que você assiste é o que a gente pratica.',
+  },
+  {
+    icon: Zap,
+    title: 'Direto ao ponto',
+    text: 'Sem enrolação e sem aula de 3 horas para dizer o que cabe em 10 minutos. Cada módulo termina em algo que você consegue aplicar.',
+  },
+  {
+    icon: Layers,
+    title: 'Do conceito à execução',
+    text: 'Estratégia, método e passo a passo no mesmo lugar. Você entende o porquê e sai sabendo o como.',
+  },
+  {
+    icon: Award,
+    title: 'Prova do que você sabe',
+    text: 'Concluiu o curso, emitiu o certificado. Um documento verificável para o seu portfólio, LinkedIn e currículo.',
+  },
+];
+
+const STEPS = [
+  {
+    title: 'Escolha o curso',
+    text: 'Veja o conteúdo, o nível e a carga horária de cada formação e escolha a que resolve o seu momento.',
+  },
+  {
+    title: 'Estude no seu ritmo',
+    text: 'Acesse as aulas e os materiais de apoio pela sua área do aluno, quando e de onde quiser, e continue de onde parou.',
+  },
+  {
+    title: 'Emita seu certificado',
+    text: 'Ao concluir, seu certificado fica disponível na hora, com código de verificação para compartilhar.',
+  },
+];
+
 export function AcademyCatalog() {
+  const coursesRef = useRef<HTMLElement>(null);
+  const scrollToCourses = () =>
+    coursesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   usePageMeta(
     'PicPlus Academy — Cursos de Marketing, Audiovisual e Influência',
     'Aprenda na prática com os especialistas da PicPlus: cursos completos de posicionamento, tráfego, audiovisual e marketing de influência com certificado.',
@@ -274,14 +450,99 @@ export function AcademyCatalog() {
         eyebrow="PicPlus Academy"
         title={
           <>
-            Domine o jogo do <Highlight>marketing e audiovisual</Highlight>
+            O que a gente aplica nos clientes, <Highlight>você aprende aqui.</Highlight>
           </>
         }
-        description="Formações práticas criadas nos bastidores da PicPlus para profissionais, criadores e empresários que buscam crescimento real e certificado reconhecido."
-      />
+        description="Marketing, audiovisual e influência ensinados por quem vive isso todos os dias dentro da PicPlus. Sem teoria enfeitada, sem enrolação: método, bastidor e execução para você colocar em prática já na próxima semana."
+      >
+        <HeroActions>
+          <Button onClick={scrollToCourses}>
+            Ver os cursos <ArrowRight size={18} />
+          </Button>
+          {!student && (
+            <ButtonLink to="/academy/entrar" $variant="secondary">
+              Já sou aluno
+            </ButtonLink>
+          )}
+        </HeroActions>
+        <HeroProof>
+          <span>
+            <Check size={16} /> Aulas práticas, direto ao ponto
+          </span>
+          <span>
+            <Check size={16} /> Estude no seu ritmo
+          </span>
+          <span>
+            <Check size={16} /> Certificado de conclusão
+          </span>
+        </HeroProof>
+      </PageHero>
 
-      <Section $tight>
+      <Section $surface>
+        <Container $narrow>
+          <SectionHeader
+            eyebrow="O que é a PicPlus Academy"
+            title={
+              <>
+                Conhecimento que nasce na <Highlight>operação</Highlight>, não em slide.
+              </>
+            }
+          />
+          <Manifesto>
+            <p>
+              A PicPlus é uma agência que planeja, produz e escala marcas todos os dias. A Academy é
+              onde abrimos esse bastidor.
+            </p>
+            <p>
+              Cada curso nasce de campanhas reais, erros que já cometemos e acertos que repetimos
+              até virarem método. Você não aprende o que “deveria funcionar”. Aprende o que
+              funciona de verdade, na ordem em que a gente executa.
+            </p>
+            <p className="strong">
+              É para quem cansou de conteúdo genérico e quer sair da aula sabendo exatamente o que
+              fazer amanhã.
+            </p>
+          </Manifesto>
+        </Container>
+      </Section>
+
+      <Section>
         <Container>
+          <SectionHeader
+            eyebrow="Por que a Academy"
+            title={
+              <>
+                Feita para quem quer <Highlight>resultado</Highlight>, não só certificado
+              </>
+            }
+            description="Quatro princípios que guiam todo curso que sai daqui."
+          />
+          <Grid $min="250px">
+            {PILLARS.map(({ icon: Icon, title, text }) => (
+              <Pillar key={title}>
+                <div className="icon">
+                  <Icon size={22} />
+                </div>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </Pillar>
+            ))}
+          </Grid>
+        </Container>
+      </Section>
+
+      <Section $surface id="cursos" ref={coursesRef}>
+        <Container>
+          <SectionHeader
+            eyebrow="Nossos cursos"
+            title={
+              <>
+                Escolha sua próxima <Highlight>formação</Highlight>
+              </>
+            }
+            description="Do posicionamento à produção, cada curso resolve um problema real do seu negócio ou da sua carreira."
+          />
+
           <TopBar>
             <div className="info">
               <div className="icon-box">
@@ -446,6 +707,52 @@ export function AcademyCatalog() {
               })}
             </Grid>
           )}
+        </Container>
+      </Section>
+
+      <Section>
+        <Container>
+          <SectionHeader
+            eyebrow="Como funciona"
+            title={
+              <>
+                Do primeiro clique ao <Highlight>certificado</Highlight>
+              </>
+            }
+          />
+          <Grid $min="250px">
+            {STEPS.map((step, i) => (
+              <Step key={step.title}>
+                <span className="num">{i + 1}</span>
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+              </Step>
+            ))}
+          </Grid>
+        </Container>
+      </Section>
+
+      <Section $tight>
+        <Container>
+          <FinalCta>
+            <h2>
+              Quem aprende com quem faz, <Highlight>sai na frente.</Highlight>
+            </h2>
+            <p>
+              Sua próxima decisão de carreira ou de negócio merece mais do que achismo. Comece hoje
+              e aplique amanhã.
+            </p>
+            <div className="actions">
+              <Button onClick={scrollToCourses}>
+                Escolher meu curso <ArrowRight size={18} />
+              </Button>
+              {!student && (
+                <ButtonLink to="/academy/cadastro" $variant="secondary">
+                  Criar conta de aluno
+                </ButtonLink>
+              )}
+            </div>
+          </FinalCta>
         </Container>
       </Section>
     </>
