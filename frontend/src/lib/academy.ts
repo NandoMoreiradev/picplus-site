@@ -408,6 +408,79 @@ export interface MergeTagDefinition {
   category: 'Aluno' | 'Curso' | 'Pedido' | 'Certificado' | 'Site';
 }
 
+export type EmailLogStatus =
+  | 'SIMULATED'
+  | 'SENT'
+  | 'SCHEDULED'
+  | 'DELIVERED'
+  | 'DELAYED'
+  | 'OPENED'
+  | 'CLICKED'
+  | 'BOUNCED'
+  | 'COMPLAINED'
+  | 'SUPPRESSED'
+  | 'FAILED';
+
+export interface EmailLogItem {
+  id: string;
+  resendEmailId: string | null;
+  trigger: string | null;
+  templateId: string | null;
+  templateName: string | null;
+  to: string;
+  subject: string;
+  status: EmailLogStatus;
+  lastEvent: string | null;
+  errorMessage: string | null;
+  metadata: Record<string, unknown> | null;
+  sentAt: string;
+  deliveredAt: string | null;
+  openedAt: string | null;
+  clickedAt: string | null;
+  bouncedAt: string | null;
+  complainedAt: string | null;
+  failedAt: string | null;
+  createdAt: string;
+}
+
+export interface EmailLogsResponse {
+  items: EmailLogItem[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  summary: {
+    total: number;
+    sent: number;
+    delivered: number;
+    opened: number;
+    clicked: number;
+    issues: number;
+    simulated: number;
+  };
+  webhookConfigured: boolean;
+  resendConfigured: boolean;
+}
+
+export const EMAIL_LOG_STATUS_META: Record<
+  EmailLogStatus,
+  { label: string; tone: 'neutral' | 'primary' | 'success' | 'warning' | 'danger' | 'info' }
+> = {
+  SIMULATED: { label: 'Simulado (local)', tone: 'neutral' },
+  SCHEDULED: { label: 'Agendado', tone: 'info' },
+  SENT: { label: 'Enviado', tone: 'info' },
+  DELAYED: { label: 'Atrasado', tone: 'warning' },
+  DELIVERED: { label: 'Entregue', tone: 'success' },
+  OPENED: { label: 'Aberto', tone: 'primary' },
+  CLICKED: { label: 'Clicado', tone: 'primary' },
+  BOUNCED: { label: 'Retornou (Bounce)', tone: 'danger' },
+  COMPLAINED: { label: 'Marcado como Spam', tone: 'danger' },
+  SUPPRESSED: { label: 'Suprimido', tone: 'danger' },
+  FAILED: { label: 'Falhou', tone: 'danger' },
+};
+
 // ─────────────────────────────────────────────────────────────
 // Utilitários de Formatação e Player Híbrido
 // ─────────────────────────────────────────────────────────────

@@ -8,7 +8,9 @@ import { assertConfig, config } from './config/configuration';
 async function bootstrap() {
   assertConfig();
 
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
 
   // Atrás de proxy (Render, Railway, Nginx...) o IP real vem de X-Forwarded-For; necessário ao rate limit.
   if (config.isProduction) app.set('trust proxy', 1);

@@ -648,7 +648,8 @@ export class AsaasService {
         },
         {
           id: 'sim_svc_1706',
-          description: '17.06 - Propaganda e publicidade, inclusive promoção de vendas',
+          description:
+            '17.06 - Propaganda e publicidade, inclusive promoção de vendas',
           issTax: 2,
           municipalServiceCode: '17.06',
         },

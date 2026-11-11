@@ -134,10 +134,7 @@ export class ClientsController {
 
   @RequirePermissions('clients.financial')
   @Delete(':id/charges/:chargeId')
-  cancelCharge(
-    @Param('id') id: string,
-    @Param('chargeId') chargeId: string,
-  ) {
+  cancelCharge(@Param('id') id: string, @Param('chargeId') chargeId: string) {
     return this.clients.cancelCharge(id, chargeId);
   }
 

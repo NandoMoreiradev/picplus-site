@@ -46,6 +46,24 @@ export class EmailTemplatesController {
   }
 
   @RequirePermissions('email_templates.view')
+  @Get('logs')
+  listLogs(
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('trigger') trigger?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.templates.listLogs({
+      search,
+      status,
+      trigger,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @RequirePermissions('email_templates.view')
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.templates.findOne(id);

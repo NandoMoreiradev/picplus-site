@@ -9,6 +9,7 @@ import {
   Mail,
   Pencil,
   Plus,
+  RefreshCw,
   Send,
   Smartphone,
   Monitor,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import {
   CellMain,
+  DetailList,
   FormStack,
   IconButton,
   PageHeader,
@@ -25,6 +27,7 @@ import {
   StatusPill,
   Table,
   TableWrap,
+  Tabs,
   Toolbar,
 } from '../../components/admin/AdminUI';
 import { Button } from '../../components/ui/Button';
@@ -45,15 +48,56 @@ import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../context/auth-context';
 import { useFetch } from '../../hooks/useFetch';
-import type {
-  EmailBlock,
-  EmailDesignJson,
-  EmailTemplateItem,
-  EmailTriggerOption,
-  MergeTagDefinition,
+import {
+  EMAIL_LOG_STATUS_META,
+  type EmailBlock,
+  type EmailDesignJson,
+  type EmailLogItem,
+  type EmailLogsResponse,
+  type EmailLogStatus,
+  type EmailTemplateItem,
+  type EmailTriggerOption,
+  type MergeTagDefinition,
 } from '../../lib/academy';
 import { api } from '../../lib/api';
 import { errorMessage } from '../../lib/validation';
+
+const SummaryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+`;
+
+const SummaryCard = styled.div`
+  padding: 0.9rem 1rem;
+  background: ${({ theme }) => theme.colors.surface};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.radii.md};
+
+  span {
+    display: block;
+    font-size: 0.78rem;
+    color: ${({ theme }) => theme.colors.textSecondary};
+    margin-bottom: 0.25rem;
+  }
+  strong {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: ${({ theme }) => theme.colors.text};
+  }
+`;
+
+const PaginationRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  font-size: 0.88rem;
+  color: ${({ theme }) => theme.colors.textSecondary};
+`;
 
 const BuilderLayout = styled.div`
   display: grid;
@@ -325,8 +369,16 @@ export function EmailTemplates() {
   const canDelete = can('email_templates.delete');
   const toast = useToast();
 
+  const [tab, setTab] = useState<'templates' | 'logs'>('templates');
   const [search, setSearch] = useState('');
   const [triggerFilter, setTriggerFilter] = useState('');
+
+  // Filtros do histórico de envios
+  const [logSearch, setLogSearch] = useState('');
+  const [logStatus, setLogStatus] = useState('');
+  const [logTrigger, setLogTrigger] = useState('');
+  const [logPage, setLogPage] = useState(1);
+  const [selectedLog, setSelectedLog] = useState<EmailLogItem | null>(null);
 
   const templatesQuery = useFetch<EmailTemplateItem[]>(
     '/admin/email-templates',
@@ -341,6 +393,13 @@ export function EmailTemplates() {
   const mergeTagsQuery = useFetch<MergeTagDefinition[]>(
     '/admin/email-templates/merge-tags',
   );
+  const logsQuery = useFetch<EmailLogsResponse>('/admin/email-templates/logs', {
+    search: logSearch || undefined,
+    status: logStatus || undefined,
+    trigger: logTrigger || undefined,
+    page: logPage,
+    limit: 25,
+  });
 
   // Modal de criação/edição
   const [modalOpen, setModalOpen] = useState(false);
@@ -525,6 +584,7 @@ export function EmailTemplates() {
       );
       toast.success(res.message);
       setTestTarget(null);
+      logsQuery.reload();
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -552,150 +612,415 @@ export function EmailTemplates() {
     [blocks],
   );
 
+  const formatDateTime = (iso?: string | null) =>
+    iso
+      ? new Date(iso).toLocaleString('pt-BR', {
+          dateStyle: 'short',
+          timeStyle: 'short',
+        })
+      : '—';
+
   return (
     <div>
       <PageHeader
         title="Templates de E-mail"
-        description="Personalize os e-mails automáticos da PicPlus Academy e do site institucional (inspirado no construtor do Maskot Edu)."
+        description="Personalize os e-mails automáticos da PicPlus Academy e do site institucional e acompanhe o status de entrega."
         actions={
-          canEdit && (
-            <Button onClick={openNew}>
-              <Plus size={18} /> Novo Template
-            </Button>
-          )
+          <>
+            {tab === 'logs' && (
+              <Button variant="secondary" onClick={logsQuery.reload}>
+                <RefreshCw size={16} /> Atualizar
+              </Button>
+            )}
+            {tab === 'templates' && canEdit && (
+              <Button onClick={openNew}>
+                <Plus size={18} /> Novo Template
+              </Button>
+            )}
+          </>
         }
       />
 
-      <Toolbar>
-        <div className="grow">
-          <TextField
-            label="Buscar template"
-            placeholder="Digite o nome ou assunto…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <div style={{ minWidth: 280 }}>
-          <SelectField
-            label="Filtrar por gatilho"
-            value={triggerFilter}
-            onChange={(e) => setTriggerFilter(e.target.value)}
-            placeholder="Todos os gatilhos"
-            options={[
-              { value: '__manual__', label: 'Uso manual (sem gatilho)' },
-              ...(triggersQuery.data ?? []).map((t) => ({
-                value: t.value,
-                label: t.label,
-              })),
-            ]}
-          />
-        </div>
-      </Toolbar>
-
-      {templatesQuery.loading && <Skeleton $h="260px" />}
-      {templatesQuery.error && (
-        <ErrorState
-          message={templatesQuery.error.message}
-          onRetry={templatesQuery.reload}
+      <div style={{ marginBottom: '1.25rem' }}>
+        <Tabs<'templates' | 'logs'>
+          tabs={[
+            {
+              key: 'templates',
+              label: 'Templates',
+              count: templatesQuery.data?.length,
+            },
+            {
+              key: 'logs',
+              label: 'Histórico de Envios',
+              count: logsQuery.data?.summary.total,
+            },
+          ]}
+          value={tab}
+          onChange={setTab}
         />
+      </div>
+
+      {tab === 'templates' && (
+        <>
+          <Toolbar>
+            <div className="grow">
+              <TextField
+                label="Buscar template"
+                placeholder="Digite o nome ou assunto…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div style={{ minWidth: 280 }}>
+              <SelectField
+                label="Filtrar por gatilho"
+                value={triggerFilter}
+                onChange={(e) => setTriggerFilter(e.target.value)}
+                placeholder="Todos os gatilhos"
+                options={[
+                  { value: '__manual__', label: 'Uso manual (sem gatilho)' },
+                  ...(triggersQuery.data ?? []).map((t) => ({
+                    value: t.value,
+                    label: t.label,
+                  })),
+                ]}
+              />
+            </div>
+          </Toolbar>
+
+          {templatesQuery.loading && <Skeleton $h="260px" />}
+          {templatesQuery.error && (
+            <ErrorState
+              message={templatesQuery.error.message}
+              onRetry={templatesQuery.reload}
+            />
+          )}
+
+          {!templatesQuery.loading &&
+            !templatesQuery.error &&
+            (templatesQuery.data?.length ?? 0) === 0 && (
+              <Panel>
+                <EmptyState
+                  title="Nenhum template encontrado"
+                  description="Crie um novo template ou limpe os filtros de busca."
+                />
+              </Panel>
+            )}
+
+          {!templatesQuery.loading && (templatesQuery.data?.length ?? 0) > 0 && (
+            <TableWrap>
+              <Table>
+                <thead>
+                  <tr>
+                    <th>Template / Assunto</th>
+                    <th>Gatilho Automático</th>
+                    <th>Status</th>
+                    <th className="right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {templatesQuery.data!.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <CellMain>
+                          <div>
+                            <strong>{item.name}</strong>
+                            <small>{item.subject}</small>
+                          </div>
+                        </CellMain>
+                      </td>
+                      <td>
+                        {item.trigger ? (
+                          <StatusPill tone="primary">
+                            {triggerMap.get(item.trigger) ?? item.trigger}
+                          </StatusPill>
+                        ) : (
+                          <StatusPill tone="neutral">Uso manual</StatusPill>
+                        )}
+                      </td>
+                      <td>
+                        <StatusPill tone={item.active ? 'success' : 'neutral'}>
+                          {item.active ? 'Ativo' : 'Pausado'}
+                        </StatusPill>
+                      </td>
+                      <td className="right">
+                        <RowActions>
+                          <IconButton
+                            label="Pré-visualizar"
+                            onClick={() => setPreviewItem(item)}
+                          >
+                            <Eye size={17} />
+                          </IconButton>
+                          {canEdit && (
+                            <>
+                              <IconButton
+                                label="Enviar e-mail de teste"
+                                onClick={() => {
+                                  setTestTarget(item);
+                                  setTestEmail(user?.email ?? '');
+                                }}
+                              >
+                                <Send size={17} />
+                              </IconButton>
+                              <IconButton
+                                label="Duplicar template"
+                                onClick={() => openDuplicate(item)}
+                              >
+                                <Copy size={17} />
+                              </IconButton>
+                              <IconButton
+                                label="Editar template"
+                                onClick={() => openEdit(item)}
+                              >
+                                <Pencil size={17} />
+                              </IconButton>
+                            </>
+                          )}
+                          {canDelete && (
+                            <IconButton
+                              label="Excluir template"
+                              danger
+                              onClick={() => setDeleting(item)}
+                            >
+                              <Trash2 size={17} />
+                            </IconButton>
+                          )}
+                        </RowActions>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </TableWrap>
+          )}
+        </>
       )}
 
-      {!templatesQuery.loading &&
-        !templatesQuery.error &&
-        (templatesQuery.data?.length ?? 0) === 0 && (
-          <Panel>
-            <EmptyState
-              title="Nenhum template encontrado"
-              description="Crie um novo template ou limpe os filtros de busca."
-            />
-          </Panel>
-        )}
+      {tab === 'logs' && (
+        <>
+          {logsQuery.data && !logsQuery.data.webhookConfigured && (
+            <div style={{ marginBottom: '1rem' }}>
+              <Alert tone="info">
+                Os envios já estão sendo gravados automaticamente. Para receber atualizações em tempo real de{' '}
+                <strong>Entregue</strong>, <strong>Aberto</strong>, <strong>Clicado</strong> e <strong>Bounce</strong>,
+                cadastre no painel do Resend o webhook <code>/api/webhooks/resend</code> e defina a variável{' '}
+                <code>RESEND_WEBHOOK_SECRET</code> no backend.
+              </Alert>
+            </div>
+          )}
 
-      {!templatesQuery.loading && (templatesQuery.data?.length ?? 0) > 0 && (
-        <TableWrap>
-          <Table>
-            <thead>
-              <tr>
-                <th>Template / Assunto</th>
-                <th>Gatilho Automático</th>
-                <th>Status</th>
-                <th className="right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {templatesQuery.data!.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <CellMain>
-                      <div>
-                        <strong>{item.name}</strong>
-                        <small>{item.subject}</small>
-                      </div>
-                    </CellMain>
-                  </td>
-                  <td>
-                    {item.trigger ? (
-                      <StatusPill tone="primary">
-                        {triggerMap.get(item.trigger) ?? item.trigger}
-                      </StatusPill>
-                    ) : (
-                      <StatusPill tone="neutral">Uso manual</StatusPill>
-                    )}
-                  </td>
-                  <td>
-                    <StatusPill tone={item.active ? 'success' : 'neutral'}>
-                      {item.active ? 'Ativo' : 'Pausado'}
-                    </StatusPill>
-                  </td>
-                  <td className="right">
-                    <RowActions>
-                      <IconButton
-                        label="Pré-visualizar"
-                        onClick={() => setPreviewItem(item)}
-                      >
-                        <Eye size={17} />
-                      </IconButton>
-                      {canEdit && (
-                        <>
-                          <IconButton
-                            label="Enviar e-mail de teste"
-                            onClick={() => {
-                              setTestTarget(item);
-                              setTestEmail(user?.email ?? '');
-                            }}
-                          >
-                            <Send size={17} />
-                          </IconButton>
-                          <IconButton
-                            label="Duplicar template"
-                            onClick={() => openDuplicate(item)}
-                          >
-                            <Copy size={17} />
-                          </IconButton>
-                          <IconButton
-                            label="Editar template"
-                            onClick={() => openEdit(item)}
-                          >
-                            <Pencil size={17} />
-                          </IconButton>
-                        </>
-                      )}
-                      {canDelete && (
-                        <IconButton
-                          label="Excluir template"
-                          danger
-                          onClick={() => setDeleting(item)}
-                        >
-                          <Trash2 size={17} />
-                        </IconButton>
-                      )}
-                    </RowActions>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </TableWrap>
+          {logsQuery.data && (
+            <SummaryGrid>
+              <SummaryCard>
+                <span>Total de registros</span>
+                <strong>{logsQuery.data.summary.total}</strong>
+              </SummaryCard>
+              <SummaryCard>
+                <span>Entregues</span>
+                <strong style={{ color: '#22c55e' }}>
+                  {logsQuery.data.summary.delivered}
+                </strong>
+              </SummaryCard>
+              <SummaryCard>
+                <span>Abertos</span>
+                <strong style={{ color: '#B6E829' }}>
+                  {logsQuery.data.summary.opened}
+                </strong>
+              </SummaryCard>
+              <SummaryCard>
+                <span>Cliques</span>
+                <strong style={{ color: '#B6E829' }}>
+                  {logsQuery.data.summary.clicked}
+                </strong>
+              </SummaryCard>
+              <SummaryCard>
+                <span>Bounces / Falhas</span>
+                <strong style={{ color: '#ef4444' }}>
+                  {logsQuery.data.summary.issues}
+                </strong>
+              </SummaryCard>
+            </SummaryGrid>
+          )}
+
+          <Toolbar>
+            <div className="grow">
+              <TextField
+                label="Buscar envio"
+                placeholder="Destinatário, assunto, template ou ID Resend…"
+                value={logSearch}
+                onChange={(e) => {
+                  setLogSearch(e.target.value);
+                  setLogPage(1);
+                }}
+              />
+            </div>
+            <div style={{ minWidth: 210 }}>
+              <SelectField
+                label="Status"
+                value={logStatus}
+                onChange={(e) => {
+                  setLogStatus(e.target.value);
+                  setLogPage(1);
+                }}
+                placeholder="Todos os status"
+                options={(
+                  Object.keys(EMAIL_LOG_STATUS_META) as EmailLogStatus[]
+                ).map((key) => ({
+                  value: key,
+                  label: EMAIL_LOG_STATUS_META[key].label,
+                }))}
+              />
+            </div>
+            <div style={{ minWidth: 240 }}>
+              <SelectField
+                label="Gatilho"
+                value={logTrigger}
+                onChange={(e) => {
+                  setLogTrigger(e.target.value);
+                  setLogPage(1);
+                }}
+                placeholder="Todos os gatilhos"
+                options={[
+                  { value: '__manual__', label: 'Sistema / Aviso interno' },
+                  ...(triggersQuery.data ?? []).map((t) => ({
+                    value: t.value,
+                    label: t.label,
+                  })),
+                ]}
+              />
+            </div>
+          </Toolbar>
+
+          {logsQuery.loading && <Skeleton $h="260px" />}
+          {logsQuery.error && (
+            <ErrorState
+              message={logsQuery.error.message}
+              onRetry={logsQuery.reload}
+            />
+          )}
+
+          {!logsQuery.loading &&
+            !logsQuery.error &&
+            (logsQuery.data?.items.length ?? 0) === 0 && (
+              <Panel>
+                <EmptyState
+                  title="Nenhum envio registrado"
+                  description="Assim que um e-mail automático ou de teste for disparado, ele aparecerá aqui com o status atualizado."
+                />
+              </Panel>
+            )}
+
+          {!logsQuery.loading && (logsQuery.data?.items.length ?? 0) > 0 && (
+            <>
+              <TableWrap>
+                <Table>
+                  <thead>
+                    <tr>
+                      <th>Destinatário / Assunto</th>
+                      <th>Gatilho / Template</th>
+                      <th>Status</th>
+                      <th>Enviado em</th>
+                      <th className="right">Detalhes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logsQuery.data!.items.map((log) => {
+                      const meta = EMAIL_LOG_STATUS_META[log.status] ?? {
+                        label: log.status,
+                        tone: 'neutral' as const,
+                      };
+                      return (
+                        <tr key={log.id}>
+                          <td>
+                            <CellMain>
+                              <div>
+                                <strong>{log.to}</strong>
+                                <small>{log.subject}</small>
+                              </div>
+                            </CellMain>
+                          </td>
+                          <td>
+                            <CellMain>
+                              <div>
+                                <strong>
+                                  {log.trigger
+                                    ? (triggerMap.get(log.trigger) ?? log.trigger)
+                                    : 'Sistema / Interno'}
+                                </strong>
+                                <small>{log.templateName || '—'}</small>
+                              </div>
+                            </CellMain>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                              <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
+                              {log.errorMessage && (
+                                <small style={{ color: '#ef4444', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {log.errorMessage}
+                                </small>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <CellMain>
+                              <div>
+                                <strong>{formatDateTime(log.sentAt)}</strong>
+                                {log.openedAt && (
+                                  <small>Aberto: {formatDateTime(log.openedAt)}</small>
+                                )}
+                                {!log.openedAt && log.deliveredAt && (
+                                  <small>Entregue: {formatDateTime(log.deliveredAt)}</small>
+                                )}
+                              </div>
+                            </CellMain>
+                          </td>
+                          <td className="right">
+                            <RowActions>
+                              <IconButton
+                                label="Ver detalhes do envio"
+                                onClick={() => setSelectedLog(log)}
+                              >
+                                <Eye size={17} />
+                              </IconButton>
+                            </RowActions>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </Table>
+              </TableWrap>
+
+              {logsQuery.data!.meta.totalPages > 1 && (
+                <PaginationRow>
+                  <span>
+                    Página {logsQuery.data!.meta.page} de{' '}
+                    {logsQuery.data!.meta.totalPages} ({logsQuery.data!.meta.total}{' '}
+                    registros)
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={logPage <= 1}
+                      onClick={() => setLogPage((p) => Math.max(1, p - 1))}
+                    >
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={logPage >= logsQuery.data!.meta.totalPages}
+                      onClick={() => setLogPage((p) => p + 1)}
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                </PaginationRow>
+              )}
+            </>
+          )}
+        </>
       )}
 
       {/* Modal Construtor de E-mail */}
@@ -1078,6 +1403,107 @@ export function EmailTemplates() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleting(null)}
       />
+
+      {/* Modal de Detalhes do Envio */}
+      <Modal
+        open={!!selectedLog}
+        onClose={() => setSelectedLog(null)}
+        title="Detalhes do E-mail Enviado"
+        width="620px"
+        footer={
+          <Button variant="ghost" onClick={() => setSelectedLog(null)}>
+            Fechar
+          </Button>
+        }
+      >
+        {selectedLog && (
+          <DetailList>
+            <div>
+              <dt>Status atual</dt>
+              <dd>
+                <StatusPill
+                  tone={
+                    EMAIL_LOG_STATUS_META[selectedLog.status]?.tone ?? 'neutral'
+                  }
+                >
+                  {EMAIL_LOG_STATUS_META[selectedLog.status]?.label ??
+                    selectedLog.status}
+                </StatusPill>
+              </dd>
+            </div>
+            <div>
+              <dt>Último evento</dt>
+              <dd>{selectedLog.lastEvent || '—'}</dd>
+            </div>
+            <div>
+              <dt>Destinatário</dt>
+              <dd>{selectedLog.to}</dd>
+            </div>
+            <div>
+              <dt>Assunto</dt>
+              <dd>{selectedLog.subject}</dd>
+            </div>
+            <div>
+              <dt>Gatilho</dt>
+              <dd>
+                {selectedLog.trigger
+                  ? (triggerMap.get(selectedLog.trigger) ?? selectedLog.trigger)
+                  : 'Sistema / Interno'}
+              </dd>
+            </div>
+            <div>
+              <dt>Template</dt>
+              <dd>{selectedLog.templateName || '—'}</dd>
+            </div>
+            <div>
+              <dt>ID Resend</dt>
+              <dd>
+                <code>{selectedLog.resendEmailId || '—'}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>Enviado em</dt>
+              <dd>{formatDateTime(selectedLog.sentAt)}</dd>
+            </div>
+            <div>
+              <dt>Entregue em</dt>
+              <dd>{formatDateTime(selectedLog.deliveredAt)}</dd>
+            </div>
+            <div>
+              <dt>Aberto em</dt>
+              <dd>{formatDateTime(selectedLog.openedAt)}</dd>
+            </div>
+            <div>
+              <dt>Clicado em</dt>
+              <dd>{formatDateTime(selectedLog.clickedAt)}</dd>
+            </div>
+            {selectedLog.bouncedAt && (
+              <div>
+                <dt>Bounce em</dt>
+                <dd>{formatDateTime(selectedLog.bouncedAt)}</dd>
+              </div>
+            )}
+            {selectedLog.complainedAt && (
+              <div>
+                <dt>Marcado como spam em</dt>
+                <dd>{formatDateTime(selectedLog.complainedAt)}</dd>
+              </div>
+            )}
+            {selectedLog.failedAt && (
+              <div>
+                <dt>Falha em</dt>
+                <dd>{formatDateTime(selectedLog.failedAt)}</dd>
+              </div>
+            )}
+            {selectedLog.errorMessage && (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <dt>Detalhe do erro / bounce</dt>
+                <dd style={{ color: '#ef4444' }}>{selectedLog.errorMessage}</dd>
+              </div>
+            )}
+          </DetailList>
+        )}
+      </Modal>
     </div>
   );
 }

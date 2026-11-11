@@ -6,7 +6,8 @@ import {
   NotFoundException,
   OnApplicationBootstrap,
 } from '@nestjs/common';
-import { EmailTriggerType, Prisma } from '@prisma/client';
+import { EmailLogStatus, EmailTriggerType, Prisma } from '@prisma/client';
+import { pageArgs, paginated } from '../common/utils/paginate';
 import { config } from '../config/configuration';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -306,6 +307,9 @@ export class EmailTemplatesService implements OnApplicationBootstrap {
       to,
       subject: `[TESTE] ${subject}`,
       html,
+      trigger: template.trigger,
+      templateId: template.id,
+      templateName: `[TESTE] ${template.name}`,
     });
     return {
       ok: true,
@@ -339,7 +343,14 @@ export class EmailTemplatesService implements OnApplicationBootstrap {
           dbTemplate,
           context,
         );
-        return await this.mail.send({ to, subject, html });
+        return await this.mail.send({
+          to,
+          subject,
+          html,
+          trigger,
+          templateId: dbTemplate.id,
+          templateName: dbTemplate.name,
+        });
       }
 
       const fallback = DEFAULT_EMAIL_TEMPLATES.find(
@@ -355,12 +366,109 @@ export class EmailTemplatesService implements OnApplicationBootstrap {
         },
         context,
       );
-      return await this.mail.send({ to, subject, html });
+      return await this.mail.send({
+        to,
+        subject,
+        html,
+        trigger,
+        templateName: fallback.name,
+      });
     } catch (error) {
       this.logger.error(
         `Falha ao enviar e-mail do gatilho ${trigger}: ${(error as Error).message}`,
       );
       return false;
     }
+  }
+
+  async listLogs(
+    query: {
+      search?: string;
+      status?: string;
+      trigger?: string;
+      page?: number;
+      limit?: number;
+    } = {},
+  ) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 25));
+
+    const where: Prisma.EmailLogWhereInput = {};
+    if (query.search?.trim()) {
+      const q = query.search.trim();
+      where.OR = [
+        { to: { contains: q, mode: 'insensitive' } },
+        { subject: { contains: q, mode: 'insensitive' } },
+        { templateName: { contains: q, mode: 'insensitive' } },
+        { resendEmailId: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+    if (
+      query.status &&
+      Object.values(EmailLogStatus).includes(query.status as EmailLogStatus)
+    ) {
+      where.status = query.status as EmailLogStatus;
+    }
+    if (query.trigger === '__manual__') {
+      where.trigger = null;
+    } else if (
+      query.trigger &&
+      Object.values(EmailTriggerType).includes(
+        query.trigger as EmailTriggerType,
+      )
+    ) {
+      where.trigger = query.trigger as EmailTriggerType;
+    }
+
+    const [items, total, grouped] = await Promise.all([
+      this.prisma.emailLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        ...pageArgs(page, limit),
+      }),
+      this.prisma.emailLog.count({ where }),
+      this.prisma.emailLog.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+      }),
+    ]);
+
+    const summary = {
+      total: 0,
+      sent: 0,
+      delivered: 0,
+      opened: 0,
+      clicked: 0,
+      issues: 0,
+      simulated: 0,
+    };
+
+    for (const row of grouped) {
+      const count = row._count._all;
+      summary.total += count;
+      if (
+        row.status === EmailLogStatus.SENT ||
+        row.status === EmailLogStatus.SCHEDULED
+      ) {
+        summary.sent += count;
+      } else if (row.status === EmailLogStatus.DELIVERED) {
+        summary.delivered += count;
+      } else if (row.status === EmailLogStatus.OPENED) {
+        summary.opened += count;
+      } else if (row.status === EmailLogStatus.CLICKED) {
+        summary.clicked += count;
+      } else if (row.status === EmailLogStatus.SIMULATED) {
+        summary.simulated += count;
+      } else {
+        summary.issues += count;
+      }
+    }
+
+    return {
+      ...paginated(items, total, page, limit),
+      summary,
+      webhookConfigured: Boolean(config.mail.webhookSecret),
+      resendConfigured: Boolean(config.mail.apiKey),
+    };
   }
 }
