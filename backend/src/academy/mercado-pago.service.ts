@@ -1,4 +1,9 @@
-import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { config } from '../config/configuration';
 
@@ -46,12 +51,25 @@ export class MercadoPagoService {
     return Boolean(config.mercadoPago.accessToken);
   }
 
+  /** Checkout simulado só existe fora de produção e sem token configurado. */
+  get simulationAllowed(): boolean {
+    return !this.isConfigured && process.env.NODE_ENV !== 'production';
+  }
+
   async createPreference(
     input: CreateMpPreferenceInput,
   ): Promise<MpPreferenceResult> {
     const returnBase = `${config.frontendUrl}/academy/checkout/retorno?orderId=${encodeURIComponent(input.orderId)}`;
 
     if (!this.isConfigured) {
+      if (!this.simulationAllowed) {
+        this.logger.error(
+          'MP_ACCESS_TOKEN não configurado em produção: checkout indisponível.',
+        );
+        throw new ServiceUnavailableException(
+          'O checkout está temporariamente indisponível. Tente novamente mais tarde.',
+        );
+      }
       this.logger.warn(
         `[Mercado Pago sem MP_ACCESS_TOKEN] Gerando checkout simulado para pedido ${input.orderId}`,
       );
@@ -97,8 +115,16 @@ export class MercadoPagoService {
         pending: `${returnBase}&status=pending`,
         failure: `${returnBase}&status=failure`,
       },
-      auto_return: 'approved',
-      notification_url: `${config.backendUrl}/api/academy/webhooks/mercadopago`,
+      // O Mercado Pago exige URLs públicas em HTTPS para auto_return e notificações;
+      // em localhost esses campos fazem a API recusar a preferência.
+      ...(config.frontendUrl.startsWith('https://')
+        ? { auto_return: 'approved' }
+        : {}),
+      ...(config.backendUrl.startsWith('https://')
+        ? {
+            notification_url: `${config.backendUrl}/api/academy/webhooks/mercadopago`,
+          }
+        : {}),
       statement_descriptor: 'PICPLUS ACADEMY',
     };
 

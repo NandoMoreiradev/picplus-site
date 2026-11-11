@@ -339,10 +339,10 @@ export class AcademyStudentService {
     });
     if (!order) return null;
 
-    const alreadyApproved = order.status === CourseOrderStatus.APPROVED;
-
-    const updatedOrder = await this.prisma.courseOrder.update({
-      where: { id: order.id },
+    // Transição atômica: webhook e retorno do checkout podem chegar juntos, e só
+    // quem de fato aprovou o pedido conta o cupom e envia o e-mail.
+    const transition = await this.prisma.courseOrder.updateMany({
+      where: { id: order.id, status: { not: CourseOrderStatus.APPROVED } },
       data: {
         status: CourseOrderStatus.APPROVED,
         mpPaymentId: paymentMeta.mpPaymentId ?? order.mpPaymentId,
@@ -350,6 +350,11 @@ export class AcademyStudentService {
         paymentMethod: paymentMeta.paymentMethod ?? order.paymentMethod,
         paidAt: order.paidAt ?? new Date(),
       },
+    });
+    const alreadyApproved = transition.count === 0;
+
+    const updatedOrder = await this.prisma.courseOrder.findUniqueOrThrow({
+      where: { id: order.id },
     });
 
     if (!alreadyApproved && order.couponId) {
@@ -571,7 +576,7 @@ export class AcademyStudentService {
 
     if (order.status !== CourseOrderStatus.APPROVED) {
       // Em ambiente local sem MP_ACCESS_TOKEN, aceita o retorno simulado
-      if (!this.mp.isConfigured && query.simulated === '1') {
+      if (this.mp.simulationAllowed && query.simulated === '1') {
         await this.approveOrderAndEnroll(order.id, {
           mpPaymentId: query.paymentId || `sim_${order.id}`,
           mpStatus: 'approved',
