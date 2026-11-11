@@ -214,6 +214,48 @@ export class CreateClientNoteDto {
   content!: string;
 }
 
+export class InvoiceTaxesDto {
+  @IsOptional()
+  @IsBoolean()
+  retainIss?: boolean;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  iss?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  cofins?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  csll?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  inss?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  ir?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  pis?: number;
+}
+
 export class CreateClientChargeDto {
   @Transform(trim)
   @IsString()
@@ -287,48 +329,6 @@ export class CreateClientChargeDto {
   @ValidateNested()
   @Type(() => InvoiceTaxesDto)
   invoiceTaxes?: InvoiceTaxesDto;
-}
-
-export class InvoiceTaxesDto {
-  @IsOptional()
-  @IsBoolean()
-  retainIss?: boolean;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  iss?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  cofins?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  csll?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  inss?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  ir?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber()
-  @Min(0)
-  pis?: number;
 }
 
 export class EmitChargeInvoiceDto {
