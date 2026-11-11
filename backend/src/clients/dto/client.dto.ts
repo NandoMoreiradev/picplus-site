@@ -331,6 +331,30 @@ export class CreateClientChargeDto {
   invoiceTaxes?: InvoiceTaxesDto;
 }
 
+export class UpdateClientChargeDto {
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @MinLength(3, { message: 'Informe a descrição da cobrança.' })
+  @MaxLength(255)
+  description?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(100, { message: 'O valor mínimo é R$ 1,00 (100 centavos).' })
+  valueCents?: number;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  dueDate?: string; // YYYY-MM-DD
+
+  @IsOptional()
+  @IsEnum(ChargeBillingType)
+  billingType?: ChargeBillingType;
+}
+
 export class EmitChargeInvoiceDto {
   @IsOptional()
   @Transform(trim)

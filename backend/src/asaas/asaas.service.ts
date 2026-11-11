@@ -30,6 +30,13 @@ export interface AsaasPaymentInput {
   totalValue?: number;
 }
 
+export interface AsaasUpdatePaymentInput {
+  billingType?: 'BOLETO' | 'PIX' | 'CREDIT_CARD' | 'UNDEFINED';
+  value?: number;
+  dueDate?: string;
+  description?: string;
+}
+
 export interface AsaasPaymentResult {
   id: string;
   customer: string;
@@ -397,6 +404,126 @@ export class AsaasService {
         dueDate: data.dueDate,
         invoiceUrl: data.invoiceUrl,
         bankSlipUrl: data.bankSlipUrl,
+      };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Falha ao conectar com o Asaas: ${err}`);
+      throw new BadRequestException(
+        'Falha de conexão com a API de pagamentos do Asaas.',
+      );
+    }
+  }
+
+  async updatePayment(
+    paymentId: string,
+    input: AsaasUpdatePaymentInput,
+  ): Promise<AsaasPaymentResult> {
+    if (!this.isConfigured || paymentId.startsWith('sim_')) {
+      return {
+        id: paymentId,
+        customer: '',
+        value: input.value ?? 0,
+        netValue: input.value ?? 0,
+        billingType: input.billingType ?? 'UNDEFINED',
+        status: 'PENDING',
+        dueDate: input.dueDate ?? new Date().toISOString().split('T')[0],
+        invoiceUrl: `https://picplus.com.br/fatura-simulada/${paymentId}`,
+        bankSlipUrl: `https://picplus.com.br/boleto-simulado/${paymentId}`,
+        simulated: true,
+      };
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/payments/${paymentId}`, {
+        method: 'PUT',
+        headers: this.headers,
+        body: JSON.stringify({
+          ...(input.billingType !== undefined
+            ? { billingType: input.billingType }
+            : {}),
+          ...(input.value !== undefined ? { value: input.value } : {}),
+          ...(input.dueDate !== undefined ? { dueDate: input.dueDate } : {}),
+          ...(input.description !== undefined
+            ? { description: input.description }
+            : {}),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = (await response
+          .json()
+          .catch(() => ({}))) as AsaasApiError;
+        this.logger.error(
+          `Erro ao atualizar cobrança ${paymentId} no Asaas: ${JSON.stringify(errorData)}`,
+        );
+        const descriptions =
+          errorData.errors
+            ?.map((e) => e.description)
+            .filter(Boolean)
+            .join('; ') || response.statusText;
+        throw new BadRequestException(
+          `Asaas recusou a atualização da cobrança: ${descriptions}`,
+        );
+      }
+
+      const data = (await response.json()) as AsaasPaymentResponse;
+      return {
+        id: data.id,
+        customer: data.customer,
+        value: data.value,
+        netValue: data.netValue,
+        billingType: data.billingType,
+        status: data.status,
+        dueDate: data.dueDate,
+        invoiceUrl: data.invoiceUrl,
+        bankSlipUrl: data.bankSlipUrl,
+      };
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      this.logger.error(`Falha ao conectar com o Asaas: ${err}`);
+      throw new BadRequestException(
+        'Falha de conexão com a API de pagamentos do Asaas.',
+      );
+    }
+  }
+
+  async deletePayment(
+    paymentId: string,
+  ): Promise<{ deleted: boolean; id: string }> {
+    if (!this.isConfigured || paymentId.startsWith('sim_')) {
+      return { deleted: true, id: paymentId };
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/payments/${paymentId}`, {
+        method: 'DELETE',
+        headers: this.headers,
+      });
+
+      if (!response.ok) {
+        const errorData = (await response
+          .json()
+          .catch(() => ({}))) as AsaasApiError;
+        this.logger.error(
+          `Erro ao cancelar cobrança ${paymentId} no Asaas: ${JSON.stringify(errorData)}`,
+        );
+        const descriptions =
+          errorData.errors
+            ?.map((e) => e.description)
+            .filter(Boolean)
+            .join('; ') || response.statusText;
+        throw new BadRequestException(
+          `Asaas recusou o cancelamento da cobrança: ${descriptions}`,
+        );
+      }
+
+      const data = (await response.json().catch(() => ({}))) as {
+        deleted?: boolean;
+        id?: string;
+      };
+      return {
+        deleted: data.deleted ?? true,
+        id: data.id ?? paymentId,
       };
     } catch (err) {
       if (err instanceof BadRequestException) throw err;

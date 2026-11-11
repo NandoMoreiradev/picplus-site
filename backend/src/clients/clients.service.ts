@@ -21,6 +21,7 @@ import {
   CreateClientNoteDto,
   EmitChargeInvoiceDto,
   ListClientsQueryDto,
+  UpdateClientChargeDto,
   UpdateClientDto,
 } from './dto/client.dto';
 
@@ -28,6 +29,11 @@ export interface AsaasWebhookPayload {
   event?: string;
   payment?: {
     id?: string;
+    value?: number;
+    dueDate?: string;
+    description?: string;
+    billingType?: string;
+    status?: string;
     paymentDate?: string;
     invoiceUrl?: string;
     bankSlipUrl?: string;
@@ -937,6 +943,139 @@ export class ClientsService {
   }
 
   /**
+   * Atualiza uma cobrança pendente/vencida e reflete a alteração no Asaas.
+   */
+  async updateCharge(
+    clientId: string,
+    chargeId: string,
+    dto: UpdateClientChargeDto,
+  ) {
+    const charge = await this.prisma.clientCharge.findFirst({
+      where: { id: chargeId, clientId },
+    });
+    if (!charge) throw new NotFoundException('Cobrança não encontrada.');
+
+    if (
+      charge.status !== ChargeStatus.PENDING &&
+      charge.status !== ChargeStatus.OVERDUE
+    ) {
+      throw new BadRequestException(
+        'Apenas cobranças pendentes ou vencidas podem ser editadas.',
+      );
+    }
+
+    if (
+      charge.nfeId &&
+      (charge.nfeStatus === 'AUTHORIZED' || charge.nfeStatus === 'SCHEDULED') &&
+      dto.valueCents !== undefined &&
+      dto.valueCents !== charge.valueCents
+    ) {
+      throw new BadRequestException(
+        'Esta cobrança já possui NFS-e emitida/agendada; não é possível alterar o valor sem cancelar a nota no Asaas.',
+      );
+    }
+
+    const nextDescription = dto.description ?? charge.description;
+    const nextValueCents = dto.valueCents ?? charge.valueCents;
+    const nextDueDate = dto.dueDate
+      ? dto.dueDate
+      : charge.dueDate.toISOString().split('T')[0];
+    const nextBillingType = dto.billingType ?? charge.billingType;
+
+    let nextStatus = charge.status;
+    let nextInvoiceUrl = charge.invoiceUrl;
+    let nextBankSlipUrl = charge.bankSlipUrl;
+    let nextPixQrCodeUrl = charge.pixQrCodeUrl;
+    let nextPixPayload = charge.pixPayload;
+
+    if (charge.asaasPaymentId) {
+      const updated = await this.asaas.updatePayment(charge.asaasPaymentId, {
+        description: nextDescription,
+        value: Number((nextValueCents / 100).toFixed(2)),
+        dueDate: nextDueDate,
+        billingType: nextBillingType,
+      });
+
+      if (updated.status === 'PENDING') nextStatus = ChargeStatus.PENDING;
+      else if (updated.status === 'OVERDUE') nextStatus = ChargeStatus.OVERDUE;
+
+      nextInvoiceUrl = updated.invoiceUrl || nextInvoiceUrl;
+      nextBankSlipUrl = updated.bankSlipUrl ?? nextBankSlipUrl;
+
+      if (nextBillingType === ChargeBillingType.PIX) {
+        const shouldRefreshPix =
+          dto.billingType !== undefined ||
+          dto.valueCents !== undefined ||
+          dto.dueDate !== undefined;
+        if (shouldRefreshPix || !nextPixPayload) {
+          try {
+            const pixData = await this.asaas.getPixQrCode(
+              charge.asaasPaymentId,
+            );
+            nextPixQrCodeUrl = `data:image/png;base64,${pixData.encodedImage}`;
+            nextPixPayload = pixData.payload;
+          } catch (err) {
+            this.logger.warn(
+              `Não foi possível atualizar QR Code PIX após edição: ${err}`,
+            );
+          }
+        }
+      } else if (dto.billingType !== undefined) {
+        nextPixQrCodeUrl = null;
+        nextPixPayload = null;
+      }
+    }
+
+    return this.prisma.clientCharge.update({
+      where: { id: charge.id },
+      data: {
+        description: nextDescription,
+        valueCents: nextValueCents,
+        dueDate: new Date(nextDueDate),
+        billingType: nextBillingType,
+        status: nextStatus,
+        invoiceUrl: nextInvoiceUrl,
+        bankSlipUrl: nextBankSlipUrl,
+        pixQrCodeUrl: nextPixQrCodeUrl,
+        pixPayload: nextPixPayload,
+      },
+    });
+  }
+
+  /**
+   * Cancela uma cobrança pendente/vencida no Asaas e marca como cancelada no painel.
+   */
+  async cancelCharge(clientId: string, chargeId: string) {
+    const charge = await this.prisma.clientCharge.findFirst({
+      where: { id: chargeId, clientId },
+    });
+    if (!charge) throw new NotFoundException('Cobrança não encontrada.');
+
+    if (charge.status === ChargeStatus.CANCELED) {
+      throw new BadRequestException('Esta cobrança já está cancelada.');
+    }
+    if (
+      charge.status !== ChargeStatus.PENDING &&
+      charge.status !== ChargeStatus.OVERDUE
+    ) {
+      throw new BadRequestException(
+        'Apenas cobranças pendentes ou vencidas podem ser canceladas.',
+      );
+    }
+
+    if (charge.asaasPaymentId) {
+      await this.asaas.deletePayment(charge.asaasPaymentId);
+    }
+
+    return this.prisma.clientCharge.update({
+      where: { id: charge.id },
+      data: {
+        status: ChargeStatus.CANCELED,
+      },
+    });
+  }
+
+  /**
    * Emite manualmente NFS-e para uma cobrança existente antes ou depois do pagamento.
    */
   async emitChargeInvoice(
@@ -1106,7 +1245,29 @@ export class ClientsService {
       case 'PAYMENT_DELETED':
         newStatus = ChargeStatus.CANCELED;
         break;
+      case 'PAYMENT_UPDATED':
+      case 'PAYMENT_RESTORED':
+        if (payment.status === 'PENDING') newStatus = ChargeStatus.PENDING;
+        else if (payment.status === 'OVERDUE') newStatus = ChargeStatus.OVERDUE;
+        else if (
+          payment.status === 'RECEIVED' ||
+          payment.status === 'CONFIRMED'
+        ) {
+          newStatus = ChargeStatus.RECEIVED;
+        }
+        break;
     }
+
+    const validBillingTypes: string[] = [
+      ChargeBillingType.BOLETO,
+      ChargeBillingType.PIX,
+      ChargeBillingType.CREDIT_CARD,
+      ChargeBillingType.UNDEFINED,
+    ];
+    const updatedBillingType =
+      payment.billingType && validBillingTypes.includes(payment.billingType)
+        ? (payment.billingType as ChargeBillingType)
+        : undefined;
 
     await this.prisma.clientCharge.update({
       where: { id: charge.id },
@@ -1115,6 +1276,22 @@ export class ClientsService {
         paidAt,
         invoiceUrl: payment.invoiceUrl || charge.invoiceUrl,
         bankSlipUrl: payment.bankSlipUrl || charge.bankSlipUrl,
+        ...(event === 'PAYMENT_UPDATED' || event === 'PAYMENT_RESTORED'
+          ? {
+              ...(payment.description
+                ? { description: payment.description }
+                : {}),
+              ...(typeof payment.value === 'number' && payment.value > 0
+                ? { valueCents: Math.round(payment.value * 100) }
+                : {}),
+              ...(payment.dueDate
+                ? { dueDate: new Date(payment.dueDate) }
+                : {}),
+              ...(updatedBillingType
+                ? { billingType: updatedBillingType }
+                : {}),
+            }
+          : {}),
       },
     });
 

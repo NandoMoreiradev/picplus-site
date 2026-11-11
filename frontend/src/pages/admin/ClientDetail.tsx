@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Trash2,
 } from 'lucide-react';
 import {
   CellMain,
@@ -31,7 +32,7 @@ import { EmptyState, ErrorState, PageLoader } from '../../components/ui/Feedback
 import type { Tone } from '../../components/ui/Feedback';
 import { CurrencyField, SelectField, Switch, TextArea, TextField } from '../../components/ui/Form';
 import { WhatsAppIcon } from '../../components/ui/icons';
-import { Modal } from '../../components/ui/Modal';
+import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../context/auth-context';
 import { useFetch } from '../../hooks/useFetch';
@@ -250,6 +251,16 @@ export function ClientDetail() {
   const [invoiceCustomDesc, setInvoiceCustomDesc] = useState('');
   const [emittingInvoice, setEmittingInvoice] = useState(false);
   const [syncingInvoiceId, setSyncingInvoiceId] = useState<string | null>(null);
+
+  // Modal de Edição / Cancelamento de Cobrança (Asaas)
+  const [editingCharge, setEditingCharge] = useState<ClientCharge | null>(null);
+  const [editChargeDesc, setEditChargeDesc] = useState('');
+  const [editChargeValue, setEditChargeValue] = useState('');
+  const [editChargeDueDate, setEditChargeDueDate] = useState('');
+  const [editChargeBillingType, setEditChargeBillingType] = useState<ChargeBillingType>('PIX');
+  const [updatingCharge, setUpdatingCharge] = useState(false);
+  const [cancelingCharge, setCancelingCharge] = useState<ClientCharge | null>(null);
+  const [cancelingInProgress, setCancelingInProgress] = useState(false);
 
   // Serviço municipal para NFS-e (carregado sob demanda do Asaas)
   const [municipalServices, setMunicipalServices] = useState<MunicipalServiceItem[]>([]);
@@ -583,6 +594,57 @@ export function ClientDetail() {
       toast.error(errorMessage(err, 'Não foi possível atualizar o status da NFS-e.'));
     } finally {
       setSyncingInvoiceId(null);
+    }
+  };
+
+  const openEditChargeModal = (charge: ClientCharge) => {
+    setEditingCharge(charge);
+    setEditChargeDesc(charge.description);
+    setEditChargeValue(formatCents(charge.valueCents));
+    setEditChargeDueDate(charge.dueDate.slice(0, 10));
+    setEditChargeBillingType(charge.billingType);
+  };
+
+  const handleUpdateCharge = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCharge) return;
+
+    const cleanValue = parseBRLToCents(editChargeValue);
+    if (cleanValue < 100 || !editChargeDueDate || editChargeDesc.trim().length < 3) {
+      toast.error('Informe descrição (mín. 3 caracteres), valor mínimo de R$ 1,00 e vencimento.');
+      return;
+    }
+
+    try {
+      setUpdatingCharge(true);
+      await api.put(`/admin/clients/${client.id}/charges/${editingCharge.id}`, {
+        description: editChargeDesc.trim(),
+        valueCents: cleanValue,
+        dueDate: editChargeDueDate,
+        billingType: editChargeBillingType,
+      });
+      toast.success('Cobrança atualizada e sincronizada com o Asaas!');
+      setEditingCharge(null);
+      reload();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Falha ao atualizar cobrança no Asaas.'));
+    } finally {
+      setUpdatingCharge(false);
+    }
+  };
+
+  const handleConfirmCancelCharge = async () => {
+    if (!cancelingCharge) return;
+    try {
+      setCancelingInProgress(true);
+      await api.delete(`/admin/clients/${client.id}/charges/${cancelingCharge.id}`);
+      toast.success('Cobrança cancelada no painel e no Asaas.');
+      setCancelingCharge(null);
+      reload();
+    } catch (err) {
+      toast.error(errorMessage(err, 'Falha ao cancelar cobrança no Asaas.'));
+    } finally {
+      setCancelingInProgress(false);
     }
   };
 
@@ -1092,6 +1154,27 @@ export function ClientDetail() {
                                 <QrCode size={13} /> PIX
                               </Button>
                             )}
+                            {canFinancial &&
+                              (charge.status === 'PENDING' || charge.status === 'OVERDUE') && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => openEditChargeModal(charge)}
+                                    title="Editar cobrança e sincronizar com Asaas"
+                                  >
+                                    <Pencil size={12} /> Editar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => setCancelingCharge(charge)}
+                                    title="Cancelar cobrança no Asaas"
+                                  >
+                                    <Trash2 size={12} />
+                                  </Button>
+                                </>
+                              )}
                           </div>
                         </td>
                       </tr>
@@ -1383,6 +1466,107 @@ export function ClientDetail() {
           </form>
         )}
       </Modal>
+
+      {/* MODAL: EDITAR COBRANÇA (SINCRONIZADO COM ASAAS) */}
+      <Modal
+        open={Boolean(editingCharge)}
+        onClose={() => setEditingCharge(null)}
+        title="Editar Cobrança (Asaas)"
+        width="520px"
+      >
+        {editingCharge && (
+          <form onSubmit={handleUpdateCharge}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <TextField
+                label="Descrição da Cobrança"
+                required
+                value={editChargeDesc}
+                onChange={(e) => setEditChargeDesc(e.target.value)}
+              />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <CurrencyField
+                  label="Valor da Cobrança"
+                  required
+                  value={editChargeValue}
+                  onChange={setEditChargeValue}
+                  disabled={
+                    editingCharge.nfeStatus === 'AUTHORIZED' ||
+                    editingCharge.nfeStatus === 'SCHEDULED'
+                  }
+                  hint={
+                    editingCharge.nfeStatus === 'AUTHORIZED' ||
+                    editingCharge.nfeStatus === 'SCHEDULED'
+                      ? 'Valor bloqueado pois já há NFS-e vinculada.'
+                      : undefined
+                  }
+                />
+                <TextField
+                  label="Data de Vencimento"
+                  type="date"
+                  required
+                  value={editChargeDueDate}
+                  onChange={(e) => setEditChargeDueDate(e.target.value)}
+                />
+              </div>
+
+              <SelectField
+                label="Forma de Pagamento"
+                value={editChargeBillingType}
+                onChange={(e) => setEditChargeBillingType(e.target.value as ChargeBillingType)}
+                options={[
+                  { value: 'PIX', label: 'PIX Instantâneo' },
+                  { value: 'BOLETO', label: 'Boleto Bancário' },
+                  { value: 'CREDIT_CARD', label: 'Cartão de Crédito' },
+                  { value: 'UNDEFINED', label: 'Cliente Escolhe na Fatura' },
+                ]}
+              />
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '0.75rem',
+                marginTop: '1.5rem',
+                borderTop: '1px solid #262626',
+                paddingTop: '1rem',
+              }}
+            >
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setEditingCharge(null)}
+                disabled={updatingCharge}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={updatingCharge}>
+                {updatingCharge ? 'Salvando no Asaas…' : 'Salvar Alterações'}
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      <ConfirmDialog
+        open={Boolean(cancelingCharge)}
+        title="Cancelar cobrança no Asaas?"
+        message={
+          cancelingCharge ? (
+            <>
+              Tem certeza que deseja cancelar a cobrança{' '}
+              <strong>{cancelingCharge.description}</strong> (
+              {formatCents(cancelingCharge.valueCents)})? Ela também será removida no Asaas e o
+              link de pagamento deixará de funcionar.
+            </>
+          ) : null
+        }
+        confirmLabel="Cancelar Cobrança"
+        loading={cancelingInProgress}
+        onConfirm={handleConfirmCancelCharge}
+        onCancel={() => setCancelingCharge(null)}
+      />
 
       {/* MODAL: NOVO CONTATO */}
       <Modal
