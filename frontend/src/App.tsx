@@ -45,18 +45,21 @@ function App() {
         <Route path="blog" element={<Blog />} />
         <Route path="blog/:slug" element={<BlogPost />} />
         <Route path="piccast" element={<PicCast />} />
-        <Route path="academy" element={<AcademyCatalog />} />
-        <Route path="academy/curso/:slug" element={<AcademyCourseDetail />} />
-        <Route path="academy/entrar" element={<AcademyAuth />} />
-        <Route path="academy/cadastro" element={<AcademyAuth />} />
-        <Route path="academy/redefinir-senha" element={<AcademyAuth />} />
-        <Route path="academy/checkout/retorno" element={<AcademyCheckoutReturn />} />
-        <Route path="academy/minha-area" element={<AcademyStudentDashboard />} />
-        <Route path="academy/aula/:slug" element={<AcademyClassroom />} />
-        <Route path="academy/certificado/:code" element={<AcademyCertificate />} />
         <Route path="contato" element={<Contato />} />
         <Route path="orcamento" element={<Orcamento />} />
         <Route path="*" element={<NotFound />} />
+      </Route>
+
+      <Route path="academy" element={<PublicLayout hideHeader />}>
+        <Route index element={<AcademyCatalog />} />
+        <Route path="curso/:slug" element={<AcademyCourseDetail />} />
+        <Route path="entrar" element={<AcademyAuth />} />
+        <Route path="cadastro" element={<AcademyAuth />} />
+        <Route path="redefinir-senha" element={<AcademyAuth />} />
+        <Route path="checkout/retorno" element={<AcademyCheckoutReturn />} />
+        <Route path="minha-area" element={<AcademyStudentDashboard />} />
+        <Route path="aula/:slug" element={<AcademyClassroom />} />
+        <Route path="certificado/:code" element={<AcademyCertificate />} />
       </Route>
 
       <Route

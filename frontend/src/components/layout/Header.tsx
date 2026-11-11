@@ -5,7 +5,7 @@ import { Menu, X } from 'lucide-react';
 import { ButtonLink } from '../ui/Button';
 import { Logo } from './Logo';
 
-const NAV_ITEMS: { to: string; label: string; anchor?: string }[] = [
+const NAV_ITEMS: { to: string; label: string; anchor?: string; newTab?: boolean }[] = [
   { to: '/sobre', label: 'Sobre a PicPlus' },
   { to: '/servicos', label: 'Serviços' },
   // { to: '/planos', label: 'Planos' }, // desativado por enquanto
@@ -13,7 +13,7 @@ const NAV_ITEMS: { to: string; label: string; anchor?: string }[] = [
   { to: '/#depoimentos', label: 'Depoimentos', anchor: 'depoimentos' },
   { to: '/cases', label: 'Cases' },
   { to: '/influenciadores', label: 'Influenciadores' },
-  { to: '/academy', label: 'Academy' },
+  { to: '/academy', label: 'Academy', newTab: true },
   { to: '/blog', label: 'Blog' },
   { to: '/piccast', label: 'PicCast' },
   { to: '/contato', label: 'Contato' },
@@ -190,7 +190,12 @@ export function Header() {
                 {item.label}
               </AnchorItem>
             ) : (
-              <NavItem key={item.to} to={item.to}>
+              <NavItem
+                key={item.to}
+                to={item.to}
+                target={item.newTab ? '_blank' : undefined}
+                rel={item.newTab ? 'noopener noreferrer' : undefined}
+              >
                 {item.label}
               </NavItem>
             ),
@@ -223,7 +228,14 @@ export function Header() {
                 {item.label}
               </Link>
             ) : (
-              <RouterNavLink key={item.to} to={item.to} className={({ isActive }) => `link${isActive ? ' active' : ''}`}>
+              <RouterNavLink
+                key={item.to}
+                to={item.to}
+                target={item.newTab ? '_blank' : undefined}
+                rel={item.newTab ? 'noopener noreferrer' : undefined}
+                className={({ isActive }) => `link${isActive ? ' active' : ''}`}
+                onClick={item.newTab ? () => setOpenOn(null) : undefined}
+              >
                 {item.label}
               </RouterNavLink>
             ),

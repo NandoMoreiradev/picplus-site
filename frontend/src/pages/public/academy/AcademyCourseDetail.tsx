@@ -699,7 +699,7 @@ export function AcademyCourseDetail() {
                     ? 'Processando…'
                     : finalPriceCents === 0
                       ? 'Matricular-se gratuitamente'
-                      : 'Comprar agora com Mercado Pago'}
+                      : 'Comprar agora'}
                 </Button>
               )}
 

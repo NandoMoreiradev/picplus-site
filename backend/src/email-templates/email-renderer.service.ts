@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { esc } from '../mail/templates';
+import { config } from '../config/configuration';
 
 export interface EmailBlockStyle {
   backgroundColor?: string;
@@ -222,7 +223,6 @@ export class EmailRendererService {
     const bg = settings?.backgroundColor || '#0a0a0a';
     const cardBg = settings?.cardBackgroundColor || '#171717';
     const textColor = settings?.textColor || '#d4d4d4';
-    const accent = settings?.accentColor || '#B6E829';
     const footer = this.replaceMergeTags(
       settings?.footerText ||
         'PicPlus Company · PicPlus Academy · Este é um e-mail automático.',
@@ -240,8 +240,7 @@ export class EmailRendererService {
       <tr><td align="center">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:${esc(cardBg)};border:1px solid #262626;border-radius:16px;overflow:hidden;">
           <tr><td style="padding:26px 32px;border-bottom:1px solid #262626;">
-            <span style="font-size:24px;font-weight:800;color:#ffffff;">picplus<span style="color:${esc(accent)};">.</span></span>
-            <span style="margin-left:8px;font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(182,232,41,0.14);color:${esc(accent)};">Academy</span>
+            <img src="${esc(config.frontendUrl)}/logo_picplus.png" alt="picplus" height="40" style="display:block;height:40px;width:auto;border:0;" />
           </td></tr>
           <tr><td style="padding:32px;color:${esc(textColor)};font-size:15px;line-height:1.65;">
             ${innerHtml}

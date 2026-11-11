@@ -50,14 +50,14 @@ function ScrollToTop() {
   return null;
 }
 
-export function PublicLayout() {
+export function PublicLayout({ hideHeader = false }: { hideHeader?: boolean }) {
   return (
     <LayoutContainer>
       <a className="skip-link" href="#conteudo">
         Pular para o conteúdo
       </a>
       <ScrollToTop />
-      <Header />
+      {!hideHeader && <Header />}
       <MainContent id="conteudo" tabIndex={-1}>
         <Outlet />
       </MainContent>
