@@ -197,6 +197,22 @@ const SectionTitle = styled.h4`
   padding-bottom: 0.4rem;
 `;
 
+interface MunicipalServiceItem {
+  id: string;
+  description: string;
+  issTax?: number;
+  municipalServiceCode?: string;
+}
+
+interface MunicipalServicesResponse {
+  services: MunicipalServiceItem[];
+  defaultMunicipalService: {
+    id: string | null;
+    code: string | null;
+    name: string | null;
+  };
+}
+
 const whatsappLink = (phone: string, name: string) => {
   let digits = phone.replace(/\D/g, '');
   if (digits.length <= 11) digits = `55${digits}`;
@@ -234,6 +250,19 @@ export function ClientDetail() {
   const [invoiceCustomDesc, setInvoiceCustomDesc] = useState('');
   const [emittingInvoice, setEmittingInvoice] = useState(false);
   const [syncingInvoiceId, setSyncingInvoiceId] = useState<string | null>(null);
+
+  // Serviço municipal para NFS-e (carregado sob demanda do Asaas)
+  const [municipalServices, setMunicipalServices] = useState<MunicipalServiceItem[]>([]);
+  const [municipalServicesLoaded, setMunicipalServicesLoaded] = useState(false);
+  const [loadingMunicipalServices, setLoadingMunicipalServices] = useState(false);
+  const [defaultMunicipalService, setDefaultMunicipalService] = useState<{
+    id: string | null;
+    code: string | null;
+    name: string | null;
+  }>({ id: null, code: null, name: null });
+  const [selectedMunicipalServiceId, setSelectedMunicipalServiceId] = useState('');
+  const [manualMunicipalCode, setManualMunicipalCode] = useState('');
+  const [manualMunicipalName, setManualMunicipalName] = useState('');
 
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactName, setContactName] = useState('');
@@ -360,6 +389,115 @@ export function ClientDetail() {
     tone: 'neutral',
   };
 
+  const loadMunicipalServices = async () => {
+    if (municipalServicesLoaded || loadingMunicipalServices) return;
+    try {
+      setLoadingMunicipalServices(true);
+      const data = await api.get<MunicipalServicesResponse>(
+        '/admin/clients/asaas/municipal-services'
+      );
+      setMunicipalServices(data.services ?? []);
+      setDefaultMunicipalService(
+        data.defaultMunicipalService ?? { id: null, code: null, name: null }
+      );
+      if (data.defaultMunicipalService?.id) {
+        setSelectedMunicipalServiceId(data.defaultMunicipalService.id);
+      } else if (data.services?.length === 1 && !data.defaultMunicipalService?.code) {
+        setSelectedMunicipalServiceId(data.services[0].id);
+      } else if (data.defaultMunicipalService?.code) {
+        setSelectedMunicipalServiceId('__manual__');
+        setManualMunicipalCode(data.defaultMunicipalService.code);
+        setManualMunicipalName(data.defaultMunicipalService.name || '');
+      }
+      setMunicipalServicesLoaded(true);
+    } catch {
+      setMunicipalServicesLoaded(true);
+    } finally {
+      setLoadingMunicipalServices(false);
+    }
+  };
+
+  const buildMunicipalServicePayload = () => {
+    if (selectedMunicipalServiceId && selectedMunicipalServiceId !== '__manual__') {
+      const found = municipalServices.find((s) => s.id === selectedMunicipalServiceId);
+      return {
+        municipalServiceId: selectedMunicipalServiceId,
+        municipalServiceName: found?.description || undefined,
+      };
+    }
+    if (selectedMunicipalServiceId === '__manual__' || municipalServices.length === 0) {
+      return {
+        municipalServiceCode: manualMunicipalCode.trim() || undefined,
+        municipalServiceName: manualMunicipalName.trim() || undefined,
+      };
+    }
+    return {};
+  };
+
+  const openInvoiceModal = (charge: ClientCharge) => {
+    setInvoiceModalCharge(charge);
+    setInvoiceCustomDesc(charge.description);
+    void loadMunicipalServices();
+  };
+
+  const renderMunicipalServiceFields = () => {
+    const showManual =
+      selectedMunicipalServiceId === '__manual__' ||
+      (municipalServicesLoaded && municipalServices.length === 0);
+    const hasServerDefault = Boolean(
+      defaultMunicipalService.id || defaultMunicipalService.code
+    );
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        {loadingMunicipalServices ? (
+          <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+            Carregando serviços municipais do Asaas…
+          </div>
+        ) : (
+          <>
+            {municipalServices.length > 0 && (
+              <SelectField
+                label="Serviço Municipal (Prefeitura / Asaas)"
+                value={selectedMunicipalServiceId}
+                onChange={(e) => setSelectedMunicipalServiceId(e.target.value)}
+                placeholder={
+                  hasServerDefault
+                    ? 'Usar padrão configurado no servidor'
+                    : 'Selecione o serviço municipal…'
+                }
+                options={[
+                  ...municipalServices.map((s) => ({
+                    value: s.id,
+                    label: s.description,
+                  })),
+                  { value: '__manual__', label: 'Informar código manualmente…' },
+                ]}
+              />
+            )}
+
+            {showManual && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.75rem' }}>
+                <TextField
+                  label="Código do Serviço"
+                  placeholder="Ex: 1.01 ou 17.06"
+                  value={manualMunicipalCode}
+                  onChange={(e) => setManualMunicipalCode(e.target.value)}
+                />
+                <TextField
+                  label="Nome do Serviço Municipal"
+                  placeholder="Ex: Análise e desenvolvimento de sistemas"
+                  value={manualMunicipalName}
+                  onChange={(e) => setManualMunicipalName(e.target.value)}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   // Gerar Nova Cobrança no Asaas (Única, Recorrente ou Parcelada + NFS-e)
   const handleCreateCharge = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -382,6 +520,7 @@ export function ClientDetail() {
         emitInvoice: chargeEmitInvoice,
         invoiceServiceDescription:
           chargeEmitInvoice && chargeInvoiceDesc.trim() ? chargeInvoiceDesc.trim() : undefined,
+        ...(chargeEmitInvoice ? buildMunicipalServicePayload() : {}),
       });
 
       toast.success(
@@ -419,6 +558,7 @@ export function ClientDetail() {
       setEmittingInvoice(true);
       await api.post(`/admin/clients/${client.id}/charges/${invoiceModalCharge.id}/invoice`, {
         serviceDescription: invoiceCustomDesc.trim() || undefined,
+        ...buildMunicipalServicePayload(),
       });
       toast.success('Solicitação de emissão de NFS-e transmitida com sucesso!');
       setInvoiceModalCharge(null);
@@ -905,10 +1045,7 @@ export function ClientDetail() {
                                 <Button
                                   size="sm"
                                   variant="secondary"
-                                  onClick={() => {
-                                    setInvoiceModalCharge(charge);
-                                    setInvoiceCustomDesc(charge.description);
-                                  }}
+                                  onClick={() => openInvoiceModal(charge)}
                                   title="Tentar emitir NFS-e novamente"
                                 >
                                   <FileText size={11} /> Reemitir
@@ -920,10 +1057,7 @@ export function ClientDetail() {
                               <Button
                                 size="sm"
                                 variant="secondary"
-                                onClick={() => {
-                                  setInvoiceModalCharge(charge);
-                                  setInvoiceCustomDesc(charge.description);
-                                }}
+                                onClick={() => openInvoiceModal(charge)}
                                 title="Emitir NFS-e antes do pagamento"
                               >
                                 <FileText size={11} /> Emitir NFS-e
@@ -1133,13 +1267,16 @@ export function ClientDetail() {
             >
               <Switch
                 checked={chargeEmitInvoice}
-                onChange={setChargeEmitInvoice}
+                onChange={(checked) => {
+                  setChargeEmitInvoice(checked);
+                  if (checked) void loadMunicipalServices();
+                }}
                 label="Emitir Nota Fiscal (NFS-e) antes do pagamento"
                 description="Transmite a NFS-e à prefeitura de forma imediata para o cliente conferir antes de quitar a fatura."
               />
 
               {chargeEmitInvoice && (
-                <div style={{ marginTop: '0.85rem' }}>
+                <div style={{ marginTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   <TextField
                     label="Discriminação dos Serviços na NFS-e"
                     placeholder="Ex: Prestação de serviços de marketing digital e gestão de tráfego..."
@@ -1147,6 +1284,7 @@ export function ClientDetail() {
                     onChange={(e) => setChargeInvoiceDesc(e.target.value)}
                     hint="Opcional. Se não preenchido, usará a descrição informada acima."
                   />
+                  {renderMunicipalServiceFields()}
                 </div>
               )}
             </div>
@@ -1216,6 +1354,8 @@ export function ClientDetail() {
                 onChange={(e) => setInvoiceCustomDesc(e.target.value)}
                 placeholder="Ex: Prestação de serviços de publicidade, design e gestão de anúncios..."
               />
+
+              {renderMunicipalServiceFields()}
             </div>
 
             <div

@@ -11,6 +11,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { AsaasService } from '../asaas/asaas.service';
+import { config } from '../config/configuration';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ConvertContactToClientDto,
@@ -52,6 +53,18 @@ export class ClientsService {
 
   testAsaasConnection() {
     return this.asaas.testConnection();
+  }
+
+  async getAsaasMunicipalServices(description?: string) {
+    const services = await this.asaas.listMunicipalServices(description);
+    return {
+      services,
+      defaultMunicipalService: {
+        id: config.asaas.defaultMunicipalService.id ?? null,
+        code: config.asaas.defaultMunicipalService.code ?? null,
+        name: config.asaas.defaultMunicipalService.name ?? null,
+      },
+    };
   }
 
   /** Importa dados existentes no Asaas sem criar novos recursos lá. */
@@ -873,7 +886,11 @@ export class ClientsService {
         const inv = await this.asaas.createInvoice({
           payment: asaasPaymentId,
           customer: customerId,
-          serviceDescription: dto.invoiceServiceDescription || dto.description,
+          serviceDescription: (
+            dto.invoiceServiceDescription ||
+            dto.description ||
+            ''
+          ).trim(),
           value: Number((finalValueCents / 100).toFixed(2)),
           effectiveDate: invoiceEffectiveDate,
           municipalServiceId: dto.municipalServiceId,
@@ -949,7 +966,11 @@ export class ClientsService {
     const valueInReais = Number((charge.valueCents / 100).toFixed(2));
     const effectiveDate =
       dto.effectiveDate || new Date().toISOString().split('T')[0];
-    const serviceDescription = dto.serviceDescription || charge.description;
+    const serviceDescription = (
+      dto.serviceDescription ||
+      charge.description ||
+      ''
+    ).trim();
 
     const inv = await this.asaas.createInvoice({
       payment: charge.asaasPaymentId,

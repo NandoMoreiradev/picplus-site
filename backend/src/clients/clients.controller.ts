@@ -51,6 +51,12 @@ export class ClientsController {
     return this.clients.testAsaasConnection();
   }
 
+  @RequirePermissions('clients.financial')
+  @Get('asaas/municipal-services')
+  getAsaasMunicipalServices(@Query('description') description?: string) {
+    return this.clients.getAsaasMunicipalServices(description);
+  }
+
   @RequirePermissions('clients.create')
   @Post('asaas/import')
   importFromAsaas() {

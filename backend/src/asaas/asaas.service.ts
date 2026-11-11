@@ -88,6 +88,14 @@ export interface AsaasInvoiceResult {
   simulated?: boolean;
 }
 
+export interface AsaasMunicipalService {
+  id: string;
+  description: string;
+  issTax?: number;
+  municipalServiceCode?: string;
+  cnae?: string;
+}
+
 export interface AsaasPixQrCodeResult {
   encodedImage: string;
   payload: string;
@@ -500,7 +508,55 @@ export class AsaasService {
     }
   }
 
+  async listMunicipalServices(
+    description?: string,
+  ): Promise<AsaasMunicipalService[]> {
+    if (!this.isConfigured) {
+      return [
+        {
+          id: 'sim_svc_101',
+          description: '1.01 - Análise e desenvolvimento de sistemas',
+          issTax: 2,
+          municipalServiceCode: '1.01',
+        },
+        {
+          id: 'sim_svc_1706',
+          description: '17.06 - Propaganda e publicidade, inclusive promoção de vendas',
+          issTax: 2,
+          municipalServiceCode: '17.06',
+        },
+      ];
+    }
+
+    try {
+      const params = new URLSearchParams({ limit: '100' });
+      if (description?.trim()) {
+        params.set('description', description.trim());
+      }
+      const response = await fetch(
+        `${this.baseUrl}/fiscalInfo/services?${params.toString()}`,
+        { headers: this.headers },
+      );
+      if (!response.ok) {
+        return [];
+      }
+      const data = (await response.json().catch(() => ({}))) as {
+        data?: AsaasMunicipalService[];
+      };
+      return data.data ?? [];
+    } catch {
+      return [];
+    }
+  }
+
   async createInvoice(input: AsaasInvoiceInput): Promise<AsaasInvoiceResult> {
+    const serviceDescription = (input.serviceDescription || '').trim();
+    if (!serviceDescription) {
+      throw new BadRequestException(
+        'Informe a descrição do serviço para emitir a NFS-e.',
+      );
+    }
+
     if (!this.isConfigured) {
       this.logger.warn(
         `[Asaas Simulado] Agendando emissão de NFS-e para cobrança ${input.payment}`,
@@ -534,33 +590,55 @@ export class AsaasService {
         pis: input.taxes?.pis ?? config.asaas.defaultTaxes.pis ?? 0,
       };
 
+      const inputId = input.municipalServiceId?.trim() || undefined;
+      const inputCode = input.municipalServiceCode?.trim() || undefined;
+      const inputName = input.municipalServiceName?.trim() || undefined;
+
+      // Avoid mixing explicit input code with env default id (and vice-versa)
       const municipalServiceId =
-        input.municipalServiceId ||
-        config.asaas.defaultMunicipalService.id ||
-        undefined;
+        inputId ??
+        (!inputCode ? config.asaas.defaultMunicipalService.id : undefined);
       const municipalServiceCode =
-        input.municipalServiceCode ||
-        config.asaas.defaultMunicipalService.code ||
-        undefined;
-      const municipalServiceName =
-        input.municipalServiceName ||
-        config.asaas.defaultMunicipalService.name ||
-        undefined;
+        inputCode ??
+        (!inputId && !municipalServiceId
+          ? config.asaas.defaultMunicipalService.code
+          : undefined);
+      let municipalServiceName =
+        inputName ?? config.asaas.defaultMunicipalService.name ?? undefined;
+
+      // If municipalServiceId is set without a name, resolve its description from Asaas
+      if (municipalServiceId && !municipalServiceName) {
+        const services = await this.listMunicipalServices();
+        const match = services.find(
+          (svc) => String(svc.id) === String(municipalServiceId),
+        );
+        if (match?.description) {
+          municipalServiceName = match.description;
+        }
+      }
+
+      if (municipalServiceCode && !municipalServiceName) {
+        municipalServiceName = municipalServiceCode;
+      }
+
+      const payload: Record<string, unknown> = {
+        payment: input.payment,
+        customer: input.customer,
+        serviceDescription,
+        value: input.value,
+        effectiveDate: input.effectiveDate,
+        taxes,
+      };
+      if (municipalServiceId) payload.municipalServiceId = municipalServiceId;
+      if (municipalServiceCode)
+        payload.municipalServiceCode = municipalServiceCode;
+      if (municipalServiceName)
+        payload.municipalServiceName = municipalServiceName;
 
       const response = await fetch(`${this.baseUrl}/invoices`, {
         method: 'POST',
         headers: this.headers,
-        body: JSON.stringify({
-          payment: input.payment,
-          customer: input.customer,
-          serviceDescription: input.serviceDescription,
-          value: input.value,
-          effectiveDate: input.effectiveDate,
-          municipalServiceId,
-          municipalServiceCode,
-          municipalServiceName,
-          taxes,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -568,10 +646,15 @@ export class AsaasService {
           .json()
           .catch(() => ({}))) as AsaasApiError;
         this.logger.error(
-          `Erro ao emitir NFS-e no Asaas: ${JSON.stringify(errorData)}`,
+          `Erro ao emitir NFS-e no Asaas (payment=${input.payment ?? '-'}, descLen=${serviceDescription.length}, svcId=${municipalServiceId ?? '-'}, svcCode=${municipalServiceCode ?? '-'}, svcName=${municipalServiceName ?? '-'}): ${JSON.stringify(errorData)}`,
         );
+        const descriptions =
+          errorData.errors
+            ?.map((e) => e.description)
+            .filter(Boolean)
+            .join('; ') || response.statusText;
         throw new BadRequestException(
-          `Asaas recusou a emissão da NFS-e: ${errorData.errors?.[0]?.description ?? response.statusText}`,
+          `Asaas recusou a emissão da NFS-e: ${descriptions}`,
         );
       }
 
