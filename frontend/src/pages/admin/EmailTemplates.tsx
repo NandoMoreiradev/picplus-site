@@ -352,8 +352,7 @@ function renderClientSidePreviewHtml(
   return `<!doctype html><html><body style="margin:0;padding:24px 12px;background:${bg};font-family:'Nunito',Arial,sans-serif;color:#d4d4d4;">
     <div style="max-width:560px;margin:0 auto;background:${cardBg};border:1px solid #262626;border-radius:16px;overflow:hidden;">
       <div style="padding:22px 26px;border-bottom:1px solid #262626;">
-        <span style="font-size:22px;font-weight:800;color:#fff;">picplus<span style="color:${accent};">.</span></span>
-        <span style="margin-left:8px;font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:rgba(182,232,41,0.14);color:${accent};">Academy</span>
+        <img src="${window.location.origin}/logo_picplus.png" alt="picplus" height="36" style="display:block;height:36px;width:auto;border:0;" />
       </div>
       <div style="padding:26px;">${inner}</div>
       <div style="padding:16px 26px;border-top:1px solid #262626;color:#737373;font-size:11px;text-align:center;">
