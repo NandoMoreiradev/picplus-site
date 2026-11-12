@@ -20,6 +20,7 @@ import { Sobre } from './pages/public/Sobre';
 import { AcademyAuth } from './pages/public/academy/AcademyAuth';
 import { AcademyCatalog } from './pages/public/academy/AcademyCatalog';
 import { AcademyCertificate } from './pages/public/academy/AcademyCertificate';
+import { AcademyCheckoutPage } from './pages/public/academy/AcademyCheckoutPage';
 import { AcademyCheckoutReturn } from './pages/public/academy/AcademyCheckoutReturn';
 import { AcademyClassroom } from './pages/public/academy/AcademyClassroom';
 import { AcademyCourseDetail } from './pages/public/academy/AcademyCourseDetail';
@@ -57,6 +58,7 @@ function App() {
         <Route path="cadastro" element={<AcademyAuth />} />
         <Route path="redefinir-senha" element={<AcademyAuth />} />
         <Route path="checkout/retorno" element={<AcademyCheckoutReturn />} />
+        <Route path="checkout/:slug" element={<AcademyCheckoutPage />} />
         <Route path="minha-area" element={<AcademyStudentDashboard />} />
         <Route path="aula/:slug" element={<AcademyClassroom />} />
         <Route path="certificado/:code" element={<AcademyCertificate />} />

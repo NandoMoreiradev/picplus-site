@@ -525,6 +525,25 @@ export interface CheckoutResponse {
   preferenceId?: string;
   checkoutUrl: string;
   simulated?: boolean;
+  accessToken?: string;
+  student?: StudentProfile;
+}
+
+export interface RegisterAndCheckoutInput {
+  courseId: string;
+  couponCode?: string;
+  name: string;
+  email: string;
+  password: string;
+  cpf?: string;
+  phone?: string;
+}
+
+export interface LoginAndCheckoutInput {
+  courseId: string;
+  couponCode?: string;
+  email: string;
+  password: string;
 }
 
 export const COURSE_LEVEL_LABEL: Record<CourseLevel, string> = {

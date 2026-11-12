@@ -193,18 +193,30 @@ export class AcademyStudentService {
   }
 
   async createCheckout(studentId: string, dto: CreateCheckoutDto) {
-    const [student, course] = await Promise.all([
+    const [initialStudent, course] = await Promise.all([
       this.prisma.student.findUnique({ where: { id: studentId } }),
       this.prisma.course.findFirst({
         where: { id: dto.courseId, published: true },
       }),
     ]);
 
+    let student = initialStudent;
+
     if (!student || !student.active) {
       throw new ForbiddenException('Conta de aluno inválida.');
     }
     if (!course) {
       throw new NotFoundException('Curso não encontrado.');
+    }
+
+    if ((dto.cpf && !student.cpf) || (dto.phone && !student.phone)) {
+      student = await this.prisma.student.update({
+        where: { id: student.id },
+        data: {
+          cpf: dto.cpf?.trim() || student.cpf,
+          phone: dto.phone?.trim() || student.phone,
+        },
+      });
     }
 
     const existingEnrollment = await this.prisma.enrollment.findUnique({

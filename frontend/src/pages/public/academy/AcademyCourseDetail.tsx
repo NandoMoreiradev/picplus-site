@@ -27,7 +27,6 @@ import {
   formatDuration,
   resolveLessonVideoEmbed,
   studentApi,
-  type CheckoutResponse,
   type CouponValidationResult,
   type Course,
   type CourseLesson,
@@ -313,9 +312,6 @@ export function AcademyCourseDetail() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
 
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-
   usePageMeta(
     course ? `${course.title} — PicPlus Academy` : 'Curso — PicPlus Academy',
     course?.subtitle || 'Curso completo na PicPlus Academy com certificado de conclusão.',
@@ -401,33 +397,18 @@ export function AcademyCourseDetail() {
     }
   };
 
-  const handleBuyOrEnroll = async () => {
+  const handleBuyOrEnroll = () => {
     if (!course) return;
-    if (!student) {
-      navigate(`/academy/entrar?redirect=${encodeURIComponent(`/academy/curso/${course.slug}`)}`);
+    if (isEnrolled) {
+      navigate(`/academy/aula/${course.slug}`);
       return;
     }
-    setCheckingOut(true);
-    setCheckoutError(null);
-    try {
-      const res = await studentApi.post<CheckoutResponse>('/academy/checkout', {
-        courseId: course.id,
-        couponCode: couponResult?.code || undefined,
-      });
-      if (res.freeEnrollment) {
-        navigate(`/academy/aula/${course.slug}`);
-        return;
-      }
-      if (res.checkoutUrl) {
-        window.location.href = res.checkoutUrl;
-      }
-    } catch (err) {
-      setCheckoutError(
-        err instanceof Error ? err.message : 'Não foi possível iniciar o pagamento.',
-      );
-    } finally {
-      setCheckingOut(false);
+    const params = new URLSearchParams();
+    if (couponResult?.code) {
+      params.set('coupon', couponResult.code);
     }
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    navigate(`/academy/checkout/${course.slug}${qs}`);
   };
 
   if (loading) {
@@ -688,23 +669,9 @@ export function AcademyCourseDetail() {
                   <PlayCircle size={18} /> Acessar sala de aula
                 </ButtonLink>
               ) : (
-                <Button
-                  type="button"
-                  size="lg"
-                  block
-                  onClick={handleBuyOrEnroll}
-                  disabled={checkingOut}
-                >
-                  {checkingOut
-                    ? 'Processando…'
-                    : finalPriceCents === 0
-                      ? 'Matricular-se gratuitamente'
-                      : 'Comprar agora'}
+                <Button type="button" size="lg" block onClick={handleBuyOrEnroll}>
+                  {finalPriceCents === 0 ? 'Matricular-se gratuitamente' : 'Comprar agora'}
                 </Button>
-              )}
-
-              {checkoutError && (
-                <div style={{ color: '#ef4444', fontSize: '0.84rem' }}>{checkoutError}</div>
               )}
 
               <ul className="perks">

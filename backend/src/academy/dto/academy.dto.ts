@@ -515,6 +515,66 @@ export class CreateCheckoutDto {
   @IsOptional()
   @IsString()
   couponCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cpf?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  phone?: string;
+}
+
+export class RegisterAndCheckoutDto {
+  @IsString()
+  @IsNotEmpty()
+  courseId!: string;
+
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
+
+  @IsString()
+  @MinLength(2, { message: 'Informe seu nome completo.' })
+  @MaxLength(120)
+  name!: string;
+
+  @IsEmail({}, { message: 'Informe um e-mail válido.' })
+  email!: string;
+
+  @IsString()
+  @MinLength(6, { message: 'A senha deve ter pelo menos 6 caracteres.' })
+  @MaxLength(100)
+  password!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cpf?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(30)
+  phone?: string;
+}
+
+export class LoginAndCheckoutDto {
+  @IsString()
+  @IsNotEmpty()
+  courseId!: string;
+
+  @IsOptional()
+  @IsString()
+  couponCode?: string;
+
+  @IsEmail({}, { message: 'Informe um e-mail válido.' })
+  email!: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Informe sua senha.' })
+  password!: string;
 }
 
 export class UpdateLessonProgressDto {

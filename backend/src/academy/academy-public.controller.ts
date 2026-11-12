@@ -26,7 +26,9 @@ import {
   CreateCheckoutDto,
   CreateLessonCommentDto,
   ForgotStudentPasswordDto,
+  LoginAndCheckoutDto,
   LoginStudentDto,
+  RegisterAndCheckoutDto,
   RegisterStudentDto,
   ResetStudentPasswordDto,
   UpdateLessonProgressDto,
@@ -147,6 +149,60 @@ export class AcademyPublicController {
     @Body() dto: CreateCheckoutDto,
   ) {
     return this.studentService.createCheckout(student.sub, dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Post('checkout/register-and-buy')
+  async registerAndBuy(@Body() dto: RegisterAndCheckoutDto) {
+    const authResult = await this.auth.register({
+      name: dto.name,
+      email: dto.email,
+      password: dto.password,
+      cpf: dto.cpf,
+      phone: dto.phone,
+    });
+
+    const checkout = await this.studentService.createCheckout(
+      authResult.student.id,
+      {
+        courseId: dto.courseId,
+        couponCode: dto.couponCode,
+        cpf: dto.cpf,
+        phone: dto.phone,
+      },
+    );
+
+    return {
+      accessToken: authResult.accessToken,
+      student: authResult.student,
+      ...checkout,
+    };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('checkout/login-and-buy')
+  async loginAndBuy(@Body() dto: LoginAndCheckoutDto) {
+    const authResult = await this.auth.login({
+      email: dto.email,
+      password: dto.password,
+    });
+
+    const checkout = await this.studentService.createCheckout(
+      authResult.student.id,
+      {
+        courseId: dto.courseId,
+        couponCode: dto.couponCode,
+      },
+    );
+
+    return {
+      accessToken: authResult.accessToken,
+      student: authResult.student,
+      ...checkout,
+    };
   }
 
   @StudentAuthenticated()
