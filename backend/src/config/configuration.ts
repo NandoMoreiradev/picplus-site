@@ -73,8 +73,14 @@ export const config = {
     webhookSecret: process.env.RESEND_WEBHOOK_SECRET ?? '',
   },
   mercadoPago: {
-    accessToken: process.env.MP_ACCESS_TOKEN ?? '',
-    webhookSecret: process.env.MP_WEBHOOK_SECRET ?? '',
+    accessToken: (process.env.MP_ACCESS_TOKEN ?? '')
+      .trim()
+      .replace(/^(["'])(.*)\1$/, '$2')
+      .trim(),
+    webhookSecret: (process.env.MP_WEBHOOK_SECRET ?? '')
+      .trim()
+      .replace(/^(["'])(.*)\1$/, '$2')
+      .trim(),
   },
   asaas: {
     apiKey: process.env.ASAAS_API_KEY ?? '',

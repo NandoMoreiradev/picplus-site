@@ -503,13 +503,18 @@ export class AcademyStudentService {
     });
     if (!validSig) {
       this.logger.warn(
-        `Assinatura de webhook do Mercado Pago inválida para payment ${paymentId}`,
+        `Assinatura de webhook do Mercado Pago inválida para payment ${paymentId}. ` +
+          `Verificando autenticidade ativamente na API do Mercado Pago via token seguro...`,
       );
-      return { received: false };
     }
 
     const payment = await this.mp.getPayment(paymentId);
     if (!payment || !payment.externalReference) {
+      if (!validSig) {
+        this.logger.warn(
+          `Pagamento ${paymentId} não encontrado na conta do Mercado Pago ou sem externalReference. Notificação descartada.`,
+        );
+      }
       return { received: true };
     }
 

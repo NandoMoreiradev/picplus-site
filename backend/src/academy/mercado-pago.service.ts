@@ -265,6 +265,12 @@ export class MercadoPagoService {
 
   /**
    * Valida o cabeçalho `x-signature` do Mercado Pago se `MP_WEBHOOK_SECRET` estiver configurado.
+   *
+   * Suporta o formato oficial do Mercado Pago:
+   *   id:<data.id>;request-id:<x-request-id>;ts:<ts>;
+   * e, conforme a documentação, se `x-request-id` não estiver presente ou for
+   * omitido/reescrito por proxies reversos, valida também a versão sem `request-id`:
+   *   id:<data.id>;ts:<ts>;
    */
   verifyWebhookSignature(params: {
     xSignature?: string;
@@ -277,25 +283,45 @@ export class MercadoPagoService {
     const { xSignature, xRequestId, dataId } = params;
     if (!xSignature || !dataId) return false;
 
-    const parts = Object.fromEntries(
-      xSignature.split(',').map((part) => {
-        const [k, v] = part.trim().split('=');
-        return [k, v];
-      }),
-    );
-    const ts = parts.ts;
-    const v1 = parts.v1;
+    let ts = '';
+    let v1 = '';
+    for (const part of xSignature.split(',')) {
+      const [rawKey, ...rest] = part.split('=');
+      const key = rawKey?.trim().toLowerCase();
+      const val = rest.join('=').trim();
+      if (key === 'ts') ts = val;
+      if (key === 'v1') v1 = val.toLowerCase();
+    }
     if (!ts || !v1) return false;
 
-    const manifest = `id:${dataId};request-id:${xRequestId ?? ''};ts:${ts};`;
-    const expected = createHmac('sha256', secret)
-      .update(manifest)
-      .digest('hex');
+    const trimmedDataId = String(dataId).trim();
+    const candidateManifests: string[] = [];
 
-    try {
-      return timingSafeEqual(Buffer.from(v1), Buffer.from(expected));
-    } catch {
-      return false;
+    if (xRequestId && xRequestId.trim()) {
+      candidateManifests.push(
+        `id:${trimmedDataId};request-id:${xRequestId.trim()};ts:${ts};`,
+      );
     }
+    candidateManifests.push(`id:${trimmedDataId};ts:${ts};`);
+
+    for (const manifest of candidateManifests) {
+      const expected = createHmac('sha256', secret)
+        .update(manifest)
+        .digest('hex')
+        .toLowerCase();
+
+      try {
+        if (
+          v1.length === expected.length &&
+          timingSafeEqual(Buffer.from(v1), Buffer.from(expected))
+        ) {
+          return true;
+        }
+      } catch {
+        // Ignora e testa próximo candidato
+      }
+    }
+
+    return false;
   }
 }
