@@ -8,12 +8,8 @@ import {
   Check,
   Clock,
   GraduationCap,
-  Layers,
   PlayCircle,
   Sparkles,
-  Target,
-  UserCheck,
-  Zap,
 } from 'lucide-react';
 import { Button, ButtonLink } from '../../../components/ui/Button';
 import { Chip, Chips } from '../../../components/ui/Chips';
@@ -37,43 +33,6 @@ import {
   formatDuration,
   type Course,
 } from '../../../lib/academy';
-
-const TopBar = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
-  margin-bottom: 2rem;
-  border-radius: ${({ theme }) => theme.radii.lg};
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-
-  .info {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-  }
-
-  .icon-box {
-    width: 42px;
-    height: 42px;
-    border-radius: ${({ theme }) => theme.radii.md};
-    background: ${({ theme }) => theme.colors.primarySoft};
-    border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
-    color: ${({ theme }) => theme.colors.primary};
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.65rem;
-  }
-`;
 
 const FiltersRow = styled.div`
   display: flex;
@@ -273,22 +232,7 @@ const HeroProof = styled.div`
   }
 `;
 
-const Manifesto = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  text-align: center;
-  font-size: 1.15rem;
-  line-height: 1.75;
-  color: ${({ theme }) => theme.colors.textSecondary};
-
-  .strong {
-    color: ${({ theme }) => theme.colors.text};
-    font-weight: 700;
-  }
-`;
-
-const Pillar = styled.div`
+const Step = styled.div`
   padding: 1.75rem;
   border-radius: ${({ theme }) => theme.radii.lg};
   background: ${({ theme }) => theme.colors.surface};
@@ -299,16 +243,16 @@ const Pillar = styled.div`
     border-color: ${({ theme }) => theme.colors.primaryBorder};
   }
 
-  .icon {
-    width: 46px;
-    height: 46px;
-    display: grid;
+  .num {
+    display: inline-grid;
     place-items: center;
-    border-radius: ${({ theme }) => theme.radii.md};
-    background: ${({ theme }) => theme.colors.primarySoft};
-    border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
-    color: ${({ theme }) => theme.colors.primary};
+    width: 40px;
+    height: 40px;
     margin-bottom: 1.1rem;
+    border-radius: 50%;
+    background: ${({ theme }) => theme.colors.primary};
+    color: ${({ theme }) => theme.colors.textDark};
+    font-weight: 800;
   }
 
   h3 {
@@ -321,20 +265,6 @@ const Pillar = styled.div`
     font-size: 0.95rem;
     line-height: 1.6;
     color: ${({ theme }) => theme.colors.textSecondary};
-  }
-`;
-
-const Step = styled(Pillar)`
-  .num {
-    display: inline-grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    margin-bottom: 1.1rem;
-    border-radius: 50%;
-    background: ${({ theme }) => theme.colors.primary};
-    color: ${({ theme }) => theme.colors.textDark};
-    font-weight: 800;
   }
 `;
 
@@ -367,29 +297,6 @@ const FinalCta = styled.div`
     gap: 0.75rem;
   }
 `;
-
-const PILLARS = [
-  {
-    icon: Target,
-    title: 'Feito por quem faz',
-    text: 'Instrutores que estão na linha de frente de campanhas, produções e criadores todos os dias. O que você assiste é o que a gente pratica.',
-  },
-  {
-    icon: Zap,
-    title: 'Direto ao ponto',
-    text: 'Sem enrolação e sem aula de 3 horas para dizer o que cabe em 10 minutos. Cada módulo termina em algo que você consegue aplicar.',
-  },
-  {
-    icon: Layers,
-    title: 'Do conceito à execução',
-    text: 'Estratégia, método e passo a passo no mesmo lugar. Você entende o porquê e sai sabendo o como.',
-  },
-  {
-    icon: Award,
-    title: 'Prova do que você sabe',
-    text: 'Concluiu o curso, emitiu o certificado. Um documento verificável para o seu portfólio, LinkedIn e currículo.',
-  },
-];
 
 const STEPS = [
   {
@@ -478,59 +385,6 @@ export function AcademyCatalog() {
         </HeroProof>
       </PageHero>
 
-      <Section $surface>
-        <Container $narrow>
-          <SectionHeader
-            eyebrow="O que é a PicPlus Academy"
-            title={
-              <>
-                Conhecimento que nasce na <Highlight>operação</Highlight>, não em slide.
-              </>
-            }
-          />
-          <Manifesto>
-            <p>
-              A PicPlus é uma agência que planeja, produz e escala marcas todos os dias. A Academy é
-              onde abrimos esse bastidor.
-            </p>
-            <p>
-              Cada curso nasce de campanhas reais, erros que já cometemos e acertos que repetimos
-              até virarem método. Você não aprende o que “deveria funcionar”. Aprende o que
-              funciona de verdade, na ordem em que a gente executa.
-            </p>
-            <p className="strong">
-              É para quem cansou de conteúdo genérico e quer sair da aula sabendo exatamente o que
-              fazer amanhã.
-            </p>
-          </Manifesto>
-        </Container>
-      </Section>
-
-      <Section>
-        <Container>
-          <SectionHeader
-            eyebrow="Por que a Academy"
-            title={
-              <>
-                Feita para quem quer <Highlight>resultado</Highlight>, não só certificado
-              </>
-            }
-            description="Quatro princípios que guiam todo curso que sai daqui."
-          />
-          <Grid $min="250px">
-            {PILLARS.map(({ icon: Icon, title, text }) => (
-              <Pillar key={title}>
-                <div className="icon">
-                  <Icon size={22} />
-                </div>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </Pillar>
-            ))}
-          </Grid>
-        </Container>
-      </Section>
-
       <Section $surface id="cursos" ref={coursesRef}>
         <Container>
           <SectionHeader
@@ -542,38 +396,6 @@ export function AcademyCatalog() {
             }
             description="Do posicionamento à produção, cada curso resolve um problema real do seu negócio ou da sua carreira."
           />
-
-          <TopBar>
-            <div className="info">
-              <div className="icon-box">
-                <GraduationCap size={22} />
-              </div>
-              <div>
-                <strong>{student ? `Olá, ${student.name}!` : 'Já é aluno da PicPlus Academy?'}</strong>
-                <div style={{ fontSize: '0.86rem', color: '#A3A3A3' }}>
-                  {student
-                    ? 'Acesse sua área do aluno para continuar assistindo suas aulas e emitir certificados.'
-                    : 'Entre na sua conta para acessar seus cursos adquiridos, materiais de apoio e certificados.'}
-                </div>
-              </div>
-            </div>
-            <div className="actions">
-              {student ? (
-                <ButtonLink to="/academy/minha-area" $size="sm">
-                  <UserCheck size={16} /> Ir para Minha Área
-                </ButtonLink>
-              ) : (
-                <>
-                  <ButtonLink to="/academy/entrar" $variant="secondary" $size="sm">
-                    Entrar na conta
-                  </ButtonLink>
-                  <ButtonLink to="/academy/cadastro" $size="sm">
-                    Criar conta de aluno
-                  </ButtonLink>
-                </>
-              )}
-            </div>
-          </TopBar>
 
           <FiltersRow>
             <div className="search-wrap">
