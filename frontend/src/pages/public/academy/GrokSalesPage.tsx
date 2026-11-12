@@ -1308,7 +1308,6 @@ export function GrokSalesPage() {
         ></div>
         <div className="wrap">
           <div>
-            <span className="eyebrow">Curso · PicPlus Academy</span>
             <h1>
               Transforme qualquer história em um <span className="lime">filme</span>. Usando só o Grok.
             </h1>
@@ -2202,6 +2201,36 @@ export function GrokSalesPage() {
                 ou no cartão.
               </p>
             </details>
+          </div>
+
+          <div style={{ textAlign: 'center', marginTop: 40 }}>
+            <p style={{ color: 'var(--muted)', fontSize: '0.95rem', marginBottom: 14 }}>
+              Ainda tem alguma dúvida sobre o curso?
+            </p>
+            <a
+              href="https://wa.me/557991424233?text=Oi!%20Tenho%20uma%20d%C3%BAvida%20sobre%20o%20curso%20Filmes%20com%20IA%20usando%20s%C3%B3%20o%20Grok."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 10,
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: '#fff',
+                padding: '12px 24px',
+                borderRadius: 999,
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                textDecoration: 'none',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#B6E829">
+                <path d="M20.5 3.5A11.8 11.8 0 0 0 1.9 17.7L.5 23.5l5.9-1.5A11.8 11.8 0 0 0 20.5 3.5zM12 21.4a9.6 9.6 0 0 1-4.9-1.3l-.4-.2-3.5.9.9-3.4-.2-.4A9.7 9.7 0 1 1 12 21.4zm5.3-7.2c-.3-.1-1.7-.9-2-1s-.5-.1-.7.1-.8 1-1 1.2-.4.2-.6.1a7.9 7.9 0 0 1-3.9-3.4c-.3-.5.3-.5.8-1.6.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6a1.1 1.1 0 0 0-.8.4 3.4 3.4 0 0 0-1 2.5 5.9 5.9 0 0 0 1.2 3.1 13.5 13.5 0 0 0 5.2 4.6c1.9.8 2.7.9 3.6.7a3.1 3.1 0 0 0 2-1.4 2.5 2.5 0 0 0 .2-1.4c-.1-.1-.3-.2-.6-.3z" />
+              </svg>
+              Falar no WhatsApp: (79) 9142-4233
+            </a>
           </div>
         </div>
       </section>

@@ -11,6 +11,7 @@ import {
   EyeOff,
   FileText,
   Lock,
+  MessageCircle,
   QrCode,
   ShieldCheck,
   Sparkles,
@@ -1287,6 +1288,33 @@ export function AcademyCheckoutPage() {
                   <ShieldCheck size={15} color="#B6E829" /> Garantia incondicional de 7 dias
                 </li>
               </ul>
+
+              <div
+                style={{
+                  marginTop: '1.25rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #262626',
+                  textAlign: 'center',
+                }}
+              >
+                <a
+                  href={`https://wa.me/557991424233?text=${encodeURIComponent(
+                    `Olá! Preciso de ajuda com a compra do curso ${course.title} na PicPlus Academy.`,
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    fontSize: '0.8rem',
+                    color: '#A3A3A3',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <MessageCircle size={14} color="#B6E829" /> Dúvidas na compra? WhatsApp: (79) 9142-4233
+                </a>
+              </div>
             </div>
           </StickySummary>
         </CheckoutGrid>

@@ -6,8 +6,8 @@ import { positioning } from '../content/positioning';
 
 const env = import.meta.env;
 
-// Número padrão da agência: (79) 98839-0389. A variável VITE_WHATSAPP, se definida, sobrescreve.
-const DEFAULT_WHATSAPP = '5579988390389';
+// Número padrão da agência: +55 79 9142-4233. A variável VITE_WHATSAPP, se definida, sobrescreve.
+const DEFAULT_WHATSAPP = '557991424233';
 const whatsappDigits = ((env.VITE_WHATSAPP as string | undefined) || DEFAULT_WHATSAPP).replace(/\D/g, '');
 
 export const site = {
