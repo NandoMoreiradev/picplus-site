@@ -268,6 +268,23 @@ const Step = styled.div`
   }
 `;
 
+const StepsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  max-width: 1040px;
+  margin: 0 auto;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+  }
+`;
+
 const FinalCta = styled.div`
   padding: 3.5rem 2rem;
   text-align: center;
@@ -542,7 +559,7 @@ export function AcademyCatalog() {
               </>
             }
           />
-          <Grid $min="250px">
+          <StepsGrid>
             {STEPS.map((step, i) => (
               <Step key={step.title}>
                 <span className="num">{i + 1}</span>
@@ -550,7 +567,7 @@ export function AcademyCatalog() {
                 <p>{step.text}</p>
               </Step>
             ))}
-          </Grid>
+          </StepsGrid>
         </Container>
       </Section>
 
