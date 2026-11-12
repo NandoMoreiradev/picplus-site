@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type ChangeEvent, type FormEvent, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import {
@@ -9,7 +9,8 @@ import {
   CheckCircle2,
   Clock,
   GraduationCap,
-  LogOut,
+  Camera,
+  Mail,
   Play,
   PlayCircle,
   Receipt,
@@ -38,6 +39,40 @@ const PageWrapper = styled.div`
   min-height: 80vh;
   padding-bottom: 4rem;
 `;
+
+/* Section padrão tem 6rem no topo (pensado para landing); aqui é um painel. */
+const DashSection = styled(Section)`
+  padding-top: 2.25rem;
+  padding-bottom: 2rem;
+
+  @media (max-width: 900px) {
+    padding-top: 1.5rem;
+  }
+`;
+
+function initialsOf(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  const first = parts[0][0];
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : (parts[0][1] ?? '');
+  return (first + last).toUpperCase();
+}
+
+function maskCpf(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2');
+}
+
+function maskPhone(v: string) {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+}
 
 const HeroBanner = styled.div`
   position: relative;
@@ -96,6 +131,13 @@ const HeroTopRow = styled.div`
     color: #b6e829;
     font-weight: 800;
     font-size: 1.35rem;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   }
 
   .student-name-row {
@@ -453,11 +495,96 @@ const OrderCard = styled.div`
   }
 `;
 
-const ProfileGrid = styled.form`
+const ProfileLayout = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 1.5rem;
-  max-width: 900px;
+  align-items: start;
+
+  @media (max-width: 860px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ProfileColumn = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 760px;
+`;
+
+const AvatarCard = styled.div`
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.6rem;
+
+  .big-avatar {
+    width: 116px;
+    height: 116px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: #101012;
+    border: 3px solid #b6e829;
+    box-shadow: 0 0 24px rgba(182, 232, 41, 0.2);
+    color: #b6e829;
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 0.4rem;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .av-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .av-mail,
+  .av-since {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: #a1a1aa;
+    word-break: break-all;
+  }
+
+  .av-hint {
+    font-size: 0.72rem;
+    color: #71717a;
+  }
+
+  .av-since {
+    margin-top: 0.6rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    width: 100%;
+    justify-content: center;
+  }
+`;
+
+const Feedback = styled.div<{ $type: 'success' | 'error' }>`
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  font-size: 0.86rem;
+  background: ${({ $type }) =>
+    $type === 'success' ? 'rgba(34, 197, 94, 0.14)' : 'rgba(239, 68, 68, 0.14)'};
+  color: ${({ $type }) => ($type === 'success' ? '#22c55e' : '#ef4444')};
+  border: 1px solid
+    ${({ $type }) => ($type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)')};
 `;
 
 const ProfileCard = styled.div`
@@ -484,15 +611,47 @@ const ProfileCard = styled.div`
     }
   }
 
+  .notice {
+    padding: 0.8rem 1rem;
+    border-radius: 12px;
+    background: rgba(182, 232, 41, 0.06);
+    border: 1px solid rgba(182, 232, 41, 0.2);
+    color: #e4e4e7;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+
+    @media (max-width: 560px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .field {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
 
+    &.full {
+      grid-column: 1 / -1;
+    }
+
     label {
       font-size: 0.82rem;
       font-weight: 600;
       color: #a1a1aa;
+    }
+
+    small {
+      font-size: 0.74rem;
+      color: #71717a;
     }
 
     input {
@@ -508,7 +667,17 @@ const ProfileCard = styled.div`
         outline: none;
         border-color: #b6e829;
       }
+
+      &:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
     }
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
   }
 `;
 
@@ -519,7 +688,7 @@ export function AcademyStudentDashboard() {
   );
 
   const navigate = useNavigate();
-  const { student, loading: authLoading, logout, setStudent } = useStudentAuth();
+  const { student, loading: authLoading, setStudent } = useStudentAuth();
 
   const [tab, setTab] = useState<'courses' | 'orders' | 'profile'>('courses');
   const [enrollments, setEnrollments] = useState<StudentEnrolledCourse[]>([]);
@@ -532,9 +701,16 @@ export function AcademyStudentDashboard() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
   );
+  const [passwordMsg, setPasswordMsg] = useState<{
+    type: 'success' | 'error';
+    text: string;
+  } | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !student) {
@@ -587,13 +763,10 @@ export function AcademyStudentDashboard() {
       const updated = await studentApi.patch<StudentProfile>('/academy/auth/me', {
         name: name.trim(),
         phone: phone.trim() || undefined,
-        cpf: cpf.trim() || undefined,
-        currentPassword: currentPassword.trim() || undefined,
-        newPassword: newPassword.trim() || undefined,
+        // string vazia limpa o campo no backend
+        cpf: cpf.trim(),
       });
       setStudent(updated);
-      setCurrentPassword('');
-      setNewPassword('');
       setProfileMsg({ type: 'success', text: 'Dados atualizados com sucesso!' });
     } catch (err) {
       setProfileMsg({
@@ -602,6 +775,58 @@ export function AcademyStudentDashboard() {
       });
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setSavingPassword(true);
+    setPasswordMsg(null);
+    try {
+      await studentApi.patch('/academy/auth/password', {
+        currentPassword,
+        newPassword,
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setPasswordMsg({ type: 'success', text: 'Senha atualizada com sucesso!' });
+    } catch (err) {
+      setPasswordMsg({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Erro ao atualizar a senha.',
+      });
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setProfileMsg({ type: 'error', text: 'Selecione um arquivo de imagem.' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileMsg({ type: 'error', text: 'A imagem deve ter no máximo 5 MB.' });
+      return;
+    }
+    setUploadingAvatar(true);
+    setProfileMsg(null);
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const updated = await studentApi.postForm<StudentProfile>('/academy/auth/me/avatar', form);
+      setStudent(updated);
+      setProfileMsg({ type: 'success', text: 'Foto atualizada!' });
+    } catch (err) {
+      setProfileMsg({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Erro ao enviar a foto.',
+      });
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -622,16 +847,24 @@ export function AcademyStudentDashboard() {
   );
   const certificatesTotal = enrollments.filter((e) => Boolean(e.certificateCode)).length;
 
+  const avatarSrc = assetUrl(student.avatarUrl);
+
   return (
     <PageWrapper>
-      <Section>
+      <DashSection>
         <Container>
           {/* ─── Hero Banner do Aluno ─── */}
           <HeroBanner>
             <HeroTopRow>
               <div className="student-profile">
                 <div className="avatar-ring">
-                  <div className="avatar-inner">{student.name.slice(0, 2).toUpperCase()}</div>
+                  <div className="avatar-inner">
+                    {avatarSrc ? (
+                      <img src={avatarSrc} alt={student.name} />
+                    ) : (
+                      initialsOf(student.name)
+                    )}
+                  </div>
                 </div>
                 <div>
                   <div className="student-name-row">
@@ -648,17 +881,6 @@ export function AcademyStudentDashboard() {
                 <ButtonLink to="/academy" $variant="secondary" $size="sm">
                   <GraduationCap size={16} /> Catálogo de cursos
                 </ButtonLink>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    logout();
-                    navigate('/academy');
-                  }}
-                >
-                  <LogOut size={15} /> Sair
-                </Button>
               </div>
             </HeroTopRow>
 
@@ -958,155 +1180,169 @@ export function AcademyStudentDashboard() {
 
           {/* ─── Aba 3: Meus Dados Cadastrais ─── */}
           {tab === 'profile' && (
-            <ProfileGrid onSubmit={handleSaveProfile}>
-              {/* Coluna 1: Dados Pessoais */}
-              <ProfileCard>
-                <div className="card-header">
-                  <UserCheck size={20} color="#B6E829" />
-                  <h3>Dados Pessoais</h3>
+            <ProfileLayout>
+              {/* Coluna lateral: foto + resumo */}
+              <AvatarCard>
+                <div className="big-avatar">
+                  {avatarSrc ? (
+                    <img src={avatarSrc} alt={student.name} />
+                  ) : (
+                    initialsOf(student.name)
+                  )}
                 </div>
-
-                <div
-                  style={{
-                    padding: '0.8rem 1rem',
-                    borderRadius: '12px',
-                    background: 'rgba(182, 232, 41, 0.06)',
-                    border: '1px solid rgba(182, 232, 41, 0.2)',
-                    color: '#e4e4e7',
-                    fontSize: '0.82rem',
-                    lineHeight: '1.4',
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.6rem',
-                  }}
-                >
-                  <ShieldCheck size={18} color="#B6E829" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <span>
-                    O seu <strong>Nome Completo</strong> e <strong>CPF</strong> são utilizados na
-                    emissão oficial dos seus <strong>certificados de conclusão</strong> com
-                    autenticidade pública.
-                  </span>
+                <div className="av-name">{student.name}</div>
+                <div className="av-mail">
+                  <Mail size={13} /> {student.email}
                 </div>
-
-                {profileMsg && (
-                  <div
-                    style={{
-                      padding: '0.75rem 1rem',
-                      borderRadius: '12px',
-                      background:
-                        profileMsg.type === 'success'
-                          ? 'rgba(34, 197, 94, 0.14)'
-                          : 'rgba(239, 68, 68, 0.14)',
-                      color: profileMsg.type === 'success' ? '#22c55e' : '#ef4444',
-                      border: `1px solid ${
-                        profileMsg.type === 'success'
-                          ? 'rgba(34, 197, 94, 0.3)'
-                          : 'rgba(239, 68, 68, 0.3)'
-                      }`,
-                      fontSize: '0.86rem',
-                    }}
-                  >
-                    {profileMsg.text}
-                  </div>
-                )}
-
-                <div className="field">
-                  <label htmlFor="pf-name">Nome completo</label>
-                  <input
-                    id="pf-name"
-                    type="text"
-                    required
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </div>
-
-                <div className="field">
-                  <label htmlFor="pf-email">E-mail de acesso (não alterável)</label>
-                  <input
-                    id="pf-email"
-                    type="email"
-                    disabled
-                    value={student.email}
-                    style={{ opacity: 0.6, cursor: 'not-allowed' }}
-                  />
-                </div>
-
-                <div className="field">
-                  <label htmlFor="pf-cpf">CPF</label>
-                  <input
-                    id="pf-cpf"
-                    type="text"
-                    value={cpf}
-                    onChange={(e) => setCpf(e.target.value)}
-                    placeholder="000.000.000-00"
-                  />
-                </div>
-
-                <div className="field">
-                  <label htmlFor="pf-phone">Telefone / WhatsApp</label>
-                  <input
-                    id="pf-phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="(11) 99999-9999"
-                  />
-                </div>
-
-                <Button type="submit" disabled={savingProfile} style={{ marginTop: '0.5rem' }}>
-                  {savingProfile ? 'Salvando alterações…' : 'Salvar dados cadastrais'}
-                </Button>
-              </ProfileCard>
-
-              {/* Coluna 2: Segurança / Senha */}
-              <ProfileCard>
-                <div className="card-header">
-                  <ShieldCheck size={20} color="#B6E829" />
-                  <h3>Segurança da Conta</h3>
-                </div>
-
-                <p style={{ fontSize: '0.84rem', color: '#a1a1aa', margin: 0 }}>
-                  Para alterar sua senha de acesso à PicPlus Academy, preencha sua senha atual e a
-                  nova senha desejada.
-                </p>
-
-                <div className="field">
-                  <label htmlFor="pf-curr-pass">Senha atual</label>
-                  <input
-                    id="pf-curr-pass"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Sua senha atual"
-                  />
-                </div>
-
-                <div className="field">
-                  <label htmlFor="pf-pass">Nova senha</label>
-                  <input
-                    id="pf-pass"
-                    type="password"
-                    minLength={6}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Nova senha (mínimo 6 caracteres)"
-                  />
-                </div>
-
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={handleAvatarChange}
+                />
                 <Button
-                  type="submit"
+                  type="button"
                   variant="secondary"
-                  disabled={savingProfile || !newPassword}
-                  style={{ marginTop: 'auto' }}
+                  size="sm"
+                  disabled={uploadingAvatar}
+                  onClick={() => avatarInputRef.current?.click()}
                 >
-                  {savingProfile ? 'Atualizando senha…' : 'Atualizar senha'}
+                  <Camera size={15} /> {uploadingAvatar ? 'Enviando…' : 'Alterar foto'}
                 </Button>
-              </ProfileCard>
-            </ProfileGrid>
+                <div className="av-hint">JPG, PNG ou WebP · até 5 MB</div>
+                <div className="av-since">
+                  <Calendar size={13} /> Aluno desde{' '}
+                  {new Date(student.createdAt).toLocaleDateString('pt-BR', {
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </div>
+              </AvatarCard>
+
+              <ProfileColumn>
+                {/* Dados pessoais */}
+                <ProfileCard as="form" onSubmit={handleSaveProfile}>
+                  <div className="card-header">
+                    <UserCheck size={20} color="#B6E829" />
+                    <h3>Dados Pessoais</h3>
+                  </div>
+
+                  <div className="notice">
+                    <ShieldCheck size={18} color="#B6E829" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <span>
+                      O seu <strong>Nome Completo</strong> e <strong>CPF</strong> são utilizados na
+                      emissão oficial dos seus <strong>certificados de conclusão</strong>.
+                    </span>
+                  </div>
+
+                  {profileMsg && <Feedback $type={profileMsg.type}>{profileMsg.text}</Feedback>}
+
+                  <div className="fields">
+                    <div className="field full">
+                      <label htmlFor="pf-name">Nome completo</label>
+                      <input
+                        id="pf-name"
+                        type="text"
+                        required
+                        minLength={2}
+                        maxLength={120}
+                        autoComplete="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="field full">
+                      <label htmlFor="pf-email">E-mail de acesso</label>
+                      <input id="pf-email" type="email" disabled value={student.email} />
+                      <small>O e-mail não pode ser alterado.</small>
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor="pf-cpf">CPF</label>
+                      <input
+                        id="pf-cpf"
+                        type="text"
+                        inputMode="numeric"
+                        value={cpf}
+                        onChange={(e) => setCpf(maskCpf(e.target.value))}
+                        placeholder="000.000.000-00"
+                      />
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor="pf-phone">Telefone / WhatsApp</label>
+                      <input
+                        id="pf-phone"
+                        type="tel"
+                        autoComplete="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(maskPhone(e.target.value))}
+                        placeholder="(11) 99999-9999"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="actions">
+                    <Button type="submit" disabled={savingProfile}>
+                      {savingProfile ? 'Salvando…' : 'Salvar alterações'}
+                    </Button>
+                  </div>
+                </ProfileCard>
+
+                {/* Segurança */}
+                <ProfileCard as="form" onSubmit={handleChangePassword}>
+                  <div className="card-header">
+                    <ShieldCheck size={20} color="#B6E829" />
+                    <h3>Segurança da Conta</h3>
+                  </div>
+
+                  {passwordMsg && <Feedback $type={passwordMsg.type}>{passwordMsg.text}</Feedback>}
+
+                  <div className="fields">
+                    <div className="field">
+                      <label htmlFor="pf-curr-pass">Senha atual</label>
+                      <input
+                        id="pf-curr-pass"
+                        type="password"
+                        autoComplete="current-password"
+                        required
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor="pf-pass">Nova senha</label>
+                      <input
+                        id="pf-pass"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        minLength={6}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="actions">
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      disabled={savingPassword || !currentPassword || !newPassword}
+                    >
+                      {savingPassword ? 'Atualizando…' : 'Atualizar senha'}
+                    </Button>
+                  </div>
+                </ProfileCard>
+              </ProfileColumn>
+            </ProfileLayout>
           )}
         </Container>
-      </Section>
+      </DashSection>
     </PageWrapper>
   );
 }

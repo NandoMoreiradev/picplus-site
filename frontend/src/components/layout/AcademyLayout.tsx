@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { AcademyHeader } from './AcademyHeader';
-import { Footer } from './Footer';
+import { AcademyFooter } from './AcademyFooter';
 import { WhatsAppButton } from './WhatsAppButton';
 
 const LayoutContainer = styled.div`
@@ -42,7 +42,7 @@ export function AcademyLayout() {
       <MainContent id="conteudo" tabIndex={-1}>
         <Outlet />
       </MainContent>
-      <Footer />
+      <AcademyFooter />
       <WhatsAppButton />
     </LayoutContainer>
   );
