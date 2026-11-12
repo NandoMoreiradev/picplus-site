@@ -496,16 +496,24 @@ export class AcademyStudentService {
       return { received: true };
     }
 
+    const hasSignature = Boolean(headers['x-signature']);
     const validSig = this.mp.verifyWebhookSignature({
       xSignature: headers['x-signature'],
       xRequestId: headers['x-request-id'],
       dataId: paymentId,
     });
     if (!validSig) {
-      this.logger.warn(
-        `Assinatura de webhook do Mercado Pago inválida para payment ${paymentId}. ` +
-          `Verificando autenticidade ativamente na API do Mercado Pago via token seguro...`,
-      );
+      if (!hasSignature) {
+        this.logger.log(
+          `Webhook do Mercado Pago recebido sem x-signature (evento "Pagamentos (legacy)"). ` +
+            `Validando autenticidade ativamente na API oficial do Mercado Pago...`,
+        );
+      } else {
+        this.logger.warn(
+          `Assinatura de webhook do Mercado Pago não coincidiu para payment ${paymentId}. ` +
+            `Verificando autenticidade ativamente na API do Mercado Pago via token seguro...`,
+        );
+      }
     }
 
     const payment = await this.mp.getPayment(paymentId);
