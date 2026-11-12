@@ -66,8 +66,10 @@ export const config = {
     // Remove espaços e aspas externas (comum em painéis de deploy que
     // guardam o valor literalmente com aspas) para não invalidar o `from`.
     from:
-      (process.env.MAIL_FROM ?? '').trim().replace(/^(["'])(.*)\1$/, '$2').trim() ||
-      'PicPlus <onboarding@resend.dev>',
+      (process.env.MAIL_FROM ?? '')
+        .trim()
+        .replace(/^(["'])(.*)\1$/, '$2')
+        .trim() || 'PicPlus <onboarding@resend.dev>',
     // Caixa que recebe os avisos de novos cadastros/contatos.
     notifyTo: toList(process.env.ADMIN_NOTIFY_EMAIL, []),
     webhookSecret: process.env.RESEND_WEBHOOK_SECRET ?? '',

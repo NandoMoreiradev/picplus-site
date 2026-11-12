@@ -89,7 +89,8 @@ describe('MercadoPagoService - verifyWebhookSignature', () => {
     config.mercadoPago.webhookSecret = secret;
 
     const result = service.verifyWebhookSignature({
-      xSignature: 'ts=1731427963,v1=0000000000000000000000000000000000000000000000000000000000000000',
+      xSignature:
+        'ts=1731427963,v1=0000000000000000000000000000000000000000000000000000000000000000',
       xRequestId: 'req-xyz',
       dataId: '189241850210',
     });
@@ -100,6 +101,8 @@ describe('MercadoPagoService - verifyWebhookSignature', () => {
   it('deve rejeitar se faltar xSignature ou dataId', () => {
     config.mercadoPago.webhookSecret = 'secret';
     expect(service.verifyWebhookSignature({ dataId: '123' })).toBe(false);
-    expect(service.verifyWebhookSignature({ xSignature: 'ts=1,v1=a' })).toBe(false);
+    expect(service.verifyWebhookSignature({ xSignature: 'ts=1,v1=a' })).toBe(
+      false,
+    );
   });
 });
