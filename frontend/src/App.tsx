@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { PublicLayout } from './components/layout/PublicLayout';
+import { AcademyLayout } from './components/layout/AcademyLayout';
 import { PageLoader } from './components/ui/Feedback';
 
 import { Blog } from './pages/public/Blog';
@@ -51,7 +52,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Route>
 
-      <Route path="academy" element={<PublicLayout hideHeader />}>
+      <Route path="academy" element={<AcademyLayout />}>
         <Route index element={<AcademyCatalog />} />
         <Route path="curso/:slug" element={<AcademyCourseDetail />} />
         <Route path="entrar" element={<AcademyAuth />} />

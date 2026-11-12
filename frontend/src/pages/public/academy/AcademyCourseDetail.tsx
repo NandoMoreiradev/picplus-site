@@ -32,6 +32,7 @@ import {
   type CourseLesson,
   type StudentEnrolledCourse,
 } from '../../../lib/academy';
+import { GrokSalesPage } from './GrokSalesPage';
 
 const HeroGrid = styled.div`
   display: grid;
@@ -296,6 +297,11 @@ const ModalOverlay = styled.div`
 
 export function AcademyCourseDetail() {
   const { slug = '' } = useParams<{ slug: string }>();
+
+  if (slug === 'dominando-inteligencia-artificial-para-videos') {
+    return <GrokSalesPage />;
+  }
+
   const navigate = useNavigate();
   const { student } = useStudentAuth();
 
