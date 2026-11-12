@@ -250,6 +250,12 @@ export class AcademyPublicController {
   }
 
   @StudentAuthenticated()
+  @Get('orders')
+  listOrders(@CurrentStudent() student: AuthStudent) {
+    return this.studentService.listMyOrders(student.sub);
+  }
+
+  @StudentAuthenticated()
   @Get('classroom/:slug')
   getClassroom(
     @CurrentStudent() student: AuthStudent,

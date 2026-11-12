@@ -1,14 +1,23 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import {
+  ArrowRight,
   Award,
   BookOpen,
+  Calendar,
+  CheckCircle2,
+  Clock,
   GraduationCap,
   LogOut,
+  Play,
   PlayCircle,
   Receipt,
+  ShieldCheck,
+  Sparkles,
+  UserCheck,
   UserCog,
+  XCircle,
 } from 'lucide-react';
 import { Button, ButtonLink } from '../../../components/ui/Button';
 import { EmptyState, Skeleton } from '../../../components/ui/Feedback';
@@ -25,165 +34,489 @@ import {
   type StudentProfile,
 } from '../../../lib/academy';
 
-const HeaderBox = styled.div`
+const PageWrapper = styled.div`
+  min-height: 80vh;
+  padding-bottom: 4rem;
+`;
+
+const HeroBanner = styled.div`
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #18181b 0%, #0d0d0f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2.25rem 2.25rem 1.75rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -40%;
+    right: -15%;
+    width: 480px;
+    height: 480px;
+    background: radial-gradient(circle, rgba(182, 232, 41, 0.12) 0%, transparent 65%);
+    pointer-events: none;
+  }
+`;
+
+const HeroTopRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1.25rem;
-  padding: 1.5rem 1.75rem;
-  border-radius: ${({ theme }) => theme.radii.xl};
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+  gap: 1.5rem;
   margin-bottom: 1.75rem;
 
-  .user-info {
+  .student-profile {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .avatar-ring {
+    position: relative;
+    width: 66px;
+    height: 66px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #b6e829, #7fae14);
+    padding: 3px;
+    flex-shrink: 0;
+    box-shadow: 0 0 20px rgba(182, 232, 41, 0.25);
+  }
+
+  .avatar-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #141416;
+    display: grid;
+    place-items: center;
+    color: #b6e829;
+    font-weight: 800;
+    font-size: 1.35rem;
+  }
+
+  .student-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+  }
+
+  .student-name {
+    font-size: 1.55rem;
+    font-weight: 800;
+    margin: 0;
+    color: #ffffff;
+    letter-spacing: -0.02em;
+  }
+
+  .student-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.22rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(182, 232, 41, 0.12);
+    border: 1px solid rgba(182, 232, 41, 0.28);
+    color: #b6e829;
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .student-email {
+    font-size: 0.88rem;
+    color: #a1a1aa;
+    margin-top: 0.25rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+`;
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+
+  .stat-card {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 0.95rem 1.2rem;
     display: flex;
     align-items: center;
     gap: 1rem;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.045);
+      border-color: rgba(182, 232, 41, 0.2);
+    }
   }
 
-  .avatar {
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    background: ${({ theme }) => theme.colors.primarySoft};
-    border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
-    color: ${({ theme }) => theme.colors.primary};
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
     display: grid;
     place-items: center;
+    background: rgba(182, 232, 41, 0.1);
+    color: #b6e829;
+    flex-shrink: 0;
+  }
+
+  .stat-value {
+    font-size: 1.45rem;
     font-weight: 800;
-    font-size: 1.15rem;
+    color: #ffffff;
+    line-height: 1.15;
+  }
+
+  .stat-label {
+    font-size: 0.76rem;
+    color: #a1a1aa;
+    font-weight: 600;
+    margin-top: 2px;
   }
 `;
 
-const TabsRow = styled.div`
+const TabsBar = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: 2rem;
-`;
-
-const TabBtn = styled.button<{ $active: boolean }>`
-  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.65rem 1.15rem;
-  border-radius: ${({ theme }) => theme.radii.pill};
-  font-size: 0.88rem;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid
-    ${({ $active, theme }) => ($active ? theme.colors.primary : theme.colors.borderStrong)};
-  background: ${({ $active, theme }) =>
-    $active ? theme.colors.primary : theme.colors.surface};
-  color: ${({ $active, theme }) => ($active ? theme.colors.textDark : theme.colors.text)};
+  background: rgba(24, 24, 27, 0.75);
+  backdrop-filter: blur(12px);
+  padding: 0.4rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 2rem;
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
 `;
 
-const EnrolledCard = styled.div`
+const ModernTab = styled.button<{ $active: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: ${({ $active }) => ($active ? '#B6E829' : 'transparent')};
+  color: ${({ $active }) => ($active ? '#0a0a0a' : '#a1a1aa')};
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  &:hover {
+    color: ${({ $active }) => ($active ? '#0a0a0a' : '#ffffff')};
+    background: ${({ $active }) => ($active ? '#B6E829' : 'rgba(255, 255, 255, 0.05)')};
+  }
+
+  .badge-count {
+    padding: 0.12rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    background: ${({ $active }) => ($active ? '#0a0a0a' : 'rgba(255, 255, 255, 0.1)')};
+    color: ${({ $active }) => ($active ? '#B6E829' : '#ffffff')};
+  }
+`;
+
+const CourseCard = styled.div`
   display: flex;
   flex-direction: column;
-  border-radius: ${({ theme }) => theme.radii.lg};
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: 20px;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &:hover {
+    transform: translateY(-5px);
+    border-color: rgba(182, 232, 41, 0.38);
+    box-shadow:
+      0 20px 40px -10px rgba(0, 0, 0, 0.6),
+      0 0 25px rgba(182, 232, 41, 0.12);
+
+    .thumb img {
+      transform: scale(1.05);
+    }
+
+    .play-overlay {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
 
   .thumb {
-    aspect-ratio: 16 / 9;
-    background: #141414;
     position: relative;
+    aspect-ratio: 16 / 9;
+    background: #09090b;
+    overflow: hidden;
 
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      transition: transform 0.4s ease;
     }
   }
 
-  .body {
-    padding: 1.35rem;
+  .thumb-badges {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 6px;
+    z-index: 2;
+  }
+
+  .tag-badge {
+    padding: 0.25rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(8px);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .play-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.85);
+    opacity: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #b6e829;
+    color: #0a0a0a;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 0 25px rgba(182, 232, 41, 0.6);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  .card-body {
+    padding: 1.45rem;
     display: flex;
     flex-direction: column;
-    gap: 0.85rem;
+    gap: 0.95rem;
     flex: 1;
   }
 
-  .progress-track {
-    width: 100%;
-    height: 8px;
-    border-radius: 999px;
-    background: ${({ theme }) => theme.colors.background};
+  .course-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
-    border: 1px solid ${({ theme }) => theme.colors.border};
-
-    .fill {
-      height: 100%;
-      background: ${({ theme }) => theme.colors.primary};
-      transition: width 0.3s ease;
-    }
   }
 
-  .actions {
+  .instructor-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    color: #a1a1aa;
+  }
+
+  .progress-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.025);
+    padding: 0.75rem 0.9rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+  }
+
+  .progress-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: #a1a1aa;
+  }
+
+  .progress-bar-bg {
+    height: 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #b6e829, #95c518);
+    box-shadow: 0 0 10px rgba(182, 232, 41, 0.35);
+    transition: width 0.4s ease;
+  }
+
+  .card-actions {
     margin-top: auto;
-    padding-top: 0.75rem;
+    padding-top: 0.5rem;
     display: flex;
     flex-direction: column;
     gap: 0.55rem;
   }
 `;
 
-const OrdersList = styled.div`
+const OrdersContainer = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+`;
 
-  .order-card {
-    padding: 1.15rem 1.35rem;
-    border-radius: ${({ theme }) => theme.radii.lg};
-    background: ${({ theme }) => theme.colors.surface};
-    border: 1px solid ${({ theme }) => theme.colors.border};
+const OrderCard = styled.div`
+  padding: 1.35rem 1.6rem;
+  border-radius: 18px;
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: #1b1b1e;
+  }
+
+  .order-meta {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
+    gap: 1.25rem;
+  }
+
+  .order-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
+    background: rgba(182, 232, 41, 0.1);
+    color: #b6e829;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .order-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin: 0;
+  }
+
+  .order-sub {
+    font-size: 0.82rem;
+    color: #a1a1aa;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .order-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
   }
 `;
 
-const ProfileForm = styled.form`
-  max-width: 560px;
+const ProfileGrid = styled.form`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  max-width: 900px;
+`;
+
+const ProfileCard = styled.div`
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
   padding: 1.75rem;
-  border-radius: ${({ theme }) => theme.radii.xl};
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.15rem;
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+    }
+  }
 
   .field {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.4rem;
 
     label {
       font-size: 0.82rem;
       font-weight: 600;
-      color: ${({ theme }) => theme.colors.textSecondary};
+      color: #a1a1aa;
     }
 
     input {
-      padding: 0.68rem 0.9rem;
-      border-radius: ${({ theme }) => theme.radii.md};
-      border: 1px solid ${({ theme }) => theme.colors.borderStrong};
-      background: ${({ theme }) => theme.colors.background};
-      color: ${({ theme }) => theme.colors.text};
+      padding: 0.72rem 0.95rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: #101012;
+      color: #ffffff;
       font-size: 0.92rem;
+      transition: border-color 0.2s;
+
+      &:focus {
+        outline: none;
+        border-color: #b6e829;
+      }
     }
   }
 `;
 
 export function AcademyStudentDashboard() {
-  usePageMeta('Minha Área — PicPlus Academy', 'Seus cursos, progresso e certificados na PicPlus Academy.');
+  usePageMeta(
+    'Minha Área — PicPlus Academy',
+    'Seus cursos, progresso e certificados na PicPlus Academy.',
+  );
 
   const navigate = useNavigate();
   const { student, loading: authLoading, logout, setStudent } = useStudentAuth();
@@ -199,7 +532,9 @@ export function AcademyStudentDashboard() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
-  const [profileMsg, setProfileMsg] = useState<string | null>(null);
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!authLoading && !student) {
@@ -210,21 +545,35 @@ export function AcademyStudentDashboard() {
   useEffect(() => {
     if (!student) return;
     let active = true;
-    Promise.all([
+
+    // Utiliza Promise.allSettled para que uma eventual falha em pedidos
+    // NUNCA impeça a exibição dos cursos adquiridos pelo aluno.
+    Promise.allSettled([
       studentApi.get<StudentEnrolledCourse[]>('/academy/my-courses'),
-      studentApi.get<CourseOrderItem[]>('/academy/orders'),
+      studentApi.get<CourseOrderItem[]>('/academy/my-orders'),
     ])
-      .then(([coursesRes, ordersRes]) => {
+      .then(([coursesResult, ordersResult]) => {
         if (!active) return;
         setName(student.name);
         setPhone(student.phone ?? '');
         setCpf(student.cpf ?? '');
-        setEnrollments(coursesRes);
-        setOrders(ordersRes);
+
+        if (coursesResult.status === 'fulfilled') {
+          setEnrollments(coursesResult.value ?? []);
+        } else {
+          console.warn('Falha ao obter cursos:', coursesResult.reason);
+        }
+
+        if (ordersResult.status === 'fulfilled') {
+          setOrders(ordersResult.value ?? []);
+        } else {
+          console.warn('Falha ao obter pedidos:', ordersResult.reason);
+        }
       })
       .finally(() => {
         if (active) setLoadingData(false);
       });
+
     return () => {
       active = false;
     };
@@ -245,9 +594,12 @@ export function AcademyStudentDashboard() {
       setStudent(updated);
       setCurrentPassword('');
       setNewPassword('');
-      setProfileMsg('Dados atualizados com sucesso!');
+      setProfileMsg({ type: 'success', text: 'Dados atualizados com sucesso!' });
     } catch (err) {
-      setProfileMsg(err instanceof Error ? err.message : 'Erro ao salvar dados.');
+      setProfileMsg({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Erro ao salvar dados cadastrais.',
+      });
     } finally {
       setSavingProfile(false);
     }
@@ -257,289 +609,504 @@ export function AcademyStudentDashboard() {
     return (
       <Section>
         <Container>
-          <Skeleton $h="320px" $radius="20px" />
+          <Skeleton $h="380px" $radius="24px" />
         </Container>
       </Section>
     );
   }
 
+  // Estatísticas calculadas
+  const completedLessonsTotal = enrollments.reduce(
+    (acc, curr) => acc + (curr.completedLessons || 0),
+    0,
+  );
+  const certificatesTotal = enrollments.filter((e) => Boolean(e.certificateCode)).length;
+
   return (
-    <Section>
-      <Container>
-        <HeaderBox>
-          <div className="user-info">
-            <div className="avatar">{student.name.slice(0, 2).toUpperCase()}</div>
-            <div>
-              <h1 style={{ fontSize: '1.4rem', margin: 0 }}>{student.name}</h1>
-              <div style={{ fontSize: '0.88rem', color: '#A3A3A3' }}>{student.email}</div>
-            </div>
-          </div>
+    <PageWrapper>
+      <Section>
+        <Container>
+          {/* ─── Hero Banner do Aluno ─── */}
+          <HeroBanner>
+            <HeroTopRow>
+              <div className="student-profile">
+                <div className="avatar-ring">
+                  <div className="avatar-inner">{student.name.slice(0, 2).toUpperCase()}</div>
+                </div>
+                <div>
+                  <div className="student-name-row">
+                    <h1 className="student-name">{student.name}</h1>
+                    <span className="student-badge">
+                      <Sparkles size={12} /> Aluno Academy
+                    </span>
+                  </div>
+                  <div className="student-email">{student.email}</div>
+                </div>
+              </div>
 
-          <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
-            <ButtonLink to="/academy" $variant="secondary" $size="sm">
-              <GraduationCap size={16} /> Ver catálogo de cursos
-            </ButtonLink>
-            <Button
+              <div className="hero-actions">
+                <ButtonLink to="/academy" $variant="secondary" $size="sm">
+                  <GraduationCap size={16} /> Catálogo de cursos
+                </ButtonLink>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    logout();
+                    navigate('/academy');
+                  }}
+                >
+                  <LogOut size={15} /> Sair
+                </Button>
+              </div>
+            </HeroTopRow>
+
+            {/* ─── Métrica / KPI Counters ─── */}
+            <StatsGrid>
+              <div className="stat-card">
+                <div className="stat-icon">
+                  <BookOpen size={20} />
+                </div>
+                <div>
+                  <div className="stat-value">{enrollments.length}</div>
+                  <div className="stat-label">Cursos Ativos</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon">
+                  <PlayCircle size={20} />
+                </div>
+                <div>
+                  <div className="stat-value">{completedLessonsTotal}</div>
+                  <div className="stat-label">Aulas Concluídas</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon">
+                  <Award size={20} />
+                </div>
+                <div>
+                  <div className="stat-value">{certificatesTotal}</div>
+                  <div className="stat-label">Certificados Conquistados</div>
+                </div>
+              </div>
+
+              <div className="stat-card">
+                <div className="stat-icon">
+                  <Receipt size={20} />
+                </div>
+                <div>
+                  <div className="stat-value">{orders.length}</div>
+                  <div className="stat-label">Pedidos Registrados</div>
+                </div>
+              </div>
+            </StatsGrid>
+          </HeroBanner>
+
+          {/* ─── Navegação por Abas ─── */}
+          <TabsBar>
+            <ModernTab
               type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                logout();
-                navigate('/academy');
-              }}
+              $active={tab === 'courses'}
+              onClick={() => setTab('courses')}
             >
-              <LogOut size={15} /> Sair
-            </Button>
-          </div>
-        </HeaderBox>
+              <BookOpen size={16} /> Meus Cursos{' '}
+              <span className="badge-count">{enrollments.length}</span>
+            </ModernTab>
+            <ModernTab type="button" $active={tab === 'orders'} onClick={() => setTab('orders')}>
+              <Receipt size={16} /> Meus Pedidos{' '}
+              <span className="badge-count">{orders.length}</span>
+            </ModernTab>
+            <ModernTab
+              type="button"
+              $active={tab === 'profile'}
+              onClick={() => setTab('profile')}
+            >
+              <UserCog size={16} /> Meus Dados
+            </ModernTab>
+          </TabsBar>
 
-        <TabsRow>
-          <TabBtn type="button" $active={tab === 'courses'} onClick={() => setTab('courses')}>
-            <BookOpen size={16} /> Meus Cursos ({enrollments.length})
-          </TabBtn>
-          <TabBtn type="button" $active={tab === 'orders'} onClick={() => setTab('orders')}>
-            <Receipt size={16} /> Meus Pedidos ({orders.length})
-          </TabBtn>
-          <TabBtn type="button" $active={tab === 'profile'} onClick={() => setTab('profile')}>
-            <UserCog size={16} /> Meus Dados
-          </TabBtn>
-        </TabsRow>
-
-        {tab === 'courses' && (
-          <>
-            {loadingData ? (
-              <Grid $min="320px">
-                {[0, 1].map((i) => (
-                  <Skeleton key={i} $h="380px" $radius="16px" />
-                ))}
-              </Grid>
-            ) : enrollments.length === 0 ? (
-              <EmptyState
-                title="Você ainda não possui cursos ativos"
-                description="Explore nosso catálogo de cursos da PicPlus Academy e comece a estudar hoje mesmo."
-                action={<ButtonLink to="/academy">Explorar cursos</ButtonLink>}
-              />
-            ) : (
-              <Grid $min="320px">
-                {enrollments.map((item) => {
-                  const coverSrc = assetUrl(item.course.coverImage);
-                  return (
-                    <EnrolledCard key={item.enrollmentId}>
-                      <div className="thumb">
-                        {coverSrc ? (
-                          <img src={coverSrc} alt={item.course.title} />
-                        ) : (
-                          <div
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              display: 'grid',
-                              placeItems: 'center',
-                              color: '#B6E829',
-                            }}
-                          >
-                            <GraduationCap size={44} />
+          {/* ─── Aba 1: Meus Cursos ─── */}
+          {tab === 'courses' && (
+            <>
+              {loadingData ? (
+                <Grid $min="320px">
+                  {[0, 1].map((i) => (
+                    <Skeleton key={i} $h="400px" $radius="20px" />
+                  ))}
+                </Grid>
+              ) : enrollments.length === 0 ? (
+                <EmptyState
+                  title="Você ainda não possui cursos ativos"
+                  description="Explore nosso catálogo de cursos práticos da PicPlus Academy e comece sua evolução hoje mesmo."
+                  action={
+                    <ButtonLink to="/academy" $size="lg">
+                      <GraduationCap size={18} /> Explorar Catálogo de Cursos{' '}
+                      <ArrowRight size={16} />
+                    </ButtonLink>
+                  }
+                />
+              ) : (
+                <Grid $min="320px">
+                  {enrollments.map((item) => {
+                    const coverSrc = assetUrl(item.course.coverImage);
+                    const isCompleted = item.progressPercent === 100;
+                    return (
+                      <CourseCard key={item.enrollmentId}>
+                        <div className="thumb">
+                          <div className="thumb-badges">
+                            {item.course.category && (
+                              <span className="tag-badge">{item.course.category}</span>
+                            )}
+                            {item.course.workloadHours > 0 && (
+                              <span className="tag-badge">
+                                <Clock size={11} style={{ display: 'inline', marginRight: 4 }} />
+                                {item.course.workloadHours}h
+                              </span>
+                            )}
                           </div>
-                        )}
-                      </div>
 
-                      <div className="body">
-                        <h3 style={{ fontSize: '1.15rem', margin: 0 }}>{item.course.title}</h3>
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            fontSize: '0.82rem',
-                            color: '#A3A3A3',
-                          }}
-                        >
-                          <span>
-                            {item.completedLessons} de {item.totalLessons} aulas concluídas
-                          </span>
-                          <strong style={{ color: '#B6E829' }}>{item.progressPercent}%</strong>
-                        </div>
-                        <div className="progress-track">
-                          <div className="fill" style={{ width: `${item.progressPercent}%` }} />
-                        </div>
+                          <div className="play-overlay">
+                            <Play size={22} fill="#0a0a0a" />
+                          </div>
 
-                        <div className="actions">
-                          <ButtonLink
-                            to={`/academy/aula/${item.course.slug}`}
-                            $size="md"
-                            $block
-                          >
-                            <PlayCircle size={17} />{' '}
-                            {item.progressPercent === 0
-                              ? 'Iniciar curso'
-                              : item.progressPercent === 100
-                                ? 'Rever aulas'
-                                : 'Continuar assistindo'}
-                          </ButtonLink>
-
-                          {item.certificateCode && (
-                            <ButtonLink
-                              to={`/academy/certificado/${item.certificateCode}`}
-                              $variant="secondary"
-                              $size="sm"
-                              $block
+                          {coverSrc ? (
+                            <img src={coverSrc} alt={item.course.title} />
+                          ) : (
+                            <div
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                display: 'grid',
+                                placeItems: 'center',
+                                color: '#B6E829',
+                                background: '#121214',
+                              }}
                             >
-                              <Award size={16} /> Ver Certificado Oficial
-                            </ButtonLink>
+                              <GraduationCap size={48} />
+                            </div>
                           )}
                         </div>
-                      </div>
-                    </EnrolledCard>
-                  );
-                })}
-              </Grid>
-            )}
-          </>
-        )}
 
-        {tab === 'orders' && (
-          <OrdersList>
-            {orders.length === 0 ? (
-              <EmptyState
-                title="Nenhum pedido registrado"
-                description="Seus pedidos de cursos adquiridos aparecerão aqui."
-              />
-            ) : (
-              orders.map((order) => {
-                const courseTitle = order.course?.title ?? 'Curso';
-                const courseSlug = order.course?.slug ?? '';
-                return (
-                  <div key={order.id} className="order-card">
-                    <div>
-                      <strong style={{ fontSize: '1rem' }}>{courseTitle}</strong>
-                      <div style={{ fontSize: '0.82rem', color: '#A3A3A3', marginTop: 4 }}>
-                        Pedido #{order.id.slice(0, 8)} •{' '}
-                        {new Date(order.createdAt).toLocaleDateString('pt-BR')}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontWeight: 700 }}>{formatCentsBRL(order.finalPriceCents)}</div>
-                        <div
-                          style={{
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
-                            color:
-                              order.status === 'APPROVED'
-                                ? '#22c55e'
-                                : order.status === 'PENDING'
-                                  ? '#f59e0b'
-                                  : '#ef4444',
-                          }}
-                        >
-                          {ORDER_STATUS_LABEL[order.status]}
+                        <div className="card-body">
+                          <h3 className="course-title">{item.course.title}</h3>
+
+                          {item.course.instructorName && (
+                            <div className="instructor-row">
+                              <UserCheck size={14} color="#B6E829" />
+                              <span>{item.course.instructorName}</span>
+                            </div>
+                          )}
+
+                          <div className="progress-section">
+                            <div className="progress-meta">
+                              <span>
+                                {item.completedLessons} de {item.totalLessons} aulas concluídas
+                              </span>
+                              <strong style={{ color: isCompleted ? '#22c55e' : '#B6E829' }}>
+                                {item.progressPercent}%
+                              </strong>
+                            </div>
+                            <div className="progress-bar-bg">
+                              <div
+                                className="progress-bar-fill"
+                                style={{
+                                  width: `${item.progressPercent}%`,
+                                  background: isCompleted ? '#22c55e' : undefined,
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="card-actions">
+                            <ButtonLink
+                              to={`/academy/aula/${item.course.slug}`}
+                              $size="md"
+                              $block
+                            >
+                              <PlayCircle size={17} />{' '}
+                              {item.progressPercent === 0
+                                ? 'Iniciar curso'
+                                : isCompleted
+                                  ? 'Rever aulas'
+                                  : 'Continuar assistindo'}
+                            </ButtonLink>
+
+                            {item.certificateCode && (
+                              <ButtonLink
+                                to={`/academy/certificado/${item.certificateCode}`}
+                                $variant="secondary"
+                                $size="sm"
+                                $block
+                              >
+                                <Award size={16} /> Ver Certificado Oficial
+                              </ButtonLink>
+                            )}
+                          </div>
+                        </div>
+                      </CourseCard>
+                    );
+                  })}
+                </Grid>
+              )}
+            </>
+          )}
+
+          {/* ─── Aba 2: Meus Pedidos ─── */}
+          {tab === 'orders' && (
+            <OrdersContainer>
+              {orders.length === 0 ? (
+                <EmptyState
+                  title="Nenhum pedido registrado"
+                  description="Seus pedidos de cursos adquiridos e históricos de transações aparecerão aqui."
+                />
+              ) : (
+                orders.map((order) => {
+                  const courseTitle = order.course?.title ?? 'Curso';
+                  const courseSlug = order.course?.slug ?? '';
+                  const isApproved = order.status === 'APPROVED';
+                  const isPending = order.status === 'PENDING';
+
+                  return (
+                    <OrderCard key={order.id}>
+                      <div className="order-meta">
+                        <div className="order-icon">
+                          <Receipt size={22} />
+                        </div>
+                        <div>
+                          <h4 className="order-title">{courseTitle}</h4>
+                          <div className="order-sub">
+                            <span>Pedido #{order.id.slice(0, 8)}</span>
+                            <span>•</span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <Calendar size={13} />
+                              {new Date(order.createdAt).toLocaleDateString('pt-BR', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      {courseSlug &&
-                        (order.status === 'APPROVED' ? (
-                          <Link
-                            to={`/academy/aula/${courseSlug}`}
-                            style={{ color: '#B6E829', fontWeight: 700, fontSize: '0.86rem' }}
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '1.25rem',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#ffffff' }}>
+                            {formatCentsBRL(order.finalPriceCents)}
+                          </div>
+                          <div
+                            className="order-status-badge"
+                            style={{
+                              background: isApproved
+                                ? 'rgba(34, 197, 94, 0.12)'
+                                : isPending
+                                  ? 'rgba(245, 158, 11, 0.12)'
+                                  : 'rgba(239, 68, 68, 0.12)',
+                              color: isApproved ? '#22c55e' : isPending ? '#f59e0b' : '#ef4444',
+                              border: `1px solid ${
+                                isApproved
+                                  ? 'rgba(34, 197, 94, 0.3)'
+                                  : isPending
+                                    ? 'rgba(245, 158, 11, 0.3)'
+                                    : 'rgba(239, 68, 68, 0.3)'
+                              }`,
+                            }}
                           >
-                            Acessar →
-                          </Link>
-                        ) : (
-                          <Link
+                            {isApproved ? (
+                              <CheckCircle2 size={13} />
+                            ) : isPending ? (
+                              <Clock size={13} />
+                            ) : (
+                              <XCircle size={13} />
+                            )}
+                            {ORDER_STATUS_LABEL[order.status]}
+                          </div>
+                        </div>
+
+                        {courseSlug && isApproved && (
+                          <ButtonLink to={`/academy/aula/${courseSlug}`} $size="sm">
+                            Acessar curso <ArrowRight size={15} />
+                          </ButtonLink>
+                        )}
+                        {courseSlug && !isApproved && (
+                          <ButtonLink
                             to={`/academy/curso/${courseSlug}`}
-                            style={{ color: '#A3A3A3', fontSize: '0.86rem' }}
+                            $variant="secondary"
+                            $size="sm"
                           >
-                            Ver curso
-                          </Link>
-                        ))}
-                    </div>
+                            Ver detalhes
+                          </ButtonLink>
+                        )}
+                      </div>
+                    </OrderCard>
+                  );
+                })
+              )}
+            </OrdersContainer>
+          )}
+
+          {/* ─── Aba 3: Meus Dados Cadastrais ─── */}
+          {tab === 'profile' && (
+            <ProfileGrid onSubmit={handleSaveProfile}>
+              {/* Coluna 1: Dados Pessoais */}
+              <ProfileCard>
+                <div className="card-header">
+                  <UserCheck size={20} color="#B6E829" />
+                  <h3>Dados Pessoais</h3>
+                </div>
+
+                <div
+                  style={{
+                    padding: '0.8rem 1rem',
+                    borderRadius: '12px',
+                    background: 'rgba(182, 232, 41, 0.06)',
+                    border: '1px solid rgba(182, 232, 41, 0.2)',
+                    color: '#e4e4e7',
+                    fontSize: '0.82rem',
+                    lineHeight: '1.4',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.6rem',
+                  }}
+                >
+                  <ShieldCheck size={18} color="#B6E829" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <span>
+                    O seu <strong>Nome Completo</strong> e <strong>CPF</strong> são utilizados na
+                    emissão oficial dos seus <strong>certificados de conclusão</strong> com
+                    autenticidade pública.
+                  </span>
+                </div>
+
+                {profileMsg && (
+                  <div
+                    style={{
+                      padding: '0.75rem 1rem',
+                      borderRadius: '12px',
+                      background:
+                        profileMsg.type === 'success'
+                          ? 'rgba(34, 197, 94, 0.14)'
+                          : 'rgba(239, 68, 68, 0.14)',
+                      color: profileMsg.type === 'success' ? '#22c55e' : '#ef4444',
+                      border: `1px solid ${
+                        profileMsg.type === 'success'
+                          ? 'rgba(34, 197, 94, 0.3)'
+                          : 'rgba(239, 68, 68, 0.3)'
+                      }`,
+                      fontSize: '0.86rem',
+                    }}
+                  >
+                    {profileMsg.text}
                   </div>
-                );
-              })
-            )}
-          </OrdersList>
-        )}
+                )}
 
-        {tab === 'profile' && (
-          <ProfileForm onSubmit={handleSaveProfile}>
-            <h2 style={{ fontSize: '1.25rem', margin: 0 }}>Atualizar dados cadastrais</h2>
-            <p style={{ fontSize: '0.86rem', color: '#A3A3A3', margin: 0 }}>
-              O seu nome completo e CPF serão exibidos na emissão dos seus certificados de conclusão.
-            </p>
+                <div className="field">
+                  <label htmlFor="pf-name">Nome completo</label>
+                  <input
+                    id="pf-name"
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </div>
 
-            {profileMsg && (
-              <div
-                style={{
-                  padding: '0.7rem 0.9rem',
-                  borderRadius: '10px',
-                  background: 'rgba(182, 232, 41, 0.14)',
-                  color: '#B6E829',
-                  fontSize: '0.86rem',
-                }}
-              >
-                {profileMsg}
-              </div>
-            )}
+                <div className="field">
+                  <label htmlFor="pf-email">E-mail de acesso (não alterável)</label>
+                  <input
+                    id="pf-email"
+                    type="email"
+                    disabled
+                    value={student.email}
+                    style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                  />
+                </div>
 
-            <div className="field">
-              <label htmlFor="pf-name">Nome completo</label>
-              <input
-                id="pf-name"
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-            </div>
+                <div className="field">
+                  <label htmlFor="pf-cpf">CPF</label>
+                  <input
+                    id="pf-cpf"
+                    type="text"
+                    value={cpf}
+                    onChange={(e) => setCpf(e.target.value)}
+                    placeholder="000.000.000-00"
+                  />
+                </div>
 
-            <div className="field">
-              <label htmlFor="pf-phone">Telefone / WhatsApp</label>
-              <input
-                id="pf-phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
+                <div className="field">
+                  <label htmlFor="pf-phone">Telefone / WhatsApp</label>
+                  <input
+                    id="pf-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
 
-            <div className="field">
-              <label htmlFor="pf-cpf">CPF</label>
-              <input
-                id="pf-cpf"
-                type="text"
-                value={cpf}
-                onChange={(e) => setCpf(e.target.value)}
-                placeholder="000.000.000-00"
-              />
-            </div>
+                <Button type="submit" disabled={savingProfile} style={{ marginTop: '0.5rem' }}>
+                  {savingProfile ? 'Salvando alterações…' : 'Salvar dados cadastrais'}
+                </Button>
+              </ProfileCard>
 
-            <div className="field">
-              <label htmlFor="pf-curr-pass">Senha atual (necessária apenas para trocar a senha)</label>
-              <input
-                id="pf-curr-pass"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Senha atual"
-              />
-            </div>
+              {/* Coluna 2: Segurança / Senha */}
+              <ProfileCard>
+                <div className="card-header">
+                  <ShieldCheck size={20} color="#B6E829" />
+                  <h3>Segurança da Conta</h3>
+                </div>
 
-            <div className="field">
-              <label htmlFor="pf-pass">Nova senha (deixe em branco para manter a atual)</label>
-              <input
-                id="pf-pass"
-                type="password"
-                minLength={6}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nova senha (mín. 6 caracteres)"
-              />
-            </div>
+                <p style={{ fontSize: '0.84rem', color: '#a1a1aa', margin: 0 }}>
+                  Para alterar sua senha de acesso à PicPlus Academy, preencha sua senha atual e a
+                  nova senha desejada.
+                </p>
 
-            <Button type="submit" disabled={savingProfile}>
-              {savingProfile ? 'Salvando…' : 'Salvar alterações'}
-            </Button>
-          </ProfileForm>
-        )}
-      </Container>
-    </Section>
+                <div className="field">
+                  <label htmlFor="pf-curr-pass">Senha atual</label>
+                  <input
+                    id="pf-curr-pass"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Sua senha atual"
+                  />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="pf-pass">Nova senha</label>
+                  <input
+                    id="pf-pass"
+                    type="password"
+                    minLength={6}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Nova senha (mínimo 6 caracteres)"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={savingProfile || !newPassword}
+                  style={{ marginTop: 'auto' }}
+                >
+                  {savingProfile ? 'Atualizando senha…' : 'Atualizar senha'}
+                </Button>
+              </ProfileCard>
+            </ProfileGrid>
+          )}
+        </Container>
+      </Section>
+    </PageWrapper>
   );
 }
