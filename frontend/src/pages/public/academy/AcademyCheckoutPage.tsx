@@ -46,7 +46,12 @@ const CheckoutHeader = styled.div`
   padding-bottom: 1.25rem;
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.75rem 1rem;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
+  }
 
   .back-link {
     display: inline-flex;
@@ -74,17 +79,104 @@ const CheckoutHeader = styled.div`
     padding: 0.35rem 0.85rem;
     border-radius: ${({ theme }) => theme.radii.pill};
     border: 1px solid rgba(74, 222, 128, 0.2);
+    max-width: 100%;
+
+    @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+      font-size: 0.75rem;
+      padding: 0.3rem 0.7rem;
+    }
+  }
+`;
+
+const MobileCourseBanner = styled.div`
+  display: none;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.85rem;
+    background: ${({ theme }) => theme.colors.surface};
+    border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .banner-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1;
+
+    .thumb {
+      width: 56px;
+      height: 40px;
+      border-radius: ${({ theme }) => theme.radii.sm};
+      overflow: hidden;
+      background: #111;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      color: ${({ theme }) => theme.colors.primary};
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+
+      strong {
+        font-size: 0.9rem;
+        line-height: 1.25;
+        color: ${({ theme }) => theme.colors.text};
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      a {
+        font-size: 0.76rem;
+        color: ${({ theme }) => theme.colors.textSecondary};
+        text-decoration: underline;
+        margin-top: 0.15rem;
+      }
+    }
+  }
+
+  .banner-price {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: ${({ theme }) => theme.colors.primary};
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 `;
 
 const CheckoutGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 420px;
+  grid-template-columns: minmax(0, 1fr) 420px;
   gap: 2.5rem;
   align-items: start;
+  width: 100%;
+  min-width: 0;
+
+  & > * {
+    min-width: 0;
+  }
 
   @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
   }
 `;
 
@@ -97,9 +189,13 @@ const CheckoutCard = styled.div`
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
+  width: 100%;
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    padding: 1.35rem;
+    padding: 1.15rem;
+    border-radius: ${({ theme }) => theme.radii.lg};
+    gap: 1.15rem;
   }
 
   .card-title {
@@ -132,8 +228,15 @@ const AuthTabs = styled.div`
   border-radius: ${({ theme }) => theme.radii.lg};
   border: 1px solid ${({ theme }) => theme.colors.border};
   gap: 0.35rem;
+  min-width: 0;
+  width: 100%;
+
+  @media (max-width: 340px) {
+    grid-template-columns: 1fr;
+  }
 
   button {
+    min-width: 0;
     padding: 0.65rem 0.85rem;
     font-size: 0.88rem;
     font-weight: 700;
@@ -148,6 +251,12 @@ const AuthTabs = styled.div`
     justify-content: center;
     gap: 0.5rem;
 
+    @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+      padding: 0.6rem 0.45rem;
+      font-size: 0.8rem;
+      gap: 0.35rem;
+    }
+
     &.active {
       background: ${({ theme }) => theme.colors.surface};
       color: ${({ theme }) => theme.colors.text};
@@ -160,11 +269,13 @@ const Field = styled.div`
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  min-width: 0;
 
   label {
     font-size: 0.84rem;
     font-weight: 600;
     color: ${({ theme }) => theme.colors.textSecondary};
+    overflow-wrap: break-word;
 
     span.req {
       color: ${({ theme }) => theme.colors.primary};
@@ -182,9 +293,12 @@ const Field = styled.div`
     position: relative;
     display: flex;
     align-items: center;
+    min-width: 0;
+    width: 100%;
 
     input {
       width: 100%;
+      min-width: 0;
       padding: 0.75rem 0.95rem;
       border-radius: ${({ theme }) => theme.radii.md};
       border: 1px solid ${({ theme }) => theme.colors.borderStrong};
@@ -225,11 +339,12 @@ const Field = styled.div`
 
 const FormGridTwo = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
+  min-width: 0;
 
-  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    grid-template-columns: 1fr;
+  @media (max-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    grid-template-columns: minmax(0, 1fr);
   }
 `;
 
@@ -241,6 +356,9 @@ const AlertBox = styled.div<{ $type?: 'error' | 'success' | 'info' }>`
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 
   ${({ $type = 'info', theme }) => {
     switch ($type) {
@@ -255,6 +373,7 @@ const AlertBox = styled.div<{ $type?: 'error' | 'success' | 'info' }>`
 
   button {
     align-self: flex-start;
+    text-align: left;
     background: none;
     border: 0;
     color: inherit;
@@ -270,16 +389,20 @@ const LoggedCard = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   padding: 1.15rem;
   background: ${({ theme }) => theme.colors.background};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.radii.lg};
-  gap: 1rem;
+  gap: 0.85rem 1rem;
+  min-width: 0;
 
   .user-info {
     display: flex;
     align-items: center;
     gap: 0.85rem;
+    min-width: 0;
+    flex: 1 1 200px;
 
     .avatar {
       width: 44px;
@@ -292,19 +415,23 @@ const LoggedCard = styled.div`
       place-items: center;
       font-weight: 800;
       font-size: 1rem;
+      flex-shrink: 0;
     }
 
     .details {
       display: flex;
       flex-direction: column;
+      min-width: 0;
 
       strong {
         font-size: 0.95rem;
         color: ${({ theme }) => theme.colors.text};
+        overflow-wrap: anywhere;
       }
       span {
         font-size: 0.82rem;
         color: ${({ theme }) => theme.colors.textSecondary};
+        overflow-wrap: anywhere;
       }
     }
   }
@@ -316,6 +443,7 @@ const LoggedCard = styled.div`
     border: 0;
     cursor: pointer;
     text-decoration: underline;
+    flex-shrink: 0;
 
     &:hover {
       color: ${({ theme }) => theme.colors.primary};
@@ -388,6 +516,17 @@ const StickySummary = styled.aside`
   border-radius: ${({ theme }) => theme.radii.xl};
   overflow: hidden;
   box-shadow: ${({ theme }) => theme.shadows.card};
+  min-width: 0;
+  width: 100%;
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.laptop}) {
+    position: static;
+    top: auto;
+  }
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    border-radius: ${({ theme }) => theme.radii.lg};
+  }
 
   .cover-box {
     aspect-ratio: 16 / 9;
@@ -407,20 +546,29 @@ const StickySummary = styled.aside`
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    min-width: 0;
+
+    @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+      padding: 1.15rem;
+      gap: 1rem;
+    }
   }
 
   .course-headline {
+    min-width: 0;
     h2 {
       font-size: 1.25rem;
       font-weight: 800;
       margin: 0 0 0.35rem 0;
       line-height: 1.3;
+      overflow-wrap: break-word;
     }
     p {
       font-size: 0.86rem;
       color: ${({ theme }) => theme.colors.textSecondary};
       margin: 0;
       line-height: 1.5;
+      overflow-wrap: break-word;
     }
   }
 
@@ -446,13 +594,22 @@ const StickySummary = styled.aside`
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    min-width: 0;
 
     .coupon-row {
       display: flex;
       gap: 0.5rem;
+      min-width: 0;
+      width: 100%;
+
+      @media (max-width: 360px) {
+        flex-direction: column;
+      }
 
       input {
         flex: 1;
+        min-width: 0;
+        width: 100%;
         padding: 0.6rem 0.8rem;
         border-radius: ${({ theme }) => theme.radii.md};
         border: 1px solid ${({ theme }) => theme.colors.borderStrong};
@@ -460,6 +617,10 @@ const StickySummary = styled.aside`
         color: ${({ theme }) => theme.colors.text};
         font-size: 0.86rem;
         text-transform: uppercase;
+      }
+
+      button {
+        flex-shrink: 0;
       }
     }
   }
@@ -816,6 +977,26 @@ export function AcademyCheckoutPage() {
           </div>
         )}
 
+        {/* Resumo compacto visível apenas em telas menores que laptop */}
+        <MobileCourseBanner>
+          <div className="banner-left">
+            <div className="thumb">
+              {course.coverImage ? (
+                <img src={assetUrl(course.coverImage)} alt={course.title} />
+              ) : (
+                <Award size={20} />
+              )}
+            </div>
+            <div className="info">
+              <strong>{course.title}</strong>
+              <a href="#resumo-pedido">Ver detalhes / aplicar cupom</a>
+            </div>
+          </div>
+          <div className="banner-price">
+            {isFree ? 'Gratuito' : formatCentsBRL(finalPriceCents)}
+          </div>
+        </MobileCourseBanner>
+
         <CheckoutGrid>
           {/* ── Coluna Esquerda: Identificação do Aluno e Finalização ── */}
           <div>
@@ -1159,7 +1340,7 @@ export function AcademyCheckoutPage() {
           </div>
 
           {/* ── Coluna Direita: Resumo do Pedido (Sticky) ── */}
-          <StickySummary>
+          <StickySummary id="resumo-pedido" style={{ scrollMarginTop: '92px' }}>
             <div className="cover-box">
               {course.coverImage ? (
                 <img src={assetUrl(course.coverImage)} alt={course.title} />
@@ -1289,13 +1470,14 @@ export function AcademyCheckoutPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  flexWrap: 'wrap',
                   gap: '0.45rem',
                   fontSize: '0.78rem',
                   color: '#737373',
                   textAlign: 'center',
                 }}
               >
-                <Lock size={13} /> Dados 100% protegidos com criptografia SSL 256-bit
+                <Lock size={13} style={{ flexShrink: 0 }} /> Dados 100% protegidos com criptografia SSL 256-bit
               </div>
 
               {/* Benefícios Inclusos */}
@@ -1328,13 +1510,15 @@ export function AcademyCheckoutPage() {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
+                    flexWrap: 'wrap',
                     gap: 7,
                     fontSize: '0.8rem',
                     color: '#A3A3A3',
                     textDecoration: 'none',
                   }}
                 >
-                  <MessageCircle size={14} color="#B6E829" /> Dúvidas na compra? WhatsApp: (79) 9142-4233
+                  <MessageCircle size={14} color="#B6E829" style={{ flexShrink: 0 }} /> Dúvidas na compra? WhatsApp: (79) 9142-4233
                 </a>
               </div>
             </div>

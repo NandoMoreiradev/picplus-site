@@ -24,6 +24,11 @@ const sizes = {
   lg: css`
     padding: 1rem 2rem;
     font-size: 1.125rem;
+
+    @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+      padding: 0.9rem 1.25rem;
+      font-size: 0.98rem;
+    }
   `,
 };
 
@@ -38,7 +43,13 @@ export const buttonStyles = css<StyleProps>`
   border-radius: ${({ theme }) => theme.radii.md};
   border: 1px solid transparent;
   white-space: nowrap;
+  max-width: 100%;
   width: ${({ $block }) => ($block ? '100%' : 'auto')};
+
+  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+    white-space: normal;
+    text-align: center;
+  }
   transition:
     background-color ${({ theme }) => theme.transitions.fast},
     border-color ${({ theme }) => theme.transitions.fast},
