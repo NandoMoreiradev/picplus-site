@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import {
@@ -110,17 +110,16 @@ const CheckoutCard = styled.div`
     font-weight: 700;
     margin: 0;
 
-    .step-num {
-      width: 28px;
-      height: 28px;
+    .card-icon {
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       background: ${({ theme }) => theme.colors.primarySoft};
       border: 1px solid ${({ theme }) => theme.colors.primaryBorder};
       color: ${({ theme }) => theme.colors.primary};
       display: grid;
       place-items: center;
-      font-size: 0.85rem;
-      font-weight: 800;
+      flex-shrink: 0;
     }
   }
 `;
@@ -324,37 +323,57 @@ const LoggedCard = styled.div`
   }
 `;
 
-const PaymentMethodsBox = styled.div`
+const PaymentTrustStrip = styled.div`
+  padding: 1rem 1.15rem;
+  border-radius: ${({ theme }) => theme.radii.lg};
+  background: ${({ theme }) => theme.colors.background};
+  border: 1px solid ${({ theme }) => theme.colors.border};
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.65rem;
 
-  .methods-pills {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
+  .trust-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    font-size: 0.84rem;
+    color: ${({ theme }) => theme.colors.textSecondary};
+    line-height: 1.45;
 
-    @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-      grid-template-columns: 1fr;
+    svg {
+      color: ${({ theme }) => theme.colors.success};
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    strong {
+      color: ${({ theme }) => theme.colors.text};
     }
   }
 
-  .pill {
-    padding: 0.85rem 1rem;
-    border-radius: ${({ theme }) => theme.radii.md};
-    background: ${({ theme }) => theme.colors.background};
-    border: 1px solid ${({ theme }) => theme.colors.border};
+  .accepted-methods {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.65rem;
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: ${({ theme }) => theme.colors.text};
+    gap: 0.5rem 1.15rem;
+    font-size: 0.78rem;
+    color: ${({ theme }) => theme.colors.textMuted};
+    padding-top: 0.6rem;
+    border-top: 1px dashed ${({ theme }) => theme.colors.border};
 
-    .icon-box {
-      color: ${({ theme }) => theme.colors.primary};
-      display: grid;
-      place-items: center;
+    .method-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+
+      svg {
+        color: ${({ theme }) => theme.colors.primary};
+      }
+
+      strong {
+        color: ${({ theme }) => theme.colors.textSecondary};
+        font-weight: 600;
+      }
     }
   }
 `;
@@ -561,8 +580,26 @@ export function AcademyCheckoutPage() {
     'Finalize sua matrícula com segurança na PicPlus Academy.',
   );
 
-  // 1. Carrega dados do curso
-  const loadCourse = async () => {
+  // 1. Validação de Cupom
+  const validateCouponCode = useCallback(async (code: string, courseId: string) => {
+    setValidatingCoupon(true);
+    setCouponError(null);
+    try {
+      const res = await api.post<CouponValidationResult>('/academy/coupons/validate', {
+        code: code.trim().toUpperCase(),
+        courseId,
+      });
+      setCouponResult(res);
+    } catch (err) {
+      setCouponResult(null);
+      setCouponError(err instanceof Error ? err.message : 'Cupom inválido ou expirado.');
+    } finally {
+      setValidatingCoupon(false);
+    }
+  }, []);
+
+  // 2. Carrega dados do curso
+  const loadCourse = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -577,14 +614,34 @@ export function AcademyCheckoutPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [slug, initialCoupon, validateCouponCode]);
 
   useEffect(() => {
-    loadCourse();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
+    let active = true;
+    api
+      .get<Course>(`/academy/courses/${slug}`)
+      .then((detail) => {
+        if (!active) return;
+        setCourse(detail);
+        setError(null);
+        // Se veio cupom via query string, valida automaticamente
+        if (initialCoupon.trim()) {
+          validateCouponCode(initialCoupon.trim(), detail.id);
+        }
+      })
+      .catch((err: unknown) => {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : 'Curso não encontrado.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [slug, initialCoupon, validateCouponCode]);
 
-  // 2. Se já estiver logado, verifica se já tem matrícula ativa
+  // 3. Se já estiver logado, verifica se já tem matrícula ativa
   useEffect(() => {
     if (!student || !course) return;
     let active = true;
@@ -602,32 +659,6 @@ export function AcademyCheckoutPage() {
       active = false;
     };
   }, [student, course]);
-
-  // Se o aluno logado não tem CPF ou telefone salvos no perfil, inicializa para facilitar
-  useEffect(() => {
-    if (student) {
-      if (student.cpf && !cpf) setCpf(formatCPF(student.cpf));
-      if (student.phone && !phone) setPhone(formatPhone(student.phone));
-    }
-  }, [student, cpf, phone]);
-
-  // 3. Validação de Cupom
-  const validateCouponCode = async (code: string, courseId: string) => {
-    setValidatingCoupon(true);
-    setCouponError(null);
-    try {
-      const res = await api.post<CouponValidationResult>('/academy/coupons/validate', {
-        code: code.trim().toUpperCase(),
-        courseId,
-      });
-      setCouponResult(res);
-    } catch (err) {
-      setCouponResult(null);
-      setCouponError(err instanceof Error ? err.message : 'Cupom inválido ou expirado.');
-    } finally {
-      setValidatingCoupon(false);
-    }
-  };
 
   const handleApplyCoupon = () => {
     if (!course || !couponInput.trim()) return;
@@ -648,11 +679,13 @@ export function AcademyCheckoutPage() {
 
       if (student) {
         // Aluno já logado: usa o checkout direto
+        const resolvedCpf = cpf.trim() || (student.cpf ? formatCPF(student.cpf) : '');
+        const resolvedPhone = phone.trim() || (student.phone ? formatPhone(student.phone) : '');
         result = await studentApi.post<CheckoutResponse>('/academy/checkout', {
           courseId: course.id,
           couponCode: couponResult?.code || undefined,
-          cpf: cpf.trim() || undefined,
-          phone: phone.trim() || undefined,
+          cpf: resolvedCpf || undefined,
+          phone: resolvedPhone || undefined,
         });
       } else if (authTab === 'register') {
         // Visitante criando conta no ato da compra
@@ -784,12 +817,13 @@ export function AcademyCheckoutPage() {
         )}
 
         <CheckoutGrid>
-          {/* ── Coluna Esquerda: Dados do Aluno e Pagamento ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-            {/* Passo 1: Identificação do Aluno */}
+          {/* ── Coluna Esquerda: Identificação do Aluno e Finalização ── */}
+          <div>
             <CheckoutCard>
               <h2 className="card-title">
-                <span className="step-num">1</span>
+                <span className="card-icon">
+                  <UserCheck size={17} />
+                </span>
                 <span>Identificação do Aluno</span>
               </h2>
 
@@ -1059,79 +1093,67 @@ export function AcademyCheckoutPage() {
                   )}
                 </>
               )}
-            </CheckoutCard>
 
-            {/* Passo 2: Forma de Pagamento / Liberação */}
-            <CheckoutCard>
-              <h2 className="card-title">
-                <span className="step-num">2</span>
-                <span>Forma de Pagamento</span>
-              </h2>
+              {checkoutError && !isEmailConflict && (
+                <AlertBox $type="error">{checkoutError}</AlertBox>
+              )}
 
-              {isFree ? (
+              {isFree && (
                 <AlertBox $type="success">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Sparkles size={18} />
                     <strong>Matrícula 100% Gratuita!</strong>
                   </div>
                   <span>
-                    Nenhum valor será cobrado. Ao clicar no botão ao lado, sua matrícula será
-                    ativada imediatamente e você já poderá começar a assistir às aulas!
+                    Nenhum valor será cobrado. Conclua sua matrícula para ativar seu acesso
+                    imediatamente e começar a assistir às aulas!
                   </span>
                 </AlertBox>
-              ) : (
-                <PaymentMethodsBox>
-                  <p
-                    style={{
-                      fontSize: '0.88rem',
-                      color: '#A3A3A3',
-                      margin: 0,
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    O pagamento é processado com criptografia de ponta a ponta pelo{' '}
-                    <strong style={{ color: '#fff' }}>Mercado Pago</strong>. Você poderá escolher a
-                    melhor opção na próxima tela:
-                  </p>
-
-                  <div className="methods-pills">
-                    <div className="pill">
-                      <div className="icon-box">
-                        <QrCode size={18} />
-                      </div>
-                      <div>
-                        <div>Pix</div>
-                        <span style={{ fontSize: '0.74rem', color: '#B6E829' }}>
-                          Aprovação imediata
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="pill">
-                      <div className="icon-box">
-                        <CreditCard size={18} />
-                      </div>
-                      <div>
-                        <div>Cartão</div>
-                        <span style={{ fontSize: '0.74rem', color: '#A3A3A3' }}>Em até 12x</span>
-                      </div>
-                    </div>
-
-                    <div className="pill">
-                      <div className="icon-box">
-                        <FileText size={18} />
-                      </div>
-                      <div>
-                        <div>Boleto</div>
-                        <span style={{ fontSize: '0.74rem', color: '#A3A3A3' }}>Até 3 dias úteis</span>
-                      </div>
-                    </div>
-                  </div>
-                </PaymentMethodsBox>
               )}
 
-              {checkoutError && !isEmailConflict && (
-                <AlertBox $type="error">{checkoutError}</AlertBox>
+              <Button
+                type="button"
+                size="lg"
+                block
+                disabled={submitting || isEnrolled}
+                onClick={() => handleProceedCheckout()}
+              >
+                {submitting ? (
+                  'Processando…'
+                ) : isEnrolled ? (
+                  'Já Matriculado'
+                ) : isFree ? (
+                  <>
+                    <Sparkles size={18} /> Concluir Matrícula Gratuita
+                  </>
+                ) : (
+                  <>
+                    <Lock size={18} /> Ir para o Pagamento Seguro
+                  </>
+                )}
+              </Button>
+
+              {!isFree && (
+                <PaymentTrustStrip>
+                  <div className="trust-header">
+                    <ShieldCheck size={16} />
+                    <span>
+                      Pagamento 100% seguro processado pelo <strong>Mercado Pago</strong>. Você
+                      escolherá como pagar na próxima tela:
+                    </span>
+                  </div>
+                  <div className="accepted-methods">
+                    <span className="method-item">
+                      <QrCode size={14} /> <strong>Pix</strong> (aprovação imediata)
+                    </span>
+                    <span className="method-item">
+                      <CreditCard size={14} /> <strong>Cartão</strong> (em até 12x)
+                    </span>
+                    <span className="method-item">
+                      <FileText size={14} /> <strong>Boleto</strong> (até 3 dias úteis)
+                    </span>
+                  </div>
+                </PaymentTrustStrip>
               )}
             </CheckoutCard>
           </div>
