@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/Button';
 import { Container, Section } from '../../../components/ui/Layout';
 import { useStudentAuth } from '../../../context/student-auth-context';
 import { usePageMeta } from '../../../hooks/usePageMeta';
+import { trackEvent } from '../../../lib/analytics';
 import { api } from '../../../lib/api';
 
 const AuthBox = styled.div`
@@ -158,6 +159,7 @@ export function AcademyAuth() {
     try {
       if (mode === 'login') {
         await login(email.trim(), password);
+        trackEvent('login', { method: 'academy_auth' });
         navigate(redirectUrl, { replace: true });
       } else if (mode === 'register') {
         await register({
@@ -167,6 +169,7 @@ export function AcademyAuth() {
           phone: phone.trim() || undefined,
           cpf: cpf.trim() || undefined,
         });
+        trackEvent('sign_up', { method: 'academy_auth' });
         navigate(redirectUrl, { replace: true });
       } else if (mode === 'forgot') {
         const res = await api.post<{ message: string }>('/academy/auth/forgot-password', {

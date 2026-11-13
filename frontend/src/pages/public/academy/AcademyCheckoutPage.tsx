@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import {
@@ -25,6 +25,14 @@ import { Container, Section } from '../../../components/ui/Layout';
 import { useStudentAuth } from '../../../context/student-auth-context';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { api, assetUrl } from '../../../lib/api';
+import {
+  centsToReais,
+  courseToAnalyticsItem,
+  hasTrackedPurchase,
+  markPurchaseTracked,
+  trackEcommerceEvent,
+  trackEvent,
+} from '../../../lib/analytics';
 import {
   COURSE_LEVEL_LABEL,
   formatCentsBRL,
@@ -735,6 +743,7 @@ export function AcademyCheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isEmailConflict, setIsEmailConflict] = useState(false);
+  const trackedCheckoutIdRef = useRef<string | null>(null);
 
   usePageMeta(
     course ? `Checkout: ${course.title} — PicPlus Academy` : 'Checkout — PicPlus Academy',
@@ -751,13 +760,19 @@ export function AcademyCheckoutPage() {
         courseId,
       });
       setCouponResult(res);
+      trackEvent('apply_coupon', {
+        coupon_code: res.code,
+        course_slug: slug,
+        discount_value: centsToReais(res.discountCents),
+        final_value: centsToReais(res.finalPriceCents),
+      });
     } catch (err) {
       setCouponResult(null);
       setCouponError(err instanceof Error ? err.message : 'Cupom inválido ou expirado.');
     } finally {
       setValidatingCoupon(false);
     }
-  }, []);
+  }, [slug]);
 
   // 2. Carrega dados do curso
   const loadCourse = useCallback(async () => {
@@ -801,6 +816,17 @@ export function AcademyCheckoutPage() {
       active = false;
     };
   }, [slug, initialCoupon, validateCouponCode]);
+
+  useEffect(() => {
+    if (!course || trackedCheckoutIdRef.current === course.id) return;
+    trackedCheckoutIdRef.current = course.id;
+    const priceCents = couponResult ? couponResult.finalPriceCents : course.priceCents;
+    trackEcommerceEvent('begin_checkout', {
+      value: centsToReais(priceCents),
+      coupon: couponResult?.code || (initialCoupon.trim() ? initialCoupon.trim().toUpperCase() : undefined),
+      items: [courseToAnalyticsItem(course, priceCents)],
+    });
+  }, [course, couponResult, initialCoupon]);
 
   // 3. Se já estiver logado, verifica se já tem matrícula ativa
   useEffect(() => {
@@ -871,6 +897,7 @@ export function AcademyCheckoutPage() {
         if (result.student) {
           setStudent(result.student);
         }
+        trackEvent('sign_up', { method: 'checkout' });
       } else {
         // Visitante optou por logar e comprar na mesma tela
         if (!loginEmail.trim()) throw new Error('Informe seu e-mail.');
@@ -889,10 +916,37 @@ export function AcademyCheckoutPage() {
         if (result.student) {
           setStudent(result.student);
         }
+        trackEvent('login', { method: 'checkout' });
       }
+
+      const checkoutPriceCents = couponResult ? couponResult.finalPriceCents : course.priceCents;
+      const checkoutMode = student ? 'logged_in' : authTab;
+      trackEcommerceEvent(
+        'add_payment_info',
+        {
+          value: centsToReais(checkoutPriceCents),
+          coupon: couponResult?.code || undefined,
+          items: [courseToAnalyticsItem(course, checkoutPriceCents)],
+        },
+        { checkout_mode: checkoutMode },
+      );
 
       // Redirecionamento de sucesso
       if (result.freeEnrollment) {
+        const freeOrderId = result.orderId || `free_${course.id}`;
+        if (!hasTrackedPurchase(freeOrderId)) {
+          markPurchaseTracked(freeOrderId);
+          trackEcommerceEvent(
+            'purchase',
+            {
+              transaction_id: freeOrderId,
+              value: 0,
+              coupon: couponResult?.code || undefined,
+              items: [courseToAnalyticsItem(course, 0)],
+            },
+            { payment_method: 'free_enrollment' },
+          );
+        }
         // Curso gratuito: vai direto para a sala de aula!
         navigate(`/academy/aula/${course.slug}`);
         return;

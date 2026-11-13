@@ -1,8 +1,9 @@
-import { lazy, Suspense } from 'react';
-import { Route, Routes } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useRef } from 'react';
+import { Route, Routes, useLocation } from 'react-router-dom';
 import { PublicLayout } from './components/layout/PublicLayout';
 import { AcademyLayout } from './components/layout/AcademyLayout';
 import { PageLoader } from './components/ui/Feedback';
+import { trackEvent } from './lib/analytics';
 
 import { Blog } from './pages/public/Blog';
 import { BlogPost } from './pages/public/BlogPost';
@@ -30,9 +31,32 @@ import { AcademyStudentDashboard } from './pages/public/academy/AcademyStudentDa
 // O painel (CMS) é um chunk separado, baixado só quando alguém acessa /admin.
 const AdminRoutes = lazy(() => import('./pages/admin/AdminRoutes'));
 
+function RouteAnalyticsTracker() {
+  const { pathname, search } = useLocation();
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const raf = requestAnimationFrame(() => {
+      trackEvent('virtual_page_view', {
+        page_location: window.location.href,
+        page_title: document.title,
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [pathname, search]);
+
+  return null;
+}
+
 function App() {
   return (
-    <Routes>
+    <>
+      <RouteAnalyticsTracker />
+      <Routes>
       <Route path="/" element={<PublicLayout />}>
         <Route index element={<Home />} />
         <Route path="sobre" element={<Sobre />} />
@@ -74,6 +98,7 @@ function App() {
         }
       />
     </Routes>
+    </>
   );
 }
 

@@ -18,6 +18,7 @@ import {
 import { Card, Container, Highlight, PageHero, Section } from '../../components/ui/Layout';
 import { NICHES } from '../../config/site';
 import { usePageMeta } from '../../hooks/usePageMeta';
+import { trackEvent } from '../../lib/analytics';
 import { api, ApiError } from '../../lib/api';
 import { maskPhone } from '../../lib/format';
 import type { Errors } from '../../lib/validation';
@@ -264,6 +265,10 @@ export function CadastroInfluenciador() {
     setSubmitting(true);
     try {
       await api.postForm('/influencers/register', form);
+      trackEvent('generate_lead', {
+        lead_type: 'cadastro_influenciador',
+        influencer_niche: values.niche || undefined,
+      });
       setDone(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {

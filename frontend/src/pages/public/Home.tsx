@@ -16,6 +16,7 @@ import { Reveal } from '../../components/ui/Reveal';
 import { positioning, uvp } from '../../content/positioning';
 import { useFetch } from '../../hooks/useFetch';
 import { usePageMeta } from '../../hooks/usePageMeta';
+import { trackEvent } from '../../lib/analytics';
 import type {
   ArticleSummary,
   Brand,
@@ -232,10 +233,31 @@ function Hero({ stats }: { stats: PublicStats | null }) {
           </Reveal>
           <Reveal delay={240}>
             <div className="actions">
-              <ButtonLink to="/orcamento" $size="lg">
+              <ButtonLink
+                to="/orcamento"
+                $size="lg"
+                onClick={() =>
+                  trackEvent('cta_click', {
+                    cta_name: 'Solicitar orçamento',
+                    cta_location: 'home_hero',
+                    destination: '/orcamento',
+                  })
+                }
+              >
                 Solicitar orçamento <ArrowRight size={20} aria-hidden />
               </ButtonLink>
-              <ButtonLink to="/servicos" $variant="secondary" $size="lg">
+              <ButtonLink
+                to="/servicos"
+                $variant="secondary"
+                $size="lg"
+                onClick={() =>
+                  trackEvent('cta_click', {
+                    cta_name: 'Conheça o hub',
+                    cta_location: 'home_hero',
+                    destination: '/servicos',
+                  })
+                }
+              >
                 Conheça o hub
               </ButtonLink>
             </div>
@@ -627,10 +649,32 @@ export function Home() {
       )}
 
       <CtaBand title={cta.title} description={cta.description}>
-        <ButtonLink to="/orcamento" $variant="dark" $size="lg">
+        <ButtonLink
+          to="/orcamento"
+          $variant="dark"
+          $size="lg"
+          onClick={() =>
+            trackEvent('cta_click', {
+              cta_name: 'Solicitar orçamento',
+              cta_location: 'home_cta_band',
+              destination: '/orcamento',
+            })
+          }
+        >
           Solicitar orçamento
         </ButtonLink>
-        <ButtonLink to="/cadastro-influenciador" $variant="outlineDark" $size="lg">
+        <ButtonLink
+          to="/cadastro-influenciador"
+          $variant="outlineDark"
+          $size="lg"
+          onClick={() =>
+            trackEvent('cta_click', {
+              cta_name: 'Sou influenciador',
+              cta_location: 'home_cta_band',
+              destination: '/cadastro-influenciador',
+            })
+          }
+        >
           Sou influenciador
         </ButtonLink>
       </CtaBand>

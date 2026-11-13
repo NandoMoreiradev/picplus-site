@@ -1,5 +1,6 @@
 import styled, { keyframes } from 'styled-components';
 import { site } from '../../config/site';
+import { trackEvent } from '../../lib/analytics';
 import { WhatsAppIcon } from '../ui/icons';
 
 const appear = keyframes`
@@ -121,6 +122,12 @@ export function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Falar com a PicPlus no WhatsApp (abre em nova aba)"
+      onClick={() =>
+        trackEvent('whatsapp_click', {
+          link_url: site.whatsapp,
+          cta_location: 'floating_button',
+        })
+      }
     >
       <WhatsAppIcon />
       <span className="label">Fale conosco</span>

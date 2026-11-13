@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { usePageMeta } from '../../../hooks/usePageMeta';
+import { trackEcommerceEvent, trackEvent } from '../../../lib/analytics';
 
-const CHECKOUT_ROUTE = '/academy/checkout/dominando-inteligencia-artificial-para-videos';
+const GROK_COURSE_SLUG = 'dominando-inteligencia-artificial-para-videos';
+const CHECKOUT_ROUTE = `/academy/checkout/${GROK_COURSE_SLUG}`;
 
 /* ── Container com isolamento dos estilos da Landing Page ── */
 const LpRoot = styled.div`
@@ -1230,6 +1232,31 @@ export function GrokSalesPage() {
   const offerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    trackEcommerceEvent('view_item', {
+      value: 97.9,
+      items: [
+        {
+          item_id: GROK_COURSE_SLUG,
+          item_name: 'Filmes com IA usando só o Grok',
+          item_category: 'IA e Vídeo',
+          item_variant: GROK_COURSE_SLUG,
+          price: 97.9,
+          quantity: 1,
+        },
+      ],
+    });
+  }, []);
+
+  const trackGrokCta = (ctaLocation: string) => {
+    trackEvent('cta_click', {
+      cta_name: 'Comprar curso Grok',
+      cta_location: ctaLocation,
+      destination: CHECKOUT_ROUTE,
+      course_slug: GROK_COURSE_SLUG,
+    });
+  };
+
+  useEffect(() => {
     const handleScroll = () => {
       if (!heroRef.current || !offerRef.current) return;
       const heroBottom = heroRef.current.getBoundingClientRect().bottom;
@@ -1330,7 +1357,11 @@ export function GrokSalesPage() {
               <strong>R$ 9,70</strong>
               <em>ou R$ 97,90 à vista</em>
             </div>
-            <Link className="btn cta" to={CHECKOUT_ROUTE}>
+            <Link
+              className="btn cta"
+              to={CHECKOUT_ROUTE}
+              onClick={() => trackGrokCta('grok_hero')}
+            >
               Quero criar meu primeiro filme
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <path d="M5 12h14M13 5l7 7-7 7" />
@@ -1751,7 +1782,12 @@ export function GrokSalesPage() {
             </details>
           </div>
           <div className="center" style={{ marginTop: 36 }}>
-            <Link className="btn cta" to={CHECKOUT_ROUTE} style={{ margin: '0 auto' }}>
+            <Link
+              className="btn cta"
+              to={CHECKOUT_ROUTE}
+              style={{ margin: '0 auto' }}
+              onClick={() => trackGrokCta('grok_curriculum')}
+            >
               Quero ter acesso agora
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <path d="M5 12h14M13 5l7 7-7 7" />
@@ -2039,7 +2075,11 @@ export function GrokSalesPage() {
               <div className="vista">ou R$ 97,90 à vista</div>
               <span className="day">☕ Menos que um cafezinho por semana</span>
             </div>
-            <Link className="btn cta buy" to={CHECKOUT_ROUTE}>
+            <Link
+              className="btn cta buy"
+              to={CHECKOUT_ROUTE}
+              onClick={() => trackGrokCta('grok_offer')}
+            >
               Comprar agora
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
                 <path d="M5 12h14M13 5l7 7-7 7" />
@@ -2262,7 +2302,11 @@ export function GrokSalesPage() {
             <small>10x de</small>
             <strong>R$ 9,70</strong>
           </div>
-          <Link className="btn cta buy" to={CHECKOUT_ROUTE}>
+          <Link
+            className="btn cta buy"
+            to={CHECKOUT_ROUTE}
+            onClick={() => trackGrokCta('grok_last_scene')}
+          >
             Quero criar meu primeiro filme
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
               <path d="M5 12h14M13 5l7 7-7 7" />
@@ -2297,7 +2341,11 @@ export function GrokSalesPage() {
           <small>10x de</small>
           <b>R$ 9,70</b>
         </div>
-        <Link className="btn cta buy" to={CHECKOUT_ROUTE}>
+        <Link
+          className="btn cta buy"
+          to={CHECKOUT_ROUTE}
+          onClick={() => trackGrokCta('grok_sticky_bar')}
+        >
           Comprar agora
         </Link>
       </div>
@@ -2324,7 +2372,11 @@ export function GrokSalesPage() {
             Entre, faça seu primeiro filme e, se não gostar em até 7 dias, devolvemos 100% do valor.
             Só 10x de R$ 9,70.
           </p>
-          <Link className="btn cta buy" to={CHECKOUT_ROUTE}>
+          <Link
+            className="btn cta buy"
+            to={CHECKOUT_ROUTE}
+            onClick={() => trackGrokCta('grok_exit_modal')}
+          >
             Quero testar agora
           </Link>
         </div>

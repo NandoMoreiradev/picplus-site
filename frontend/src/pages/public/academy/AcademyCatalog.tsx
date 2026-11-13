@@ -27,6 +27,7 @@ import { useStudentAuth } from '../../../context/student-auth-context';
 import { useFetch } from '../../../hooks/useFetch';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { assetUrl } from '../../../lib/api';
+import { courseToAnalyticsItem, trackEcommerceEvent } from '../../../lib/analytics';
 import {
   COURSE_LEVEL_LABEL,
   formatCentsBRL,
@@ -474,11 +475,19 @@ export function AcademyCatalog() {
             />
           ) : (
             <Grid $min="320px">
-              {filtered.map((course) => {
+              {filtered.map((course, index) => {
                 const lessonsCount = course.lessonsCount ?? 0;
                 const coverSrc = assetUrl(course.coverImage);
                 return (
-                  <CourseCard key={course.id} to={`/academy/curso/${course.slug}`}>
+                  <CourseCard
+                    key={course.id}
+                    to={`/academy/curso/${course.slug}`}
+                    onClick={() =>
+                      trackEcommerceEvent('select_item', {
+                        items: [courseToAnalyticsItem(course, course.priceCents, index)],
+                      })
+                    }
+                  >
                     <div className="thumb">
                       {coverSrc ? (
                         <img src={coverSrc} alt={course.title} loading="lazy" />

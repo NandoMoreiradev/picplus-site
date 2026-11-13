@@ -19,6 +19,7 @@ import { Container, Section } from '../../../components/ui/Layout';
 import { useStudentAuth } from '../../../context/student-auth-context';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { assetUrl } from '../../../lib/api';
+import { trackEvent } from '../../../lib/analytics';
 import {
   formatDuration,
   resolveLessonVideoEmbed,
@@ -329,6 +330,23 @@ export function AcademyClassroom() {
           },
         };
       });
+
+      if (res.progress.completed) {
+        trackEvent('lesson_complete', {
+          course_slug: classroom.course.slug,
+          course_title: classroom.course.title,
+          lesson_id: activeLesson.id,
+          lesson_title: activeLesson.title,
+          progress_percent: res.progressPercent,
+        });
+        if (res.progressPercent === 100) {
+          trackEvent('course_complete', {
+            course_slug: classroom.course.slug,
+            course_title: classroom.course.title,
+            certificate_code: res.certificateCode || undefined,
+          });
+        }
+      }
     } finally {
       setTogglingProgress(false);
     }

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { ArrowLeft, Award, CheckCircle2, Printer } from 'lucide-react';
@@ -7,6 +8,7 @@ import { Container, Section } from '../../../components/ui/Layout';
 import { useFetch } from '../../../hooks/useFetch';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { type CertificatePublicData } from '../../../lib/academy';
+import { trackEvent } from '../../../lib/analytics';
 
 const TopBar = styled.div`
   display: flex;
@@ -120,6 +122,17 @@ export function AcademyCertificate() {
     'Validação pública de certificado oficial emitido pela PicPlus Academy.',
   );
 
+  const trackedCertRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!cert || trackedCertRef.current === cert.certificateCode) return;
+    trackedCertRef.current = cert.certificateCode;
+    trackEvent('view_certificate', {
+      course_slug: cert.courseSlug,
+      course_title: cert.courseTitle,
+      certificate_code: cert.certificateCode,
+    });
+  }, [cert]);
+
   if (loading) {
     return (
       <Section>
@@ -175,7 +188,18 @@ export function AcademyCertificate() {
               <CheckCircle2 size={15} /> Certificado Autêntico Verificado
             </span>
 
-            <Button type="button" size="sm" onClick={() => window.print()}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                trackEvent('print_certificate', {
+                  course_slug: cert.courseSlug,
+                  course_title: cert.courseTitle,
+                  certificate_code: cert.certificateCode,
+                });
+                window.print();
+              }}
+            >
               <Printer size={16} /> Imprimir / Salvar PDF
             </Button>
           </div>

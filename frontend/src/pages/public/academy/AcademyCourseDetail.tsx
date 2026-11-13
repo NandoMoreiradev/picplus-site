@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import styled from 'styled-components';
 import {
@@ -21,6 +21,12 @@ import { Container, Section } from '../../../components/ui/Layout';
 import { useStudentAuth } from '../../../context/student-auth-context';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { api, assetUrl } from '../../../lib/api';
+import {
+  centsToReais,
+  courseToAnalyticsItem,
+  trackEcommerceEvent,
+  trackEvent,
+} from '../../../lib/analytics';
 import {
   COURSE_LEVEL_LABEL,
   formatCentsBRL,
@@ -302,6 +308,10 @@ export function AcademyCourseDetail() {
     return <GrokSalesPage />;
   }
 
+  return <StandardCourseDetail slug={slug} />;
+}
+
+function StandardCourseDetail({ slug }: { slug: string }) {
   const navigate = useNavigate();
   const { student } = useStudentAuth();
 
@@ -317,6 +327,7 @@ export function AcademyCourseDetail() {
   const [couponResult, setCouponResult] = useState<CouponValidationResult | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
+  const trackedCourseIdRef = useRef<string | null>(null);
 
   usePageMeta(
     course ? `${course.title} — PicPlus Academy` : 'Curso — PicPlus Academy',
@@ -385,6 +396,15 @@ export function AcademyCourseDetail() {
     };
   }, [student, course]);
 
+  useEffect(() => {
+    if (!course || trackedCourseIdRef.current === course.id) return;
+    trackedCourseIdRef.current = course.id;
+    trackEcommerceEvent('view_item', {
+      value: centsToReais(course.priceCents),
+      items: [courseToAnalyticsItem(course)],
+    });
+  }, [course]);
+
   const handleApplyCoupon = async () => {
     if (!course || !couponInput.trim()) return;
     setValidatingCoupon(true);
@@ -395,6 +415,12 @@ export function AcademyCourseDetail() {
         courseId: course.id,
       });
       setCouponResult(res);
+      trackEvent('apply_coupon', {
+        coupon_code: res.code,
+        course_slug: course.slug,
+        discount_value: centsToReais(res.discountCents),
+        final_value: centsToReais(res.finalPriceCents),
+      });
     } catch (err) {
       setCouponResult(null);
       setCouponError(err instanceof Error ? err.message : 'Cupom inválido.');
@@ -414,7 +440,14 @@ export function AcademyCourseDetail() {
       params.set('coupon', couponResult.code);
     }
     const qs = params.toString() ? `?${params.toString()}` : '';
-    navigate(`/academy/checkout/${course.slug}${qs}`);
+    const destination = `/academy/checkout/${course.slug}${qs}`;
+    trackEvent('cta_click', {
+      cta_name: course.priceCents === 0 ? 'Inscrever-se gratuitamente' : 'Comprar curso',
+      cta_location: 'course_detail',
+      destination,
+      course_slug: course.slug,
+    });
+    navigate(destination);
   };
 
   if (loading) {

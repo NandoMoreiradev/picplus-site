@@ -6,6 +6,12 @@ import { Button, ButtonLink } from '../../../components/ui/Button';
 import { Container, Section } from '../../../components/ui/Layout';
 import { usePageMeta } from '../../../hooks/usePageMeta';
 import { formatCentsBRL, studentApi, type CourseOrderItem } from '../../../lib/academy';
+import {
+  centsToReais,
+  hasTrackedPurchase,
+  markPurchaseTracked,
+  trackEcommerceEvent,
+} from '../../../lib/analytics';
 
 const Card = styled.div`
   max-width: 560px;
@@ -129,6 +135,33 @@ export function AcademyCheckoutReturn() {
       active = false;
     };
   }, [orderId, paymentId, simulated, mpStatus]);
+
+  useEffect(() => {
+    if (!order || order.status !== 'APPROVED') return;
+    if (hasTrackedPurchase(order.id)) return;
+    markPurchaseTracked(order.id);
+    trackEcommerceEvent(
+      'purchase',
+      {
+        transaction_id: order.id,
+        value: centsToReais(order.finalPriceCents),
+        coupon: order.coupon?.code || undefined,
+        items: [
+          {
+            item_id: order.course?.id || order.courseId,
+            item_name: order.course?.title || 'Curso PicPlus Academy',
+            item_category: 'PicPlus Academy',
+            item_variant: order.course?.slug,
+            price: centsToReais(order.finalPriceCents),
+            quantity: 1,
+          },
+        ],
+      },
+      {
+        payment_method: order.paymentMethod || undefined,
+      },
+    );
+  }, [order]);
 
   const courseTitle = order?.course?.title ?? 'seu curso';
   const courseSlug = order?.course?.slug ?? '';

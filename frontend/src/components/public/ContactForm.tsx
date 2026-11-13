@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { CheckCircle2, Send } from 'lucide-react';
 import { BUDGET_RANGES } from '../../config/site';
 import { positioning } from '../../content/positioning';
+import { trackEvent } from '../../lib/analytics';
 import { api, ApiError } from '../../lib/api';
 import { maskPhone } from '../../lib/format';
 import type { ContactType } from '../../lib/types';
@@ -100,6 +101,11 @@ export function ContactForm({ type }: { type: ContactType }) {
     setSubmitting(true);
     try {
       await api.post('/contacts', body);
+      trackEvent('generate_lead', {
+        lead_type: isBudget ? 'orcamento' : 'contato',
+        service_interest: values.serviceInterest || undefined,
+        budget_range: values.budgetRange || undefined,
+      });
       setDone(true);
     } catch (error) {
       if (error instanceof ApiError && error.status === 429) {
