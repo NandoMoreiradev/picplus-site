@@ -6,6 +6,7 @@ import { trackEcommerceEvent, trackEvent } from '../../../lib/analytics';
 
 const GROK_COURSE_SLUG = 'dominando-inteligencia-artificial-para-videos';
 const CHECKOUT_ROUTE = `/academy/checkout/${GROK_COURSE_SLUG}`;
+const HERO_YOUTUBE_VIDEO_ID = 't7dIotYs6WI';
 
 /* ── Container com isolamento dos estilos da Landing Page ── */
 const LpRoot = styled.div`
@@ -208,37 +209,42 @@ const LpRoot = styled.div`
 
   /* ── Hero ── */
   .hero {
-    padding: 72px 0 56px;
+    padding: 36px 0 48px;
     overflow: hidden;
   }
   .hero .wrap {
-    display: grid;
-    gap: 40px;
-    align-items: center;
-  }
-  .hero h1 {
-    font-size: clamp(40px, 10.5vw, 64px);
-    margin-bottom: 18px;
-  }
-  .hero .lead {
-    margin-bottom: 26px;
-  }
-  .chips {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 28px;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
   }
-  .chip {
-    border: 1px solid var(--line);
-    background: var(--glass);
-    border-radius: 99px;
-    padding: 8px 14px;
-    font-size: 14px;
-    font-weight: 500;
+  .hero-video-wrap {
+    width: 100%;
+    max-width: 920px;
+    position: relative;
   }
-  .chip b {
-    color: var(--lime);
+  .hero-video-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid rgba(182, 232, 41, 0.35);
+    background: #000;
+    box-shadow: var(--sh), 0 0 60px rgba(182, 232, 41, 0.14);
+  }
+  .hero-video-frame iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+  }
+  .hero-cta {
+    width: 100%;
+    display: flex;
+    justify-content: center;
   }
   .price-mini {
     display: flex;
@@ -261,105 +267,6 @@ const LpRoot = styled.div`
     font-style: normal;
     color: var(--mut);
     font-size: 14px;
-  }
-
-  .phones {
-    position: relative;
-    height: 540px;
-    display: flex;
-    justify-content: center;
-  }
-  .phone {
-    position: absolute;
-    width: 260px;
-    aspect-ratio: 9/16;
-    border-radius: 34px;
-    padding: 8px;
-    background: linear-gradient(160deg, #2a2a2a, #0e0e0e);
-    box-shadow: var(--sh), 0 0 0 1px rgba(255, 255, 255, 0.08);
-    overflow: hidden;
-  }
-  .phone video, .phone img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 27px;
-    background: #111;
-  }
-  .phone .lbl {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: 22px;
-    white-space: nowrap;
-    font: 700 11px/1 var(--fB);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    padding: 9px 14px;
-    border-radius: 99px;
-  }
-  .phone.a {
-    transform: rotate(-6deg) translateX(-70px);
-    z-index: 2;
-    top: 20px;
-  }
-  .phone.b {
-    transform: rotate(7deg) translateX(90px);
-    top: 0;
-    opacity: 0.92;
-  }
-  .phone.a .lbl {
-    background: var(--lime);
-    color: #0A0A0A;
-  }
-  .phone.b .lbl {
-    background: rgba(10, 10, 10, 0.85);
-    color: #fff;
-    border: 1px solid var(--line);
-    bottom: auto;
-    top: 22px;
-  }
-  .float-badge {
-    position: absolute;
-    z-index: 3;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: rgba(14, 14, 14, 0.82);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--line);
-    border-radius: 16px;
-    padding: 10px 14px;
-    font-size: 13px;
-    box-shadow: var(--sh);
-  }
-  .float-badge img {
-    height: 18px;
-    width: auto;
-  }
-  .fb1 {
-    left: 0;
-    bottom: 40px;
-  }
-  .fb2 {
-    right: 0;
-    top: 120px;
-  }
-  .fb2 b {
-    color: var(--lime);
-    font-size: 20px;
-    font-family: var(--fT);
-  }
-
-  @media (max-width: 420px) {
-    .fb2 {
-      top: auto;
-      bottom: 110px;
-      right: 4px;
-    }
-    .fb1 {
-      bottom: 24px;
-    }
   }
 
   /* ── Faixa de Prova (Reel) ── */
@@ -1147,16 +1054,7 @@ const LpRoot = styled.div`
       padding: 104px 0;
     }
     .hero {
-      padding: 100px 0 80px;
-    }
-    .hero .wrap {
-      grid-template-columns: 1.1fr 0.9fr;
-    }
-    .phones {
-      height: 600px;
-    }
-    .phone {
-      width: 290px;
+      padding: 56px 0 72px;
     }
     .cards {
       grid-template-columns: repeat(2, 1fr);
@@ -1334,29 +1232,19 @@ export function GrokSalesPage() {
           }}
         ></div>
         <div className="wrap">
-          <div>
-            <h1>
-              Transforme qualquer história em um <span className="lime">filme</span>. Usando só o Grok.
-            </h1>
-            <p className="lead">
-              Do roteiro ao filme pronto, direto do celular — em <b>desenho animado</b> ou{' '}
-              <b>cinema realista</b>. Mesmo que você nunca tenha editado um vídeo na vida.
-            </p>
-            <div className="chips">
-              <span className="chip">
-                <b>12</b> aulas curtas
-              </span>
-              <span className="chip">
-                <b>1</b> única ferramenta
-              </span>
-              <span className="chip">Prompts prontos</span>
-              <span className="chip">Celular ou computador</span>
+          <div className="hero-video-wrap">
+            <div className="hero-video-frame">
+              <iframe
+                src={`https://www.youtube.com/embed/${HERO_YOUTUBE_VIDEO_ID}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1`}
+                title="Filmes com IA usando só o Grok"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
             </div>
-            <div className="price-mini">
-              <small>10x de</small>
-              <strong>R$ 9,70</strong>
-              <em>ou R$ 97,90 à vista</em>
-            </div>
+          </div>
+
+          <div className="hero-cta">
             <Link
               className="btn cta"
               to={CHECKOUT_ROUTE}
@@ -1367,61 +1255,6 @@ export function GrokSalesPage() {
                 <path d="M5 12h14M13 5l7 7-7 7" />
               </svg>
             </Link>
-            <div className="trust">
-              <span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-                Acesso imediato
-              </span>
-              <span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-                7 dias de garantia
-              </span>
-              <span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-                Pagamento seguro
-              </span>
-            </div>
-          </div>
-
-          <div className="phones">
-            <div className="phone b">
-              <video
-                src="/courses/grok/video/jardim-real.mp4"
-                poster="/courses/grok/img/jardim-real.jpg"
-                muted
-                loop
-                playsInline
-                autoPlay
-              />
-              <span className="lbl">Cinema realista</span>
-            </div>
-            <div className="phone a">
-              <video
-                src="/courses/grok/video/voando.mp4"
-                poster="/courses/grok/img/voando.jpg"
-                muted
-                loop
-                playsInline
-                autoPlay
-              />
-              <span className="lbl">Desenho animado</span>
-            </div>
-            <div className="float-badge fb1">
-              <span style={{ color: 'var(--soft)' }}>100% feito no</span>
-              <img src="/courses/grok/img/grok-wordmark.svg" alt="Grok" />
-            </div>
-            <div className="float-badge fb2">
-              <b>0</b>
-              <span>
-                programas de<br />edição
-              </span>
-            </div>
           </div>
         </div>
       </section>
