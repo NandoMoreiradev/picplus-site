@@ -722,8 +722,8 @@ function StandardCourseDetail({ slug }: { slug: string }) {
                   <Award size={16} color="#B6E829" /> Certificado oficial de conclusão
                 </li>
                 <li>
-                  <ShieldCheck size={16} color="#B6E829" /> Pagamento seguro via Mercado Pago (Pix,
-                  Cartão ou Boleto)
+                  <ShieldCheck size={16} color="#B6E829" /> Pagamento seguro no próprio site (Pix ou
+                  Cartão em até 12x)
                 </li>
               </ul>
 

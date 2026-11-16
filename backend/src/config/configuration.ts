@@ -79,6 +79,10 @@ export const config = {
       .trim()
       .replace(/^(["'])(.*)\1$/, '$2')
       .trim(),
+    publicKey: (process.env.MP_PUBLIC_KEY ?? '')
+      .trim()
+      .replace(/^(["'])(.*)\1$/, '$2')
+      .trim(),
     webhookSecret: (process.env.MP_WEBHOOK_SECRET ?? '')
       .trim()
       .replace(/^(["'])(.*)\1$/, '$2')

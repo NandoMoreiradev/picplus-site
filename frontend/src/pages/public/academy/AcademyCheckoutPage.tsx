@@ -9,7 +9,6 @@ import {
   CreditCard,
   Eye,
   EyeOff,
-  FileText,
   Lock,
   MessageCircle,
   QrCode,
@@ -19,6 +18,10 @@ import {
   UserCheck,
   UserPlus,
 } from 'lucide-react';
+import {
+  TransparentPaymentStep,
+  type ActiveTransparentOrder,
+} from '../../../components/academy/TransparentPaymentStep';
 import { Button, ButtonLink } from '../../../components/ui/Button';
 import { ErrorState, Skeleton } from '../../../components/ui/Feedback';
 import { Container, Section } from '../../../components/ui/Layout';
@@ -41,6 +44,7 @@ import {
   type CheckoutResponse,
   type CouponValidationResult,
   type Course,
+  type CourseOrderItem,
   type StudentEnrolledCourse,
 } from '../../../lib/academy';
 
@@ -167,6 +171,75 @@ const MobileCourseBanner = styled.div`
     color: ${({ theme }) => theme.colors.primary};
     white-space: nowrap;
     flex-shrink: 0;
+  }
+`;
+
+const StepBar = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: ${({ theme }) => theme.radii.md};
+    background: ${({ theme }) => theme.colors.surface};
+    border: 1px solid ${({ theme }) => theme.colors.border};
+    color: ${({ theme }) => theme.colors.textMuted};
+    font-size: 0.8rem;
+    font-weight: 600;
+    min-width: 0;
+
+    @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
+      padding: 0.5rem;
+      font-size: 0.72rem;
+      gap: 0.35rem;
+    }
+
+    .num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: ${({ theme }) => theme.colors.background};
+      border: 1px solid ${({ theme }) => theme.colors.borderStrong};
+      display: grid;
+      place-items: center;
+      font-size: 0.72rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    span.label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &.active {
+      border-color: ${({ theme }) => theme.colors.primaryBorder};
+      background: ${({ theme }) => theme.colors.primarySoft};
+      color: ${({ theme }) => theme.colors.text};
+
+      .num {
+        background: ${({ theme }) => theme.colors.primary};
+        border-color: ${({ theme }) => theme.colors.primary};
+        color: ${({ theme }) => theme.colors.textDark};
+      }
+    }
+
+    &.done {
+      border-color: rgba(34, 197, 94, 0.3);
+      color: ${({ theme }) => theme.colors.success};
+
+      .num {
+        background: ${({ theme }) => theme.colors.successSoft};
+        border-color: rgba(34, 197, 94, 0.35);
+        color: ${({ theme }) => theme.colors.success};
+      }
+    }
   }
 `;
 
@@ -739,11 +812,14 @@ export function AcademyCheckoutPage() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
 
-  // Submissão do Checkout
+  // Submissão do Checkout (Etapa 1 -> Etapa 2 transparente)
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isEmailConflict, setIsEmailConflict] = useState(false);
+  const [activeOrder, setActiveOrder] = useState<ActiveTransparentOrder | null>(null);
+  const [orderApproved, setOrderApproved] = useState(false);
   const trackedCheckoutIdRef = useRef<string | null>(null);
+  const resumeOrderId = searchParams.get('orderId') || '';
 
   usePageMeta(
     course ? `Checkout: ${course.title} — PicPlus Academy` : 'Checkout — PicPlus Academy',
@@ -847,12 +923,43 @@ export function AcademyCheckoutPage() {
     };
   }, [student, course]);
 
+  // 3b. Retomada de pedido pendente via ?orderId=... (ex.: link de e-mail)
+  useEffect(() => {
+    if (!student || !course || !resumeOrderId || activeOrder) return;
+    let active = true;
+    Promise.all([
+      studentApi.get<CourseOrderItem>(`/academy/orders/${resumeOrderId}/verify`),
+      api.get<{ publicKey: string; simulationAllowed: boolean }>('/academy/checkout/config'),
+    ])
+      .then(([ord, cfg]) => {
+        if (!active || !ord) return;
+        if (ord.status === 'APPROVED') {
+          setOrderApproved(true);
+          setIsEnrolled(true);
+          return;
+        }
+        setActiveOrder({
+          orderId: ord.id,
+          finalPriceCents: ord.finalPriceCents,
+          publicKey: cfg.publicKey || '',
+          simulated: Boolean(cfg.simulationAllowed),
+          initialPix: ord.pix ?? null,
+        });
+      })
+      .catch(() => {
+        /* pedido não encontrado ou de outro aluno */
+      });
+    return () => {
+      active = false;
+    };
+  }, [student, course, resumeOrderId, activeOrder]);
+
   const handleApplyCoupon = () => {
-    if (!course || !couponInput.trim()) return;
+    if (!course || !couponInput.trim() || activeOrder) return;
     validateCouponCode(couponInput, course.id);
   };
 
-  // 4. Submissão Unificada do Checkout
+  // 4. Submissão da Etapa 1 (Identificação + Criação do Pedido Transparente)
   const handleProceedCheckout = async (e?: FormEvent) => {
     if (e) e.preventDefault();
     if (!course) return;
@@ -865,7 +972,7 @@ export function AcademyCheckoutPage() {
       let result: CheckoutResponse;
 
       if (student) {
-        // Aluno já logado: usa o checkout direto
+        // Aluno já logado: cria pedido direto
         const resolvedCpf = cpf.trim() || (student.cpf ? formatCPF(student.cpf) : '');
         const resolvedPhone = phone.trim() || (student.phone ? formatPhone(student.phone) : '');
         result = await studentApi.post<CheckoutResponse>('/academy/checkout', {
@@ -873,6 +980,7 @@ export function AcademyCheckoutPage() {
           couponCode: couponResult?.code || undefined,
           cpf: resolvedCpf || undefined,
           phone: resolvedPhone || undefined,
+          mode: 'transparent',
         });
       } else if (authTab === 'register') {
         // Visitante criando conta no ato da compra
@@ -888,6 +996,7 @@ export function AcademyCheckoutPage() {
           password,
           cpf: cpf.trim() || undefined,
           phone: phone.trim() || undefined,
+          mode: 'transparent',
         });
 
         // Salva token e loga o aluno na hora
@@ -908,6 +1017,7 @@ export function AcademyCheckoutPage() {
           couponCode: couponResult?.code || undefined,
           email: loginEmail.trim().toLowerCase(),
           password: loginPassword,
+          mode: 'transparent',
         });
 
         if (result.accessToken) {
@@ -931,7 +1041,7 @@ export function AcademyCheckoutPage() {
         { checkout_mode: checkoutMode },
       );
 
-      // Redirecionamento de sucesso
+      // Curso gratuito: matrícula imediata!
       if (result.freeEnrollment) {
         const freeOrderId = result.orderId || `free_${course.id}`;
         if (!hasTrackedPurchase(freeOrderId)) {
@@ -947,13 +1057,22 @@ export function AcademyCheckoutPage() {
             { payment_method: 'free_enrollment' },
           );
         }
-        // Curso gratuito: vai direto para a sala de aula!
         navigate(`/academy/aula/${course.slug}`);
         return;
       }
 
+      if (result.mode === 'transparent' || !result.checkoutUrl) {
+        setActiveOrder({
+          orderId: result.orderId,
+          finalPriceCents: result.finalPriceCents ?? checkoutPriceCents,
+          publicKey: result.publicKey ?? '',
+          simulated: Boolean(result.simulated),
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
       if (result.checkoutUrl) {
-        // Redireciona para o Mercado Pago (ou simulador em dev)
         window.location.href = result.checkoutUrl;
       }
     } catch (err: unknown) {
@@ -999,8 +1118,36 @@ export function AcademyCheckoutPage() {
 
   const modules = course.modules ?? [];
   const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
-  const finalPriceCents = couponResult ? couponResult.finalPriceCents : course.priceCents;
+  const finalPriceCents = activeOrder
+    ? activeOrder.finalPriceCents
+    : couponResult
+      ? couponResult.finalPriceCents
+      : course.priceCents;
   const isFree = finalPriceCents === 0;
+  const currentStep: 1 | 2 | 3 = orderApproved ? 3 : activeOrder ? 2 : 1;
+
+  const handleTransparentApproved = (info: {
+    orderId: string;
+    paymentMethod?: string | null;
+  }) => {
+    setOrderApproved(true);
+    setIsEnrolled(true);
+    if (!hasTrackedPurchase(info.orderId)) {
+      markPurchaseTracked(info.orderId);
+      trackEcommerceEvent(
+        'purchase',
+        {
+          transaction_id: info.orderId,
+          value: centsToReais(finalPriceCents),
+          coupon: couponResult?.code || undefined,
+          items: [courseToAnalyticsItem(course, finalPriceCents)],
+        },
+        {
+          payment_method: info.paymentMethod || undefined,
+        },
+      );
+    }
+  };
 
   return (
     <Section $tight>
@@ -1015,7 +1162,28 @@ export function AcademyCheckoutPage() {
           </div>
         </CheckoutHeader>
 
-        {isEnrolled && (
+        {!isFree && (
+          <StepBar>
+            <div className={`step-item ${currentStep === 1 ? 'active' : 'done'}`}>
+              <span className="num">{currentStep > 1 ? '✓' : '1'}</span>
+              <span className="label">Seus dados</span>
+            </div>
+            <div
+              className={`step-item ${
+                currentStep === 2 ? 'active' : currentStep > 2 ? 'done' : ''
+              }`}
+            >
+              <span className="num">{currentStep > 2 ? '✓' : '2'}</span>
+              <span className="label">Pagamento no site</span>
+            </div>
+            <div className={`step-item ${currentStep === 3 ? 'done' : ''}`}>
+              <span className="num">{currentStep === 3 ? '✓' : '3'}</span>
+              <span className="label">Acesso liberado</span>
+            </div>
+          </StepBar>
+        )}
+
+        {isEnrolled && !orderApproved && (
           <div style={{ marginBottom: '1.75rem' }}>
             <AlertBox $type="success">
               <strong>Você já possui acesso ativo a este curso!</strong>
@@ -1052,343 +1220,367 @@ export function AcademyCheckoutPage() {
         </MobileCourseBanner>
 
         <CheckoutGrid>
-          {/* ── Coluna Esquerda: Identificação do Aluno e Finalização ── */}
+          {/* ── Coluna Esquerda: Identificação (Etapa 1) ou Pagamento Transparente (Etapa 2/3) ── */}
           <div>
             <CheckoutCard>
-              <h2 className="card-title">
-                <span className="card-icon">
-                  <UserCheck size={17} />
-                </span>
-                <span>Identificação do Aluno</span>
-              </h2>
-
-              {student ? (
-                // Se já estiver logado
+              {activeOrder && student ? (
                 <>
-                  <LoggedCard>
-                    <div className="user-info">
-                      <div className="avatar">
-                        {student.avatarUrl ? (
-                          <img
-                            src={assetUrl(student.avatarUrl)}
-                            alt={student.name}
-                            style={{ width: '100%', height: '100%', borderRadius: '50%' }}
-                          />
-                        ) : (
-                          student.name.slice(0, 2).toUpperCase()
-                        )}
-                      </div>
-                      <div className="details">
-                        <strong>{student.name}</strong>
-                        <span>{student.email}</span>
-                      </div>
-                    </div>
-                    <button type="button" className="change-btn" onClick={logout}>
-                      Trocar de conta
-                    </button>
-                  </LoggedCard>
+                  <h2 className="card-title">
+                    <span className="card-icon">
+                      <Lock size={17} />
+                    </span>
+                    <span>
+                      {orderApproved ? 'Matrícula Confirmada' : 'Pagamento Seguro'}
+                    </span>
+                  </h2>
 
-                  {/* Campos adicionais opcionais se faltarem no perfil */}
-                  {(!student.cpf || !student.phone) && (
-                    <FormGridTwo>
-                      {!student.cpf && (
-                        <Field>
-                          <label htmlFor="checkout-cpf">
-                            CPF <span className="opt">(recomendado para nota e Pix)</span>
-                          </label>
-                          <div className="input-wrap">
-                            <input
-                              id="checkout-cpf"
-                              type="text"
-                              placeholder="000.000.000-00"
-                              value={cpf}
-                              onChange={(e) => setCpf(formatCPF(e.target.value))}
-                            />
-                          </div>
-                        </Field>
-                      )}
-                      {!student.phone && (
-                        <Field>
-                          <label htmlFor="checkout-phone">
-                            WhatsApp / Telefone <span className="opt">(para avisos do curso)</span>
-                          </label>
-                          <div className="input-wrap">
-                            <input
-                              id="checkout-phone"
-                              type="tel"
-                              placeholder="(00) 00000-0000"
-                              value={phone}
-                              onChange={(e) => setPhone(formatPhone(e.target.value))}
-                            />
-                          </div>
-                        </Field>
-                      )}
-                    </FormGridTwo>
-                  )}
+                  <TransparentPaymentStep
+                    course={course}
+                    student={student}
+                    order={activeOrder}
+                    initialCpf={cpf || student.cpf || ''}
+                    onBackToEdit={() => {
+                      setActiveOrder(null);
+                      setCheckoutError(null);
+                    }}
+                    onApproved={handleTransparentApproved}
+                  />
                 </>
               ) : (
-                // Se não estiver logado: alternador entre Criar Conta e Já Tenho Conta
                 <>
-                  <AuthTabs>
-                    <button
-                      type="button"
-                      className={authTab === 'register' ? 'active' : ''}
-                      onClick={() => {
-                        setAuthTab('register');
-                        setCheckoutError(null);
-                        setIsEmailConflict(false);
-                      }}
-                    >
-                      <UserPlus size={16} /> Criar nova conta
-                    </button>
-                    <button
-                      type="button"
-                      className={authTab === 'login' ? 'active' : ''}
-                      onClick={() => {
-                        setAuthTab('login');
-                        setCheckoutError(null);
-                        setIsEmailConflict(false);
-                      }}
-                    >
-                      <UserCheck size={16} /> Já sou aluno
-                    </button>
-                  </AuthTabs>
+                  <h2 className="card-title">
+                    <span className="card-icon">
+                      <UserCheck size={17} />
+                    </span>
+                    <span>Identificação do Aluno</span>
+                  </h2>
 
-                  {isEmailConflict && (
-                    <AlertBox $type="info">
+                  {student ? (
+                    // Se já estiver logado
+                    <>
+                      <LoggedCard>
+                        <div className="user-info">
+                          <div className="avatar">
+                            {student.avatarUrl ? (
+                              <img
+                                src={assetUrl(student.avatarUrl)}
+                                alt={student.name}
+                                style={{ width: '100%', height: '100%', borderRadius: '50%' }}
+                              />
+                            ) : (
+                              student.name.slice(0, 2).toUpperCase()
+                            )}
+                          </div>
+                          <div className="details">
+                            <strong>{student.name}</strong>
+                            <span>{student.email}</span>
+                          </div>
+                        </div>
+                        <button type="button" className="change-btn" onClick={logout}>
+                          Trocar de conta
+                        </button>
+                      </LoggedCard>
+
+                      {/* Campos adicionais se faltarem no perfil */}
+                      {(!student.cpf || !student.phone) && (
+                        <FormGridTwo>
+                          {!student.cpf && (
+                            <Field>
+                              <label htmlFor="checkout-cpf">
+                                CPF <span className="opt">(necessário para Pix)</span>
+                              </label>
+                              <div className="input-wrap">
+                                <input
+                                  id="checkout-cpf"
+                                  type="text"
+                                  placeholder="000.000.000-00"
+                                  value={cpf}
+                                  onChange={(e) => setCpf(formatCPF(e.target.value))}
+                                />
+                              </div>
+                            </Field>
+                          )}
+                          {!student.phone && (
+                            <Field>
+                              <label htmlFor="checkout-phone">
+                                WhatsApp / Telefone <span className="opt">(para avisos do curso)</span>
+                              </label>
+                              <div className="input-wrap">
+                                <input
+                                  id="checkout-phone"
+                                  type="tel"
+                                  placeholder="(00) 00000-0000"
+                                  value={phone}
+                                  onChange={(e) => setPhone(formatPhone(e.target.value))}
+                                />
+                              </div>
+                            </Field>
+                          )}
+                        </FormGridTwo>
+                      )}
+                    </>
+                  ) : (
+                    // Se não estiver logado: alternador entre Criar Conta e Já Tenho Conta
+                    <>
+                      <AuthTabs>
+                        <button
+                          type="button"
+                          className={authTab === 'register' ? 'active' : ''}
+                          onClick={() => {
+                            setAuthTab('register');
+                            setCheckoutError(null);
+                            setIsEmailConflict(false);
+                          }}
+                        >
+                          <UserPlus size={16} /> Criar nova conta
+                        </button>
+                        <button
+                          type="button"
+                          className={authTab === 'login' ? 'active' : ''}
+                          onClick={() => {
+                            setAuthTab('login');
+                            setCheckoutError(null);
+                            setIsEmailConflict(false);
+                          }}
+                        >
+                          <UserCheck size={16} /> Já sou aluno
+                        </button>
+                      </AuthTabs>
+
+                      {isEmailConflict && (
+                        <AlertBox $type="info">
+                          <span>
+                            Já identificamos uma conta com o e-mail <strong>{email}</strong> na PicPlus
+                            Academy!
+                          </span>
+                          <button type="button" onClick={switchToLoginWithEmail}>
+                            Clique aqui para entrar com sua senha e concluir a compra
+                          </button>
+                        </AlertBox>
+                      )}
+
+                      {authTab === 'register' ? (
+                        // Formulário de Criação de Conta no Ato da Compra
+                        <form
+                          id="checkout-form"
+                          onSubmit={handleProceedCheckout}
+                          style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+                        >
+                          <Field>
+                            <label htmlFor="reg-name">
+                              Nome Completo <span className="req">*</span>
+                            </label>
+                            <div className="input-wrap">
+                              <input
+                                id="reg-name"
+                                type="text"
+                                placeholder="Como aparecerá no seu certificado"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                required
+                              />
+                            </div>
+                          </Field>
+
+                          <Field>
+                            <label htmlFor="reg-email">
+                              E-mail <span className="req">*</span>
+                            </label>
+                            <div className="input-wrap">
+                              <input
+                                id="reg-email"
+                                type="email"
+                                placeholder="exemplo@email.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                              />
+                            </div>
+                            <span className="hint">
+                              Seu login e os dados de acesso ao curso serão enviados para este e-mail.
+                            </span>
+                          </Field>
+
+                          <Field>
+                            <label htmlFor="reg-password">
+                              Criar Senha de Acesso <span className="req">*</span>
+                            </label>
+                            <div className="input-wrap">
+                              <input
+                                id="reg-password"
+                                type={showPassword ? 'text' : 'password'}
+                                placeholder="Mínimo de 6 caracteres"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                minLength={6}
+                              />
+                              <button
+                                type="button"
+                                className="toggle-pw"
+                                onClick={() => setShowPassword(!showPassword)}
+                                aria-label={showPassword ? 'Ocultar senha' : 'Ver senha'}
+                              >
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                          </Field>
+
+                          <FormGridTwo>
+                            <Field>
+                              <label htmlFor="reg-cpf">
+                                CPF <span className="opt">(necessário para Pix)</span>
+                              </label>
+                              <div className="input-wrap">
+                                <input
+                                  id="reg-cpf"
+                                  type="text"
+                                  placeholder="000.000.000-00"
+                                  value={cpf}
+                                  onChange={(e) => setCpf(formatCPF(e.target.value))}
+                                />
+                              </div>
+                            </Field>
+
+                            <Field>
+                              <label htmlFor="reg-phone">
+                                WhatsApp / Telefone <span className="opt">(opcional)</span>
+                              </label>
+                              <div className="input-wrap">
+                                <input
+                                  id="reg-phone"
+                                  type="tel"
+                                  placeholder="(00) 00000-0000"
+                                  value={phone}
+                                  onChange={(e) => setPhone(formatPhone(e.target.value))}
+                                />
+                              </div>
+                            </Field>
+                          </FormGridTwo>
+                        </form>
+                      ) : (
+                        // Formulário de Login Rápido
+                        <form
+                          id="checkout-form"
+                          onSubmit={handleProceedCheckout}
+                          style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+                        >
+                          <Field>
+                            <label htmlFor="login-email">
+                              E-mail da sua conta <span className="req">*</span>
+                            </label>
+                            <div className="input-wrap">
+                              <input
+                                id="login-email"
+                                type="email"
+                                placeholder="Seu e-mail cadastrado"
+                                value={loginEmail}
+                                onChange={(e) => setLoginEmail(e.target.value)}
+                                required
+                              />
+                            </div>
+                          </Field>
+
+                          <Field>
+                            <label htmlFor="login-password">
+                              Sua Senha <span className="req">*</span>
+                            </label>
+                            <div className="input-wrap">
+                              <input
+                                id="login-password"
+                                type={showLoginPassword ? 'text' : 'password'}
+                                placeholder="Sua senha atual"
+                                value={loginPassword}
+                                onChange={(e) => setLoginPassword(e.target.value)}
+                                required
+                              />
+                              <button
+                                type="button"
+                                className="toggle-pw"
+                                onClick={() => setShowLoginPassword(!showLoginPassword)}
+                                aria-label={showLoginPassword ? 'Ocultar senha' : 'Ver senha'}
+                              >
+                                {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                            <div style={{ textAlign: 'right', marginTop: '0.2rem' }}>
+                              <Link
+                                to="/academy/redefinir-senha"
+                                target="_blank"
+                                style={{
+                                  fontSize: '0.78rem',
+                                  color: '#A3A3A3',
+                                  textDecoration: 'underline',
+                                }}
+                              >
+                                Esqueceu sua senha?
+                              </Link>
+                            </div>
+                          </Field>
+                        </form>
+                      )}
+                    </>
+                  )}
+
+                  {checkoutError && !isEmailConflict && (
+                    <AlertBox $type="error">{checkoutError}</AlertBox>
+                  )}
+
+                  {isFree && (
+                    <AlertBox $type="success">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Sparkles size={18} />
+                        <strong>Matrícula 100% Gratuita!</strong>
+                      </div>
                       <span>
-                        Já identificamos uma conta com o e-mail <strong>{email}</strong> na PicPlus
-                        Academy!
+                        Nenhum valor será cobrado. Conclua sua matrícula para ativar seu acesso
+                        imediatamente e começar a assistir às aulas!
                       </span>
-                      <button type="button" onClick={switchToLoginWithEmail}>
-                        Clique aqui para entrar com sua senha e concluir a compra
-                      </button>
                     </AlertBox>
                   )}
 
-                  {authTab === 'register' ? (
-                    // Formulário de Criação de Conta no Ato da Compra
-                    <form
-                      id="checkout-form"
-                      onSubmit={handleProceedCheckout}
-                      style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
-                    >
-                      <Field>
-                        <label htmlFor="reg-name">
-                          Nome Completo <span className="req">*</span>
-                        </label>
-                        <div className="input-wrap">
-                          <input
-                            id="reg-name"
-                            type="text"
-                            placeholder="Como aparecerá no seu certificado"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </Field>
+                  <Button
+                    type="button"
+                    size="lg"
+                    block
+                    disabled={submitting || isEnrolled}
+                    onClick={() => handleProceedCheckout()}
+                  >
+                    {submitting ? (
+                      'Processando…'
+                    ) : isEnrolled ? (
+                      'Já Matriculado'
+                    ) : isFree ? (
+                      <>
+                        <Sparkles size={18} /> Concluir Matrícula Gratuita
+                      </>
+                    ) : (
+                      <>
+                        <Lock size={18} /> Continuar para Pagamento
+                      </>
+                    )}
+                  </Button>
 
-                      <Field>
-                        <label htmlFor="reg-email">
-                          E-mail <span className="req">*</span>
-                        </label>
-                        <div className="input-wrap">
-                          <input
-                            id="reg-email"
-                            type="email"
-                            placeholder="exemplo@email.com"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                          />
-                        </div>
-                        <span className="hint">
-                          Seu login e os dados de acesso ao curso serão enviados para este e-mail.
+                  {!isFree && (
+                    <PaymentTrustStrip>
+                      <div className="trust-header">
+                        <ShieldCheck size={16} />
+                        <span>
+                          Pague aqui mesmo na página, sem sair do site, com processamento seguro do{' '}
+                          <strong>Mercado Pago</strong>:
                         </span>
-                      </Field>
-
-                      <Field>
-                        <label htmlFor="reg-password">
-                          Criar Senha de Acesso <span className="req">*</span>
-                        </label>
-                        <div className="input-wrap">
-                          <input
-                            id="reg-password"
-                            type={showPassword ? 'text' : 'password'}
-                            placeholder="Mínimo de 6 caracteres"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            minLength={6}
-                          />
-                          <button
-                            type="button"
-                            className="toggle-pw"
-                            onClick={() => setShowPassword(!showPassword)}
-                            aria-label={showPassword ? 'Ocultar senha' : 'Ver senha'}
-                          >
-                            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
-                      </Field>
-
-                      <FormGridTwo>
-                        <Field>
-                          <label htmlFor="reg-cpf">
-                            CPF <span className="opt">(recomendado para nota e Pix)</span>
-                          </label>
-                          <div className="input-wrap">
-                            <input
-                              id="reg-cpf"
-                              type="text"
-                              placeholder="000.000.000-00"
-                              value={cpf}
-                              onChange={(e) => setCpf(formatCPF(e.target.value))}
-                            />
-                          </div>
-                        </Field>
-
-                        <Field>
-                          <label htmlFor="reg-phone">
-                            WhatsApp / Telefone <span className="opt">(opcional)</span>
-                          </label>
-                          <div className="input-wrap">
-                            <input
-                              id="reg-phone"
-                              type="tel"
-                              placeholder="(00) 00000-0000"
-                              value={phone}
-                              onChange={(e) => setPhone(formatPhone(e.target.value))}
-                            />
-                          </div>
-                        </Field>
-                      </FormGridTwo>
-                    </form>
-                  ) : (
-                    // Formulário de Login Rápido
-                    <form
-                      id="checkout-form"
-                      onSubmit={handleProceedCheckout}
-                      style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
-                    >
-                      <Field>
-                        <label htmlFor="login-email">
-                          E-mail da sua conta <span className="req">*</span>
-                        </label>
-                        <div className="input-wrap">
-                          <input
-                            id="login-email"
-                            type="email"
-                            placeholder="Seu e-mail cadastrado"
-                            value={loginEmail}
-                            onChange={(e) => setLoginEmail(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </Field>
-
-                      <Field>
-                        <label htmlFor="login-password">
-                          Sua Senha <span className="req">*</span>
-                        </label>
-                        <div className="input-wrap">
-                          <input
-                            id="login-password"
-                            type={showLoginPassword ? 'text' : 'password'}
-                            placeholder="Sua senha atual"
-                            value={loginPassword}
-                            onChange={(e) => setLoginPassword(e.target.value)}
-                            required
-                          />
-                          <button
-                            type="button"
-                            className="toggle-pw"
-                            onClick={() => setShowLoginPassword(!showLoginPassword)}
-                            aria-label={showLoginPassword ? 'Ocultar senha' : 'Ver senha'}
-                          >
-                            {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                          </button>
-                        </div>
-                        <div style={{ textAlign: 'right', marginTop: '0.2rem' }}>
-                          <Link
-                            to="/academy/redefinir-senha"
-                            target="_blank"
-                            style={{
-                              fontSize: '0.78rem',
-                              color: '#A3A3A3',
-                              textDecoration: 'underline',
-                            }}
-                          >
-                            Esqueceu sua senha?
-                          </Link>
-                        </div>
-                      </Field>
-                    </form>
+                      </div>
+                      <div className="accepted-methods">
+                        <span className="method-item">
+                          <QrCode size={14} /> <strong>Pix</strong> (QR Code na hora)
+                        </span>
+                        <span className="method-item">
+                          <CreditCard size={14} /> <strong>Cartão</strong> (em até 12x)
+                        </span>
+                      </div>
+                    </PaymentTrustStrip>
                   )}
                 </>
-              )}
-
-              {checkoutError && !isEmailConflict && (
-                <AlertBox $type="error">{checkoutError}</AlertBox>
-              )}
-
-              {isFree && (
-                <AlertBox $type="success">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Sparkles size={18} />
-                    <strong>Matrícula 100% Gratuita!</strong>
-                  </div>
-                  <span>
-                    Nenhum valor será cobrado. Conclua sua matrícula para ativar seu acesso
-                    imediatamente e começar a assistir às aulas!
-                  </span>
-                </AlertBox>
-              )}
-
-              <Button
-                type="button"
-                size="lg"
-                block
-                disabled={submitting || isEnrolled}
-                onClick={() => handleProceedCheckout()}
-              >
-                {submitting ? (
-                  'Processando…'
-                ) : isEnrolled ? (
-                  'Já Matriculado'
-                ) : isFree ? (
-                  <>
-                    <Sparkles size={18} /> Concluir Matrícula Gratuita
-                  </>
-                ) : (
-                  <>
-                    <Lock size={18} /> Ir para o Pagamento Seguro
-                  </>
-                )}
-              </Button>
-
-              {!isFree && (
-                <PaymentTrustStrip>
-                  <div className="trust-header">
-                    <ShieldCheck size={16} />
-                    <span>
-                      Pagamento 100% seguro processado pelo <strong>Mercado Pago</strong>. Você
-                      escolherá como pagar na próxima tela:
-                    </span>
-                  </div>
-                  <div className="accepted-methods">
-                    <span className="method-item">
-                      <QrCode size={14} /> <strong>Pix</strong> (aprovação imediata)
-                    </span>
-                    <span className="method-item">
-                      <CreditCard size={14} /> <strong>Cartão</strong> (em até 12x)
-                    </span>
-                    <span className="method-item">
-                      <FileText size={14} /> <strong>Boleto</strong> (até 3 dias úteis)
-                    </span>
-                  </div>
-                </PaymentTrustStrip>
               )}
             </CheckoutCard>
           </div>
@@ -1431,7 +1623,7 @@ export function AcademyCheckoutPage() {
               </div>
 
               {/* Cupom de Desconto */}
-              {course.priceCents > 0 && (
+              {course.priceCents > 0 && !activeOrder && (
                 <div className="coupon-box">
                   <label
                     htmlFor="checkout-coupon-input"
@@ -1496,28 +1688,30 @@ export function AcademyCheckoutPage() {
                 </div>
               </div>
 
-              {/* Botão de Ação CTA */}
-              <Button
-                type="button"
-                size="lg"
-                block
-                disabled={submitting || isEnrolled}
-                onClick={() => handleProceedCheckout()}
-              >
-                {submitting ? (
-                  'Processando…'
-                ) : isEnrolled ? (
-                  'Já Matriculado'
-                ) : isFree ? (
-                  <>
-                    <Sparkles size={18} /> Concluir Matrícula Gratuita
-                  </>
-                ) : (
-                  <>
-                    <Lock size={18} /> Ir para o Pagamento Seguro
-                  </>
-                )}
-              </Button>
+              {/* Botão de Ação CTA (apenas na Etapa 1; na Etapa 2 o pagamento acontece à esquerda) */}
+              {!activeOrder && (
+                <Button
+                  type="button"
+                  size="lg"
+                  block
+                  disabled={submitting || isEnrolled}
+                  onClick={() => handleProceedCheckout()}
+                >
+                  {submitting ? (
+                    'Processando…'
+                  ) : isEnrolled ? (
+                    'Já Matriculado'
+                  ) : isFree ? (
+                    <>
+                      <Sparkles size={18} /> Concluir Matrícula Gratuita
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={18} /> Continuar para Pagamento
+                    </>
+                  )}
+                </Button>
+              )}
 
               <div
                 style={{

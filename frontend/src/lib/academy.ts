@@ -255,6 +255,13 @@ export interface CourseOrderItem {
   student?: { id: string; name: string; email: string; cpf: string | null };
   course?: { id: string; title: string; slug: string; coverImage?: string | null };
   coupon?: { id?: string; code: string } | null;
+  pix?: {
+    qrCode: string;
+    qrCodeBase64?: string | null;
+    ticketUrl?: string | null;
+    expiresAt?: string | null;
+  };
+  rejectionMessage?: string;
 }
 
 export interface StudentEnrolledCourse {
@@ -518,15 +525,44 @@ export interface CouponValidationResult {
   finalPriceCents: number;
 }
 
+export interface CheckoutConfigResponse {
+  publicKey: string;
+  configured: boolean;
+  simulationAllowed: boolean;
+}
+
 export interface CheckoutResponse {
   orderId: string;
   freeEnrollment: boolean;
+  mode?: 'transparent' | 'pro';
   courseSlug: string;
+  originalPriceCents?: number;
+  discountCents?: number;
+  finalPriceCents?: number;
   preferenceId?: string;
-  checkoutUrl: string;
+  checkoutUrl?: string;
+  publicKey?: string;
+  configured?: boolean;
   simulated?: boolean;
   accessToken?: string;
   student?: StudentProfile;
+}
+
+export interface PayOrderResponse {
+  orderId: string;
+  status: 'APPROVED' | 'PENDING' | 'REJECTED' | 'REDIRECT';
+  mpStatus?: string;
+  statusDetail?: string | null;
+  paymentId?: string;
+  paymentMethod?: string | null;
+  courseSlug: string;
+  message?: string;
+  qrCode?: string | null;
+  qrCodeBase64?: string | null;
+  ticketUrl?: string | null;
+  expiresAt?: string | null;
+  checkoutUrl?: string;
+  simulated?: boolean;
 }
 
 export interface RegisterAndCheckoutInput {

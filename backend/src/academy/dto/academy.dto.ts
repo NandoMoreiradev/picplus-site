@@ -9,6 +9,7 @@ import {
   IsBoolean,
   IsEmail,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -525,6 +526,10 @@ export class CreateCheckoutDto {
   @IsString()
   @MaxLength(30)
   phone?: string;
+
+  @IsOptional()
+  @IsIn(['transparent', 'pro'])
+  mode?: 'transparent' | 'pro';
 }
 
 export class RegisterAndCheckoutDto {
@@ -558,6 +563,10 @@ export class RegisterAndCheckoutDto {
   @IsString()
   @MaxLength(30)
   phone?: string;
+
+  @IsOptional()
+  @IsIn(['transparent', 'pro'])
+  mode?: 'transparent' | 'pro';
 }
 
 export class LoginAndCheckoutDto {
@@ -575,6 +584,56 @@ export class LoginAndCheckoutDto {
   @IsString()
   @IsNotEmpty({ message: 'Informe sua senha.' })
   password!: string;
+
+  @IsOptional()
+  @IsIn(['transparent', 'pro'])
+  mode?: 'transparent' | 'pro';
+}
+
+export class PayOrderDto {
+  @IsIn(['pix', 'credit_card', 'fallback_pro'])
+  paymentMethod!: 'pix' | 'credit_card' | 'fallback_pro';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cpf?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  token?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  paymentMethodId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  issuerId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(12)
+  installments?: number;
+
+  @IsOptional()
+  @IsEmail({}, { message: 'E-mail do pagador inválido.' })
+  payerEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  identificationType?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  identificationNumber?: string;
 }
 
 export class UpdateLessonProgressDto {

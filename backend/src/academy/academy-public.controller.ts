@@ -28,6 +28,7 @@ import {
   ForgotStudentPasswordDto,
   LoginAndCheckoutDto,
   LoginStudentDto,
+  PayOrderDto,
   RegisterAndCheckoutDto,
   RegisterStudentDto,
   ResetStudentPasswordDto,
@@ -135,6 +136,12 @@ export class AcademyPublicController {
 
   // ─── Cupons, Checkout Mercado Pago e Webhook ───────────────
   @Public()
+  @Get('checkout/config')
+  getCheckoutConfig() {
+    return this.studentService.getCheckoutConfig();
+  }
+
+  @Public()
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @HttpCode(200)
   @Post('coupons/validate')
@@ -170,6 +177,7 @@ export class AcademyPublicController {
         couponCode: dto.couponCode,
         cpf: dto.cpf,
         phone: dto.phone,
+        mode: dto.mode,
       },
     );
 
@@ -195,6 +203,7 @@ export class AcademyPublicController {
       {
         courseId: dto.courseId,
         couponCode: dto.couponCode,
+        mode: dto.mode,
       },
     );
 
@@ -203,6 +212,17 @@ export class AcademyPublicController {
       student: authResult.student,
       ...checkout,
     };
+  }
+
+  @StudentAuthenticated()
+  @Throttle({ default: { limit: 15, ttl: 60_000 } })
+  @Post('orders/:orderId/pay')
+  payOrder(
+    @CurrentStudent() student: AuthStudent,
+    @Param('orderId') orderId: string,
+    @Body() dto: PayOrderDto,
+  ) {
+    return this.studentService.payOrder(student.sub, orderId, dto);
   }
 
   @StudentAuthenticated()

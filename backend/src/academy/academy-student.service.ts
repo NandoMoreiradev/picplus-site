@@ -19,10 +19,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateCheckoutDto,
   CreateLessonCommentDto,
+  PayOrderDto,
   UpdateLessonProgressDto,
   ValidateCouponDto,
 } from './dto/academy.dto';
-import { MercadoPagoService } from './mercado-pago.service';
+import { MercadoPagoService, type MpPaymentInfo } from './mercado-pago.service';
 
 @Injectable()
 export class AcademyStudentService {
@@ -143,8 +144,16 @@ export class AcademyStudentService {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // Cupons e Checkout (Mercado Pago Checkout Pro)
+  // Cupons e Checkout (Mercado Pago Transparente + Pro fallback)
   // ─────────────────────────────────────────────────────────────
+
+  getCheckoutConfig() {
+    return {
+      publicKey: this.mp.publicKey,
+      configured: this.mp.isConfigured,
+      simulationAllowed: this.mp.simulationAllowed,
+    };
+  }
 
   async validateCoupon(dto: ValidateCouponDto) {
     const course = await this.prisma.course.findFirst({
@@ -277,7 +286,26 @@ export class AcademyStudentService {
         orderId: order.id,
         freeEnrollment: true,
         courseSlug: course.slug,
+        finalPriceCents: 0,
+        originalPriceCents: course.priceCents,
+        discountCents,
         checkoutUrl: `${config.frontendUrl}/academy/checkout/retorno?orderId=${order.id}&status=approved`,
+      };
+    }
+
+    // Checkout Transparente (padrão): retorna o pedido criado e os dados para pagamento in-page.
+    if (dto.mode !== 'pro') {
+      return {
+        orderId: order.id,
+        freeEnrollment: false,
+        mode: 'transparent' as const,
+        courseSlug: course.slug,
+        originalPriceCents: course.priceCents,
+        discountCents,
+        finalPriceCents,
+        publicKey: this.mp.publicKey,
+        configured: this.mp.isConfigured,
+        simulated: this.mp.simulationAllowed,
       };
     }
 
@@ -322,8 +350,259 @@ export class AcademyStudentService {
     return {
       orderId: order.id,
       freeEnrollment: false,
+      mode: 'pro' as const,
       courseSlug: course.slug,
+      originalPriceCents: course.priceCents,
+      discountCents,
+      finalPriceCents,
       preferenceId: preference.preferenceId,
+      checkoutUrl: preference.checkoutUrl,
+      simulated: preference.simulated,
+    };
+  }
+
+  /**
+   * Processa o pagamento transparente (Pix ou Cartão via Brick) ou fallback Checkout Pro
+   * para um pedido existente na página de checkout.
+   */
+  async payOrder(studentId: string, orderId: string, dto: PayOrderDto) {
+    const order = await this.prisma.courseOrder.findUnique({
+      where: { id: orderId },
+      include: {
+        student: true,
+        course: true,
+      },
+    });
+
+    if (!order || order.studentId !== studentId) {
+      throw new NotFoundException('Pedido não encontrado.');
+    }
+
+    if (!order.student.active) {
+      throw new ForbiddenException('Conta de aluno inválida.');
+    }
+
+    if (order.status === CourseOrderStatus.APPROVED) {
+      return {
+        orderId: order.id,
+        status: 'APPROVED' as const,
+        courseSlug: order.course.slug,
+        paymentMethod: order.paymentMethod,
+        message: 'Este pedido já foi aprovado!',
+      };
+    }
+
+    if (order.status === CourseOrderStatus.REFUNDED) {
+      throw new BadRequestException('Este pedido foi reembolsado.');
+    }
+
+    if (order.finalPriceCents === 0) {
+      await this.approveOrderAndEnroll(order.id, {
+        mpPaymentId: `free_${order.id}`,
+        mpStatus: 'approved',
+        paymentMethod: order.couponId ? 'coupon_100' : 'free',
+        source: order.couponId
+          ? EnrollmentSource.PURCHASE
+          : EnrollmentSource.FREE_COURSE,
+      });
+      return {
+        orderId: order.id,
+        status: 'APPROVED' as const,
+        courseSlug: order.course.slug,
+        paymentMethod: 'free',
+      };
+    }
+
+    // Atualiza CPF do aluno caso tenha sido informado nesta etapa
+    const cleanCpfInput = dto.cpf?.replace(/\D/g, '') ?? '';
+    let resolvedCpf = order.student.cpf?.replace(/\D/g, '') ?? '';
+    if (cleanCpfInput.length === 11 && !resolvedCpf) {
+      await this.prisma.student.update({
+        where: { id: order.student.id },
+        data: { cpf: dto.cpf?.trim() },
+      });
+      resolvedCpf = cleanCpfInput;
+    } else if (cleanCpfInput.length === 11) {
+      resolvedCpf = cleanCpfInput;
+    }
+
+    if (dto.paymentMethod === 'pix') {
+      const payment = await this.mp.createPixPayment({
+        orderId: order.id,
+        courseTitle: order.course.title,
+        priceCents: order.finalPriceCents,
+        student: {
+          name: order.student.name,
+          email: order.student.email,
+          cpf: resolvedCpf,
+        },
+      });
+
+      const hadPendingPayment = Boolean(order.mpPaymentId);
+
+      await this.prisma.courseOrder.update({
+        where: { id: order.id },
+        data: {
+          status: CourseOrderStatus.PENDING,
+          mpPaymentId: payment.id,
+          mpStatus: payment.status,
+          paymentMethod: 'pix',
+          mpCheckoutUrl: payment.ticketUrl ?? order.mpCheckoutUrl,
+        },
+      });
+
+      if (!hadPendingPayment) {
+        void this.emailTemplates.sendByTrigger(
+          EmailTriggerType.ACADEMY_PAYMENT_PENDING,
+          order.student.email,
+          {
+            ...this.orderMailContext(
+              order.student,
+              order.course,
+              order.id,
+              order.finalPriceCents,
+            ),
+            action_url: `${config.frontendUrl}/academy/checkout/${order.course.slug}?orderId=${order.id}`,
+          },
+        );
+      }
+
+      return {
+        orderId: order.id,
+        status: 'PENDING' as const,
+        mpStatus: payment.status,
+        paymentId: payment.id,
+        paymentMethod: 'pix' as const,
+        courseSlug: order.course.slug,
+        qrCode: payment.qrCode,
+        qrCodeBase64: payment.qrCodeBase64,
+        ticketUrl: payment.ticketUrl,
+        expiresAt: payment.expiresAt,
+        simulated: Boolean(payment.simulated),
+      };
+    }
+
+    if (dto.paymentMethod === 'credit_card') {
+      if (this.mp.isConfigured && (!dto.token || !dto.paymentMethodId)) {
+        throw new BadRequestException(
+          'Dados do cartão incompletos. Preencha o formulário novamente.',
+        );
+      }
+
+      const cleanIdentification =
+        dto.identificationNumber?.replace(/\D/g, '') || resolvedCpf;
+
+      const payment = await this.mp.createCardPayment({
+        orderId: order.id,
+        courseTitle: order.course.title,
+        priceCents: order.finalPriceCents,
+        token: dto.token ?? 'sim_token',
+        paymentMethodId: dto.paymentMethodId ?? 'visa',
+        installments: dto.installments ?? 1,
+        issuerId: dto.issuerId,
+        payer: {
+          name: order.student.name,
+          email: dto.payerEmail?.trim() || order.student.email,
+          identificationType: dto.identificationType || 'CPF',
+          identificationNumber: cleanIdentification,
+        },
+      });
+
+      const methodLabel =
+        payment.paymentMethodId || payment.paymentTypeId || 'credit_card';
+
+      if (payment.status === 'approved') {
+        await this.approveOrderAndEnroll(order.id, {
+          mpPaymentId: payment.id,
+          mpStatus: payment.status,
+          paymentMethod: methodLabel,
+        });
+        return {
+          orderId: order.id,
+          status: 'APPROVED' as const,
+          mpStatus: payment.status,
+          paymentId: payment.id,
+          paymentMethod: methodLabel,
+          courseSlug: order.course.slug,
+          simulated: Boolean(payment.simulated),
+        };
+      }
+
+      if (payment.status === 'in_process' || payment.status === 'pending') {
+        await this.prisma.courseOrder.update({
+          where: { id: order.id },
+          data: {
+            status: CourseOrderStatus.PENDING,
+            mpPaymentId: payment.id,
+            mpStatus: payment.status,
+            paymentMethod: methodLabel,
+          },
+        });
+        return {
+          orderId: order.id,
+          status: 'PENDING' as const,
+          mpStatus: payment.status,
+          statusDetail: payment.statusDetail,
+          paymentId: payment.id,
+          paymentMethod: methodLabel,
+          courseSlug: order.course.slug,
+          message:
+            'Seu pagamento está em análise de segurança. Assim que aprovado, o acesso será liberado automaticamente.',
+          simulated: Boolean(payment.simulated),
+        };
+      }
+
+      await this.prisma.courseOrder.update({
+        where: { id: order.id },
+        data: {
+          status: CourseOrderStatus.REJECTED,
+          mpPaymentId: payment.id,
+          mpStatus: payment.status,
+          paymentMethod: methodLabel,
+        },
+      });
+
+      return {
+        orderId: order.id,
+        status: 'REJECTED' as const,
+        mpStatus: payment.status,
+        statusDetail: payment.statusDetail,
+        paymentId: payment.id,
+        paymentMethod: methodLabel,
+        courseSlug: order.course.slug,
+        message: this.mp.translateRejectionDetail(payment.statusDetail),
+        simulated: Boolean(payment.simulated),
+      };
+    }
+
+    // Fallback: Checkout Pro (ex.: se MP_PUBLIC_KEY não estiver configurada)
+    const preference = await this.mp.createPreference({
+      orderId: order.id,
+      courseId: order.course.id,
+      courseTitle: order.course.title,
+      courseSubtitle: order.course.subtitle,
+      coverImage: order.course.coverImage,
+      priceCents: order.finalPriceCents,
+      student: {
+        name: order.student.name,
+        email: order.student.email,
+        cpf: resolvedCpf || order.student.cpf,
+      },
+    });
+
+    await this.prisma.courseOrder.update({
+      where: { id: order.id },
+      data: {
+        status: CourseOrderStatus.PENDING,
+        mpPreferenceId: preference.preferenceId,
+        mpCheckoutUrl: preference.checkoutUrl,
+      },
+    });
+
+    return {
+      orderId: order.id,
+      status: 'REDIRECT' as const,
+      courseSlug: order.course.slug,
       checkoutUrl: preference.checkoutUrl,
       simulated: preference.simulated,
     };
@@ -599,29 +878,47 @@ export class AcademyStudentService {
       throw new NotFoundException('Pedido não encontrado.');
     }
 
+    let activePayment: MpPaymentInfo | null = null;
+
     if (order.status !== CourseOrderStatus.APPROVED) {
       // Em ambiente local sem MP_ACCESS_TOKEN, aceita o retorno simulado
       if (this.mp.simulationAllowed && query.simulated === '1') {
         await this.approveOrderAndEnroll(order.id, {
-          mpPaymentId: query.paymentId || `sim_${order.id}`,
+          mpPaymentId:
+            query.paymentId || order.mpPaymentId || `sim_${order.id}`,
           mpStatus: 'approved',
-          paymentMethod: 'simulated',
+          paymentMethod: order.paymentMethod || 'simulated',
         });
       } else if (this.mp.isConfigured) {
-        const payment = query.paymentId
-          ? await this.mp.getPayment(query.paymentId)
+        const lookupId = query.paymentId || order.mpPaymentId || undefined;
+        const payment = lookupId
+          ? await this.mp.getPayment(lookupId)
           : await this.mp.findLatestPaymentByOrder(order.id);
+        activePayment = payment;
 
-        if (
-          payment &&
-          payment.externalReference === order.id &&
-          payment.status === 'approved'
-        ) {
-          await this.approveOrderAndEnroll(order.id, {
-            mpPaymentId: payment.id,
-            mpStatus: payment.status,
-            paymentMethod: payment.paymentTypeId,
-          });
+        if (payment && payment.externalReference === order.id) {
+          if (payment.status === 'approved') {
+            await this.approveOrderAndEnroll(order.id, {
+              mpPaymentId: payment.id,
+              mpStatus: payment.status,
+              paymentMethod: payment.paymentMethodId || payment.paymentTypeId,
+            });
+          } else if (
+            (payment.status === 'rejected' || payment.status === 'cancelled') &&
+            order.status === CourseOrderStatus.PENDING
+          ) {
+            await this.prisma.courseOrder.updateMany({
+              where: { id: order.id, status: CourseOrderStatus.PENDING },
+              data: {
+                status:
+                  payment.status === 'rejected'
+                    ? CourseOrderStatus.REJECTED
+                    : CourseOrderStatus.CANCELED,
+                mpPaymentId: payment.id,
+                mpStatus: payment.status,
+              },
+            });
+          }
         }
       }
     }
@@ -633,10 +930,36 @@ export class AcademyStudentService {
           select: { id: true, title: true, slug: true, coverImage: true },
         },
         enrollment: { select: { id: true, status: true } },
+        coupon: { select: { id: true, code: true } },
       },
     });
 
-    return refreshed;
+    const pixInfo =
+      refreshed?.status === CourseOrderStatus.PENDING &&
+      activePayment?.paymentMethodId === 'pix' &&
+      activePayment.qrCode
+        ? {
+            qrCode: activePayment.qrCode,
+            qrCodeBase64: activePayment.qrCodeBase64 ?? null,
+            ticketUrl: activePayment.ticketUrl ?? null,
+            expiresAt: activePayment.expiresAt ?? null,
+          }
+        : null;
+
+    return refreshed
+      ? {
+          ...refreshed,
+          ...(pixInfo ? { pix: pixInfo } : {}),
+          ...(activePayment?.statusDetail &&
+          refreshed.status === CourseOrderStatus.REJECTED
+            ? {
+                rejectionMessage: this.mp.translateRejectionDetail(
+                  activePayment.statusDetail,
+                ),
+              }
+            : {}),
+        }
+      : null;
   }
 
   // ─────────────────────────────────────────────────────────────
