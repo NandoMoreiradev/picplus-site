@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import {
   ChevronDown,
@@ -12,9 +12,10 @@ import {
 import { ButtonLink } from '../ui/Button';
 import { Logo } from './Logo';
 import { useStudentAuth } from '../../context/student-auth-context';
+import { getSiteArea } from '../../lib/analytics';
 
-const HeaderContainer = styled.header<{ $scrolled: boolean }>`
-  position: sticky;
+const HeaderContainer = styled.header<{ $scrolled: boolean; $sticky: boolean }>`
+  position: ${({ $sticky }) => ($sticky ? 'sticky' : 'relative')};
   top: 0;
   z-index: 100;
   background: ${({ $scrolled }) =>
@@ -162,8 +163,10 @@ export function AcademyHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
   const navigate = useNavigate();
   const { student, logout } = useStudentAuth();
+  const isSalesPage = getSiteArea(pathname) === 'curso_lp';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -191,7 +194,7 @@ export function AcademyHeader() {
   }, []);
 
   return (
-    <HeaderContainer $scrolled={scrolled}>
+    <HeaderContainer $scrolled={scrolled} $sticky={!isSalesPage}>
       <Bar>
         <BrandWrap>
           <Logo to="/academy" size="1.8rem" label="PicPlus Academy" />
