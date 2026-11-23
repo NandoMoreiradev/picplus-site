@@ -1561,7 +1561,8 @@ function formatTime(seconds: number): string {
 
 export function ComoPlanejarSucessoSalesPage() {
   const { student } = useStudentAuth();
-  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [enrolled, setEnrolled] = useState(false);
+  const isEnrolled = Boolean(student) && enrolled;
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -1616,20 +1617,17 @@ export function ComoPlanejarSucessoSalesPage() {
   }, []);
 
   useEffect(() => {
-    if (!student) {
-      setIsEnrolled(false);
-      return;
-    }
+    if (!student) return;
     let active = true;
     studentApi
       .get<StudentEnrolledCourse[]>('/academy/my-courses')
       .then((list) => {
         if (active) {
-          setIsEnrolled(list.some((item) => item.course.slug === COURSE_SLUG));
+          setEnrolled(list.some((item) => item.course.slug === COURSE_SLUG));
         }
       })
       .catch(() => {
-        if (active) setIsEnrolled(false);
+        if (active) setEnrolled(false);
       });
     return () => {
       active = false;
