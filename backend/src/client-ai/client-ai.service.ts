@@ -25,7 +25,7 @@ import {
   UpsertBrandProfileDto,
 } from './dto/client-ai.dto';
 
-const PRO_MODEL = 'gemini-2.5-pro';
+const PRO_MODEL = 'gemini-4-argon';
 
 const FORMAT_LABELS: Record<CopyFormat, string> = {
   INSTAGRAM_POST: 'Post / Legenda para Instagram',

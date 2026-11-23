@@ -321,7 +321,7 @@ export function ClientResearchTab({ clientId, projectId, canManage }: Props) {
     setReanalyzingId(ref.id);
     try {
       await reanalyzeReference(ref.id, 'pro');
-      toast.success('Referência reanalisada com Gemini Pro!');
+      toast.success('Referência reanalisada com Gemini 4 Argon!');
       reload();
     } catch (err) {
       toast.error(errorMessage(err, 'Erro ao reanalisar.'));

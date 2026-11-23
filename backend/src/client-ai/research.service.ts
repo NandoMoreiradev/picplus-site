@@ -389,7 +389,7 @@ export class ResearchService {
           userId,
           kind: AiGenerationKind.COMPETITOR_ANALYSIS,
           model:
-            dto.modelTier === 'pro' ? 'gemini-2.5-pro' : 'gemini-multimodal',
+            dto.modelTier === 'pro' ? 'gemini-4-argon' : 'gemini-multimodal',
           title: `Análise de referência: ${reference.title ?? reference.platform}`,
           prompt: dto.caption?.slice(0, 1000) || dto.sourceUrl || platform,
           output: aiAnalysis,

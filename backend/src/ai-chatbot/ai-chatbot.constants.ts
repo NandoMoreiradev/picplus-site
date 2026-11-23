@@ -10,37 +10,43 @@ export interface AiModelOption {
 export const GEMINI_AVAILABLE_MODELS: AiModelOption[] = [
   {
     id: 'gemini-3.8-flash',
-    name: 'Gemini 3.8 Flash (Última Geração - Recomendado)',
+    name: 'Gemini 3.8 Flash (Recomendado — Alta Velocidade)',
     description:
-      'Mais veloz, respostas instantâneas e melhor interpretação em conversas no WhatsApp.',
+      'Veloz, respostas instantâneas e excelente interpretação em conversas, transcrições e fluxos ágeis.',
     isLatest: true,
   },
   {
-    id: 'gemini-3.5-flash',
-    name: 'Gemini 3.5 Flash',
-    description: 'Equilíbrio excelente entre raciocínio ágil e alta precisão.',
+    id: 'gemini-4-hydrogen',
+    name: 'Gemini 4 Hydrogen (Geração 4 — Execução Ágil)',
+    description:
+      'Modelo da geração 4 otimizado para execução rápida no dia a dia e geração de conteúdos.',
+    isLatest: true,
+  },
+  {
+    id: 'gemini-4-argon',
+    name: 'Gemini 4 Argon (Geração 4 — Raciocínio Estratégico)',
+    description:
+      'Raciocínio de ponta eficiente para Landing Pages, planejamentos trimestrais e pesquisas.',
+    isLatest: true,
+  },
+  {
+    id: 'gemini-4-carbon',
+    name: 'Gemini 4 Carbon (Geração 4 — Máxima Capacidade)',
+    description:
+      'Modelo mais avançado para análises profundas, arquitetura complexa e raciocínio extenso.',
+    isLatest: true,
+  },
+  {
+    id: 'gemini-4-neon',
+    name: 'Gemini 4 Neon (Geração 4 — Eficiência Ponta a Ponta)',
+    description:
+      'Equilíbrio entre inteligência analítica e agilidade em fluxos completos.',
   },
   {
     id: 'gemini-3.1-flash-lite',
     name: 'Gemini 3.1 Flash-Lite',
     description:
       'Ultra-rápido com latência mínima para alto volume de mensagens.',
-  },
-  {
-    id: 'gemini-2.5-flash',
-    name: 'Gemini 2.5 Flash',
-    description: 'Versão consolidada de alta velocidade da geração 2.5.',
-  },
-  {
-    id: 'gemini-2.5-pro',
-    name: 'Gemini 2.5 Pro',
-    description:
-      'Maior capacidade analítica e raciocínio para propostas complexas.',
-  },
-  {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
-    description: 'Geração 2.0 estável.',
   },
 ];
 

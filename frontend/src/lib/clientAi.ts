@@ -132,7 +132,7 @@ export const PROJECT_ASSISTANT_OPTIONS: {
 
 export const MODEL_TIER_OPTIONS: { value: AiModelTier; label: string }[] = [
   { value: 'fast', label: 'Padrão do Painel (Rápido / Flash)' },
-  { value: 'pro', label: 'Estratégico (Gemini Pro)' },
+  { value: 'pro', label: 'Estratégico (Gemini 4 Argon)' },
 ];
 
 export const fetchClientIntelligence = (clientId: string) =>

@@ -192,7 +192,7 @@ describe('Estúdio IA de Clientes e Tarefas (integração, PGlite)', () => {
       userId,
     );
 
-    expect(res.model).toBe('gemini-2.5-pro');
+    expect(res.model).toBe('gemini-4-argon');
     expect(res.draft.valueProposition).toContain('3D');
     expect(generateContentMock).toHaveBeenCalledTimes(1);
   });
