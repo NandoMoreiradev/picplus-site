@@ -130,6 +130,15 @@ export class TasksService {
     });
   }
 
+  /** Clientes ativos que podem ser vinculados a projetos. */
+  assignableClients() {
+    return this.prisma.client.findMany({
+      where: { deletedAt: null },
+      select: { id: true, tradeName: true, corporateName: true },
+      orderBy: { tradeName: 'asc' },
+    });
+  }
+
   activities(taskId: string) {
     return this.prisma.taskActivityLog.findMany({
       where: { taskId },

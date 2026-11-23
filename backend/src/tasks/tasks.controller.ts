@@ -94,6 +94,11 @@ export class TasksController {
     return this.tasks.assignableUsers();
   }
 
+  @Get('clients')
+  clients() {
+    return this.tasks.assignableClients();
+  }
+
   /* ── Projetos ──────────────────────────────────────── */
 
   @Get('projects')

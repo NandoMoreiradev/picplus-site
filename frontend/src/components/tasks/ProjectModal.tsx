@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useAuth } from '../../context/auth-context';
 import { useFetch } from '../../hooks/useFetch';
 import { api } from '../../lib/api';
 import { PROJECT_STATUSES, fromDateInput, toDateInput } from '../../lib/tasks';
 import type { ProjectStatus, TaskProject } from '../../lib/tasks';
-import type { ClientSummary } from '../../lib/types';
 import { errorMessage } from '../../lib/validation';
 import { FormStack } from '../admin/AdminUI';
 import { Button } from '../ui/Button';
@@ -26,11 +24,9 @@ export function ProjectModal({
   onSaved: (project: TaskProject) => void;
 }) {
   const toast = useToast();
-  const { can } = useAuth();
-  const canViewClients = can('clients.view');
-  const { data: clientsRes } = useFetch<{ items: ClientSummary[] }>(
-    canViewClients ? '/admin/clients?limit=200' : null,
-  );
+  const { data: clients } = useFetch<
+    Array<{ id: string; tradeName: string; corporateName: string }>
+  >('/admin/tasks/clients');
   const [name, setName] = useState(project?.name ?? '');
   const [description, setDescription] = useState(project?.description ?? '');
   const [color, setColor] = useState(project?.color ?? '#B6E829');
@@ -54,7 +50,7 @@ export function ProjectModal({
       description: description.trim() || null,
       color,
       status,
-      ...(canViewClients ? { clientId: clientId || null } : {}),
+      clientId: clientId || null,
       startDate: fromDateInput(startDate),
       endDate: fromDateInput(endDate),
     };
@@ -110,21 +106,19 @@ export function ProjectModal({
           options={PROJECT_STATUSES}
           onChange={(event) => setStatus(event.target.value as ProjectStatus)}
         />
-        {canViewClients && (
-          <SelectField
-            label="Cliente vinculado"
-            value={clientId}
-            options={[
-              { value: '', label: 'Nenhum (projeto interno)' },
-              ...(clientsRes?.items ?? []).map((c) => ({
-                value: c.id,
-                label: c.tradeName,
-              })),
-            ]}
-            onChange={(event) => setClientId(event.target.value)}
-            hint="Vincule a um cliente para liberar o Cérebro do Cliente e o Estúdio IA nas tarefas."
-          />
-        )}
+        <SelectField
+          label="Cliente vinculado"
+          value={clientId}
+          options={[
+            { value: '', label: 'Nenhum (projeto interno)' },
+            ...(clients ?? []).map((c) => ({
+              value: c.id,
+              label: c.tradeName || c.corporateName,
+            })),
+          ]}
+          onChange={(event) => setClientId(event.target.value)}
+          hint="Vincule a um cliente para liberar o Cérebro do Cliente e o Estúdio IA nas tarefas."
+        />
         <FormGrid $cols={2}>
           <TextField label="Início" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
           <TextField

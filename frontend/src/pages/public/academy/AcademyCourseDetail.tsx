@@ -38,6 +38,7 @@ import {
   type CourseLesson,
   type StudentEnrolledCourse,
 } from '../../../lib/academy';
+import { ComoPlanejarSucessoSalesPage } from './ComoPlanejarSucessoSalesPage';
 import { GrokSalesPage } from './GrokSalesPage';
 
 const HeroGrid = styled.div`
@@ -306,6 +307,10 @@ export function AcademyCourseDetail() {
 
   if (slug === 'dominando-inteligencia-artificial-para-videos') {
     return <GrokSalesPage />;
+  }
+
+  if (slug === 'como-planejar-o-sucesso-audiobook') {
+    return <ComoPlanejarSucessoSalesPage />;
   }
 
   return <StandardCourseDetail slug={slug} />;

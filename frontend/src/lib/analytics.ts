@@ -26,7 +26,10 @@ declare global {
 
 export function getSiteArea(pathname: string): SiteArea {
   if (pathname.startsWith('/admin')) return 'admin';
-  if (pathname === '/academy/curso/dominando-inteligencia-artificial-para-videos') {
+  if (
+    pathname === '/academy/curso/dominando-inteligencia-artificial-para-videos' ||
+    pathname === '/academy/curso/como-planejar-o-sucesso-audiobook'
+  ) {
     return 'curso_lp';
   }
   if (pathname.startsWith('/academy')) return 'academy';
