@@ -30,6 +30,7 @@ export const DEFAULT_ROLES: {
       'tasks.create',
       'tasks.edit',
       'tasks.comment',
+      'ai_studio.view',
     ],
   },
   {
@@ -60,6 +61,8 @@ export const DEFAULT_ROLES: {
       'tasks.create',
       'tasks.edit',
       'tasks.comment',
+      'ai_studio.view',
+      'ai_studio.manage',
     ],
   },
   {

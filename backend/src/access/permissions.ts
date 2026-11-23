@@ -66,6 +66,20 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     ],
   },
   {
+    key: 'ai_studio',
+    label: 'Estúdio de IA & Estratégia',
+    permissions: [
+      {
+        key: 'ai_studio.view',
+        label: 'Ver perfil estratégico, concorrentes e histórico de IA',
+      },
+      {
+        key: 'ai_studio.manage',
+        label: 'Editar perfil estratégico e gerar conteúdos com IA',
+      },
+    ],
+  },
+  {
     key: 'tasks',
     label: 'Gestão de tarefas',
     permissions: [

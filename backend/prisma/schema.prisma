@@ -49,6 +49,9 @@ model User {
   // Financeiro
   createdFinancialEntries       FinancialEntry[]       @relation("FinancialEntryCreatedBy")
   approvedFinancialEntries      FinancialEntry[]       @relation("FinancialEntryApprovedBy")
+  // Estúdio de IA
+  aiGenerations                 AiGenerationLog[]      @relation("AiGenerationAuthor")
+  campaignPlansCreated          CampaignPlan[]         @relation("CampaignPlanAuthor")
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -300,9 +303,11 @@ model TaskProject {
   ownerId      String?
   client       Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
   clientId     String?
-  stages       TaskStage[]
-  tasks        Task[]
-  deletedAt    DateTime?
+  stages        TaskStage[]
+  tasks         Task[]
+  aiGenerations AiGenerationLog[]
+  campaignPlans CampaignPlan[]
+  deletedAt     DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -365,8 +370,10 @@ model Task {
   subtasks         Task[]            @relation("TaskSubtasks")
   comments         TaskComment[]
   attachments      TaskAttachment[]
-  activities       TaskActivityLog[]
-  deletedAt        DateTime?
+  activities        TaskActivityLog[]
+  aiGenerations     AiGenerationLog[]
+  campaignPlanItems CampaignPlanItem[]
+  deletedAt         DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -843,6 +850,10 @@ model Client {
   notes             ClientNote[]
   whatsappContacts  WhatsappContact[]
   financialEntries  FinancialEntry[]
+  brandProfile      ClientBrandProfile?
+  competitors       ClientCompetitor[]
+  aiGenerations     AiGenerationLog[]
+  campaignPlans     CampaignPlan[]
 
   deletedAt         DateTime?
   createdAt         DateTime        @default(now())
@@ -1236,5 +1247,146 @@ model FinancialEntry {
   @@index([influencerId])
   @@index([supplierId])
 }
+
+// ─────────────────────────────────────────────────────────────
+// Estúdio de Inteligência Artificial (Clientes, Marca & Conteúdo)
+// ─────────────────────────────────────────────────────────────
+
+enum AiGenerationKind {
+  BRAND_PROFILE
+  COPY
+  BRIEFING
+  CAMPAIGN_PLAN
+  LANDING_PAGE
+  COMPETITOR_ANALYSIS
+}
+
+model ClientBrandProfile {
+  id                String   @id @default(uuid())
+  clientId          String   @unique
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  positioning       String?  @db.Text
+  targetAudience    String?  @db.Text
+  painsAndDesires   String?  @db.Text
+  toneOfVoice       String?  @db.Text
+  valueProposition  String?  @db.Text
+  productsAndOffers String?  @db.Text
+  ctaGuidelines     String?  @db.Text
+  keywords          String[] @default([])
+  forbiddenWords    String[] @default([])
+  extraContext      String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ClientCompetitor {
+  id              String   @id @default(uuid())
+  clientId        String
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name            String
+  websiteUrl      String?
+  instagramHandle String?
+  tiktokHandle    String?
+  youtubeHandle   String?
+  notes           String?  @db.Text
+  strengths       String?  @db.Text
+  weaknesses      String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clientId])
+}
+
+model AiGenerationLog {
+  id        String           @id @default(uuid())
+  clientId  String?
+  client    Client?          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   TaskProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  taskId    String?
+  task      Task?            @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  userId    String?
+  user      User?            @relation("AiGenerationAuthor", fields: [userId], references: [id], onDelete: SetNull)
+  kind      AiGenerationKind
+  model     String
+  title     String?
+  prompt    String           @db.Text
+  output    String           @db.Text
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  @@index([clientId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([taskId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Planejador Estratégico de Conteúdo & Campanhas (Fase 2)
+// ─────────────────────────────────────────────────────────────
+
+enum CampaignPlanScope {
+  MONTHLY
+  QUARTERLY
+  SALES_CAMPAIGN
+  CUSTOM
+}
+
+enum CampaignPlanStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model CampaignPlan {
+  id              String             @id @default(uuid())
+  title           String
+  scope           CampaignPlanScope
+  status          CampaignPlanStatus @default(DRAFT)
+  objective       String?            @db.Text
+  strategySummary String?            @db.Text
+  pillars         String[]           @default([])
+  channels        String[]           @default([])
+  startDate       DateTime?
+  endDate         DateTime?
+  clientId        String?
+  client          Client?            @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  projectId       String
+  project         TaskProject        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdById     String?
+  createdBy       User?              @relation("CampaignPlanAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  items           CampaignPlanItem[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([projectId, createdAt])
+  @@index([clientId, createdAt])
+}
+
+model CampaignPlanItem {
+  id            String       @id @default(uuid())
+  planId        String
+  plan          CampaignPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  order         Int          @default(0)
+  scheduledDate DateTime?
+  channel       String
+  format        String?
+  funnelStage   String?
+  pillar        String?
+  title         String
+  hook          String?      @db.Text
+  briefing      String?      @db.Text
+  copyDraft     String?      @db.Text
+  cta           String?
+  priority      TaskPriority @default(MEDIUM)
+  taskId        String?
+  task          Task?        @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([planId, order])
+  @@index([taskId])
+}
+
+
 
 

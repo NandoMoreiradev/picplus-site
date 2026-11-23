@@ -26,6 +26,7 @@ import { TestimonialsModule } from './testimonials/testimonials.module';
 import { UsersModule } from './users/users.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { AiChatbotModule } from './ai-chatbot/ai-chatbot.module';
+import { ClientAiModule } from './client-ai/client-ai.module';
 import { FinanceModule } from './finance/finance.module';
 
 @Module({
@@ -55,6 +56,7 @@ import { FinanceModule } from './finance/finance.module';
     UsersModule,
     WhatsappModule,
     AiChatbotModule,
+    ClientAiModule,
     FinanceModule,
   ],
   controllers: [AppController],

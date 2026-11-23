@@ -1,11 +1,12 @@
 import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
-import { CalendarDays, Eye, Filter, KanbanSquare, List, PanelLeft, Plus, Settings, Trash2 } from 'lucide-react';
+import { CalendarDays, Eye, Filter, KanbanSquare, List, PanelLeft, Plus, Settings, Sparkles, Trash2 } from 'lucide-react';
 import { BulkActionBar } from '../../components/tasks/BulkActionBar';
 import { CreateTaskModal } from '../../components/tasks/CreateTaskModal';
 import type { TaskDefaults } from '../../components/tasks/CreateTaskModal';
 import { KanbanBoard } from '../../components/tasks/KanbanBoard';
 import { Popover } from '../../components/tasks/Popover';
+import { ProjectAiDrawer } from '../../components/tasks/ProjectAiDrawer';
 import { ProjectModal } from '../../components/tasks/ProjectModal';
 import { SettingsModal } from '../../components/tasks/SettingsModal';
 import { TaskDetail } from '../../components/tasks/TaskDetail';
@@ -264,6 +265,8 @@ export default function Tasks() {
   const canComment = can('tasks.comment');
   const canDelete = can('tasks.delete');
   const canManage = can('tasks.manage');
+  const canAiView = can('ai_studio.view');
+  const canAiManage = can('ai_studio.manage');
 
   // Preferências de tela (lembradas por pessoa, neste navegador).
   const storeKey = (name: string) => `picplus_tasks_${user?.id ?? 'anon'}_${name}`;
@@ -286,6 +289,7 @@ export default function Tasks() {
   const [projectModal, setProjectModal] = useState<TaskProject | 'new' | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [deletingProject, setDeletingProject] = useState<TaskProject | null>(null);
   const [busy, setBusy] = useState(false);
@@ -602,6 +606,11 @@ export default function Tasks() {
         )}
 
         <div className="tools">
+          {project && canAiView && (
+            <Button size="sm" variant="secondary" onClick={() => setAiDrawerOpen(true)}>
+              <Sparkles size={16} aria-hidden /> Estúdio IA
+            </Button>
+          )}
           {canDelete && (
             <Square type="button" title="Lixeira" aria-label="Lixeira" onClick={() => setTrashOpen(true)}>
               <Trash2 size={18} aria-hidden />
@@ -706,6 +715,28 @@ export default function Tasks() {
       {settingsOpen && <SettingsModal projects={projects} tags={tags} initialProjectId={project?.id} onClose={() => setSettingsOpen(false)} onChanged={reload} />}
 
       {trashOpen && <TrashModal canManageProjects={canManage} onClose={() => setTrashOpen(false)} onChanged={reload} />}
+
+      {aiDrawerOpen && project && canAiView && (
+        <ProjectAiDrawer
+          project={project}
+          users={users}
+          canManageAi={canAiManage}
+          canCreateTask={canCreate}
+          onClose={() => setAiDrawerOpen(false)}
+          onTaskCreated={(created) => {
+            upsertTask(created);
+            setAiDrawerOpen(false);
+            setOpenId(created.id);
+          }}
+          onTasksPublished={(created) => {
+            created.forEach(upsertTask);
+          }}
+          onOpenTask={(taskId) => {
+            setAiDrawerOpen(false);
+            setOpenId(taskId);
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deletingTask}

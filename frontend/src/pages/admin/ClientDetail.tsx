@@ -34,6 +34,7 @@ import { CurrencyField, SelectField, Switch, TextArea, TextField } from '../../c
 import { WhatsAppIcon } from '../../components/ui/icons';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
+import { ClientIntelligenceTab } from '../../components/clients/ClientIntelligenceTab';
 import { useAuth } from '../../context/auth-context';
 import { useFetch } from '../../hooks/useFetch';
 import { api } from '../../lib/api';
@@ -55,7 +56,7 @@ import type {
 } from '../../lib/types';
 import { errorMessage } from '../../lib/validation';
 
-type TabKey = 'OVERVIEW' | 'PROJECTS' | 'FINANCIAL' | 'NOTES';
+type TabKey = 'OVERVIEW' | 'INTELLIGENCE' | 'PROJECTS' | 'FINANCIAL' | 'NOTES';
 
 const STATUS_CONFIG: Record<ClientStatus, { label: string; tone: Tone }> = {
   ACTIVE: { label: 'Ativo', tone: 'success' },
@@ -226,6 +227,8 @@ export function ClientDetail() {
   const { can } = useAuth();
   const canFinancial = can('clients.financial');
   const canEdit = can('clients.edit');
+  const canAiView = can('ai_studio.view');
+  const canAiManage = can('ai_studio.manage');
 
   const { data: client, loading, error, reload } = useFetch<ClientDetailType>(
     id ? `/admin/clients/${id}` : null,
@@ -734,11 +737,16 @@ export function ClientDetail() {
         onChange={setActiveTab}
         tabs={[
           { key: 'OVERVIEW', label: 'Visão Geral & Contatos' },
+          ...(canAiView ? [{ key: 'INTELLIGENCE' as const, label: 'Inteligência & Marca (IA)' }] : []),
           { key: 'PROJECTS', label: `Projetos & Tarefas (${client.projects?.length ?? 0})` },
           { key: 'FINANCIAL', label: `Financeiro & Asaas (${client.charges?.length ?? 0})` },
           { key: 'NOTES', label: `Notas & Atas (${client.notes?.length ?? 0})` },
         ]}
       />
+
+      {activeTab === 'INTELLIGENCE' && canAiView && (
+        <ClientIntelligenceTab clientId={client.id} canManage={canAiManage} />
+      )}
 
       {/* ABA 1: VISÃO GERAL */}
       {activeTab === 'OVERVIEW' && (

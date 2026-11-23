@@ -63,7 +63,13 @@ export interface Task {
   assignedTo: Person | null;
   createdBy: Person | null;
   coAssignees: { userId: string; user: Person }[];
-  project: { id: string; name: string; color: string };
+  project: {
+    id: string;
+    name: string;
+    color: string;
+    clientId?: string | null;
+    client?: { id: string; tradeName: string; corporateName: string } | null;
+  };
   stage: StageLite;
   tags: TaskTag[];
   subtasks: Subtask[];
@@ -79,6 +85,8 @@ export interface TaskProject {
   startDate: string | null;
   endDate: string | null;
   isPinned: boolean;
+  clientId?: string | null;
+  client?: { id: string; tradeName: string; corporateName: string } | null;
   owner: Person | null;
   stages: TaskStage[];
   _count: { tasks: number };

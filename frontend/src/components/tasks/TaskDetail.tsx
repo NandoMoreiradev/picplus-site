@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
-import { Check, Copy, Pencil, Trash2 } from 'lucide-react';
+import { Check, Copy, Pencil, Sparkles, Trash2 } from 'lucide-react';
+import { useAuth } from '../../context/auth-context';
 import type { TaskActions } from '../../hooks/useTaskActions';
+import { api } from '../../lib/api';
 import { formatDateTime } from '../../lib/format';
 import { PRIORITIES, checklistProgress, fromDateInput, toDateInput } from '../../lib/tasks';
 import type { Task, TaskPriority, TaskProject, TaskTag, TaskUser } from '../../lib/tasks';
+import { errorMessage } from '../../lib/validation';
 import { Tabs } from '../admin/AdminUI';
 import { Button } from '../ui/Button';
 import { ConfirmDialog, Modal } from '../ui/Modal';
+import { useToast } from '../ui/Toast';
 import { ActionMenu } from './Popover';
 import { RichTextEditor, RichTextView, isEmptyHtml } from './RichText';
 import { TagSelect } from './TagSelect';
 import { TaskActivity } from './TaskActivity';
+import { TaskAiPanel } from './TaskAiPanel';
 import { TaskAttachments } from './TaskAttachments';
 import { TaskChecklist } from './TaskChecklist';
 import { TaskComments } from './TaskComments';
@@ -176,7 +181,7 @@ const Side = styled.aside`
   }
 `;
 
-type Tab = 'checklist' | 'comments' | 'files' | 'history';
+type Tab = 'checklist' | 'comments' | 'files' | 'ai' | 'history';
 
 interface Props {
   /** Tarefa aberta (vem do estado da tela, então sempre reflete as edições). */
@@ -214,6 +219,10 @@ export function TaskDetail({
   onClose,
   onRemoved,
 }: Props) {
+  const { can } = useAuth();
+  const toast = useToast();
+  const canAiView = can('ai_studio.view');
+  const canAiManage = can('ai_studio.manage');
   const [tab, setTab] = useState<Tab>('checklist');
   const [editingText, setEditingText] = useState(false);
   const [draft, setDraft] = useState('');
@@ -253,6 +262,27 @@ export function TaskDetail({
     const saved = await save({ description: isEmptyHtml(draft) ? null : draft });
     setSavingText(false);
     if (saved) setEditingText(false);
+  };
+
+  const applyAiDescription = async (html: string, mode: 'replace' | 'append') => {
+    const current = isEmptyHtml(task.description) ? '' : (task.description ?? '');
+    const next = mode === 'append' && current ? `${current}<hr />${html}` : html;
+    const saved = await save({ description: next });
+    if (saved) {
+      setEditingText(false);
+      toast.success('Descrição atualizada com o texto da IA!');
+    }
+  };
+
+  const addAiComment = async (html: string) => {
+    try {
+      await api.post(`/admin/tasks/${task.id}/comments`, { content: html });
+      refresh();
+      setTab('comments');
+      toast.success('Conteúdo da IA adicionado como comentário!');
+    } catch (err) {
+      toast.error(errorMessage(err, 'Erro ao adicionar comentário.'));
+    }
   };
 
   const remove = async () => {
@@ -328,18 +358,29 @@ export function TaskDetail({
           <Section>
             <h3>
               Descrição
-              {canEdit && !editingText && (
-                <button
-                  type="button"
-                  className="edit"
-                  onClick={() => {
-                    setDraft(task.description ?? '');
-                    setEditingText(true);
-                  }}
-                >
-                  <Pencil size={13} aria-hidden /> Editar
-                </button>
-              )}
+              <span style={{ display: 'inline-flex', gap: '0.75rem', alignItems: 'center' }}>
+                {canAiView && (
+                  <button
+                    type="button"
+                    className="edit"
+                    onClick={() => setTab('ai')}
+                  >
+                    <Sparkles size={13} aria-hidden /> Gerar copy com IA
+                  </button>
+                )}
+                {canEdit && !editingText && (
+                  <button
+                    type="button"
+                    className="edit"
+                    onClick={() => {
+                      setDraft(task.description ?? '');
+                      setEditingText(true);
+                    }}
+                  >
+                    <Pencil size={13} aria-hidden /> Editar
+                  </button>
+                )}
+              </span>
             </h3>
             {editingText ? (
               <>
@@ -366,6 +407,7 @@ export function TaskDetail({
                 { key: 'checklist', label: 'Checklist', count: progress.total },
                 { key: 'comments', label: 'Comentários', count: task._count.comments },
                 { key: 'files', label: 'Anexos', count: task._count.attachments },
+                ...(canAiView ? [{ key: 'ai' as const, label: '✨ IA PicPlus' }] : []),
                 { key: 'history', label: 'Histórico' },
               ]}
               value={tab}
@@ -375,6 +417,16 @@ export function TaskDetail({
               {tab === 'checklist' && <TaskChecklist task={task} canEdit={canEdit} onChanged={refresh} />}
               {tab === 'comments' && <TaskComments taskId={task.id} canComment={canComment} canModerate={canDelete} onChanged={refresh} />}
               {tab === 'files' && <TaskAttachments taskId={task.id} canAttach={canComment} onChanged={refresh} />}
+              {tab === 'ai' && canAiView && (
+                <TaskAiPanel
+                  task={task}
+                  canManageAi={canAiManage}
+                  canEditTask={canEdit}
+                  canCommentTask={canComment}
+                  onApplyDescription={applyAiDescription}
+                  onAddComment={addAiComment}
+                />
+              )}
               {tab === 'history' && <TaskActivity taskId={task.id} />}
             </div>
           </Section>

@@ -1,0 +1,396 @@
+import { api } from './api';
+import type { Task, TaskPriority } from './tasks';
+
+export type CopyFormat =
+  | 'INSTAGRAM_POST'
+  | 'REELS_SCRIPT'
+  | 'CAROUSEL'
+  | 'BLOG_ARTICLE'
+  | 'SALES_EMAIL'
+  | 'AD_COPY'
+  | 'TASK_BRIEFING'
+  | 'CUSTOM';
+
+export type ProjectAssistantAction =
+  | 'CONTENT_IDEAS'
+  | 'CAMPAIGN_BRIEF'
+  | 'COPY_VARIATIONS'
+  | 'CUSTOM';
+
+export type AiModelTier = 'fast' | 'pro';
+
+export interface ClientBrandProfile {
+  id: string;
+  clientId: string;
+  positioning: string | null;
+  targetAudience: string | null;
+  painsAndDesires: string | null;
+  toneOfVoice: string | null;
+  valueProposition: string | null;
+  productsAndOffers: string | null;
+  ctaGuidelines: string | null;
+  keywords: string[];
+  forbiddenWords: string[];
+  extraContext: string | null;
+  updatedAt: string;
+}
+
+export interface BrandProfilePayload {
+  positioning?: string;
+  targetAudience?: string;
+  painsAndDesires?: string;
+  toneOfVoice?: string;
+  valueProposition?: string;
+  productsAndOffers?: string;
+  ctaGuidelines?: string;
+  keywords?: string[];
+  forbiddenWords?: string[];
+  extraContext?: string;
+}
+
+export interface ClientCompetitor {
+  id: string;
+  clientId: string;
+  name: string;
+  websiteUrl: string | null;
+  instagramHandle: string | null;
+  tiktokHandle: string | null;
+  youtubeHandle: string | null;
+  notes: string | null;
+  strengths: string | null;
+  weaknesses: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CompetitorPayload {
+  name: string;
+  websiteUrl?: string;
+  instagramHandle?: string;
+  tiktokHandle?: string;
+  youtubeHandle?: string;
+  notes?: string;
+  strengths?: string;
+  weaknesses?: string;
+}
+
+export interface AiGenerationLog {
+  id: string;
+  clientId: string | null;
+  projectId: string | null;
+  taskId: string | null;
+  kind: string;
+  model: string;
+  title: string | null;
+  output: string;
+  createdAt: string;
+  user?: { id: string; name: string } | null;
+  project?: { id: string; name: string } | null;
+  task?: { id: string; title: string } | null;
+}
+
+export interface ClientIntelligenceData {
+  client: {
+    id: string;
+    tradeName: string;
+    corporateName: string;
+    segment: string | null;
+    website: string | null;
+  };
+  brandProfile: ClientBrandProfile | null;
+  competitors: ClientCompetitor[];
+  logs: AiGenerationLog[];
+}
+
+export interface AiCopyGenerationResult {
+  markdown: string;
+  html: string;
+  model: string;
+  log: AiGenerationLog;
+}
+
+export const COPY_FORMAT_OPTIONS: { value: CopyFormat; label: string }[] = [
+  { value: 'INSTAGRAM_POST', label: 'Post / Legenda para Instagram' },
+  { value: 'REELS_SCRIPT', label: 'Roteiro de Reels / Vídeo Curto' },
+  { value: 'CAROUSEL', label: 'Carrossel (Slide a Slide)' },
+  { value: 'BLOG_ARTICLE', label: 'Artigo de Blog (SEO)' },
+  { value: 'SALES_EMAIL', label: 'E-mail de Vendas / Nutrição' },
+  { value: 'AD_COPY', label: 'Copy de Anúncio (Meta / Google)' },
+  { value: 'TASK_BRIEFING', label: 'Briefing Operacional da Tarefa' },
+  { value: 'CUSTOM', label: 'Personalizado' },
+];
+
+export const PROJECT_ASSISTANT_OPTIONS: {
+  value: ProjectAssistantAction;
+  label: string;
+}[] = [
+  { value: 'CONTENT_IDEAS', label: 'Ideias de Pautas & Conteúdo' },
+  { value: 'CAMPAIGN_BRIEF', label: 'Briefing Estratégico do Projeto' },
+  { value: 'COPY_VARIATIONS', label: 'Ângulos e Variações de Copy' },
+  { value: 'CUSTOM', label: 'Solicitação Personalizada' },
+];
+
+export const MODEL_TIER_OPTIONS: { value: AiModelTier; label: string }[] = [
+  { value: 'fast', label: 'Padrão do Painel (Rápido / Flash)' },
+  { value: 'pro', label: 'Estratégico (Gemini Pro)' },
+];
+
+export const fetchClientIntelligence = (clientId: string) =>
+  api.get<ClientIntelligenceData>(`/admin/ai-studio/clients/${clientId}`);
+
+export const saveClientBrandProfile = (
+  clientId: string,
+  payload: BrandProfilePayload,
+) =>
+  api.put<ClientBrandProfile>(
+    `/admin/ai-studio/clients/${clientId}/profile`,
+    payload,
+  );
+
+export const generateClientBrandDraft = (
+  clientId: string,
+  payload: { extraNotes?: string; modelTier?: AiModelTier },
+) =>
+  api.post<{ draft: Required<BrandProfilePayload>; model: string }>(
+    `/admin/ai-studio/clients/${clientId}/profile/draft`,
+    payload,
+  );
+
+export const createClientCompetitor = (
+  clientId: string,
+  payload: CompetitorPayload,
+) =>
+  api.post<ClientCompetitor>(
+    `/admin/ai-studio/clients/${clientId}/competitors`,
+    payload,
+  );
+
+export const updateClientCompetitor = (
+  clientId: string,
+  competitorId: string,
+  payload: Partial<CompetitorPayload>,
+) =>
+  api.patch<ClientCompetitor>(
+    `/admin/ai-studio/clients/${clientId}/competitors/${competitorId}`,
+    payload,
+  );
+
+export const deleteClientCompetitor = (
+  clientId: string,
+  competitorId: string,
+) =>
+  api.delete<{ deleted: boolean }>(
+    `/admin/ai-studio/clients/${clientId}/competitors/${competitorId}`,
+  );
+
+export const fetchTaskAiHistory = (taskId: string) =>
+  api.get<AiGenerationLog[]>(`/admin/ai-studio/tasks/${taskId}/history`);
+
+export const generateTaskAiCopy = (
+  taskId: string,
+  payload: {
+    format: CopyFormat;
+    objective?: string;
+    extraInstructions?: string;
+    variations?: number;
+    modelTier?: AiModelTier;
+  },
+) =>
+  api.post<AiCopyGenerationResult>(
+    `/admin/ai-studio/tasks/${taskId}/generate`,
+    payload,
+  );
+
+export const fetchProjectAiHistory = (projectId: string) =>
+  api.get<AiGenerationLog[]>(`/admin/ai-studio/projects/${projectId}/history`);
+
+export const runProjectAiAssistant = (
+  projectId: string,
+  payload: {
+    action: ProjectAssistantAction;
+    prompt?: string;
+    channel?: string;
+    modelTier?: AiModelTier;
+  },
+) =>
+  api.post<AiCopyGenerationResult>(
+    `/admin/ai-studio/projects/${projectId}/assistant`,
+    payload,
+  );
+
+export function markdownPreviewToHtml(markdown: string): string {
+  const escaped = markdown
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  return `<p>${escaped.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br/>')}</p>`;
+}
+
+/* ── Planejador de Campanhas (Fase 2) ────────────────── */
+
+export type CampaignPlanScope =
+  | 'MONTHLY'
+  | 'QUARTERLY'
+  | 'SALES_CAMPAIGN'
+  | 'CUSTOM';
+
+export type CampaignPlanStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
+export interface CampaignPlanSummary {
+  id: string;
+  title: string;
+  scope: CampaignPlanScope;
+  status: CampaignPlanStatus;
+  objective: string | null;
+  channels: string[];
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string;
+  createdBy?: { id: string; name: string } | null;
+  _count: { items: number };
+  items: { id: string; taskId: string | null }[];
+}
+
+export interface CampaignPlanItem {
+  id: string;
+  planId: string;
+  order: number;
+  scheduledDate: string | null;
+  channel: string;
+  format: string | null;
+  funnelStage: string | null;
+  pillar: string | null;
+  title: string;
+  hook: string | null;
+  briefing: string | null;
+  copyDraft: string | null;
+  cta: string | null;
+  priority: TaskPriority;
+  taskId: string | null;
+  task?: {
+    id: string;
+    title: string;
+    completedAt: string | null;
+    stage: { id: string; name: string; color: string };
+  } | null;
+}
+
+export interface CampaignPlanDetail {
+  id: string;
+  title: string;
+  scope: CampaignPlanScope;
+  status: CampaignPlanStatus;
+  objective: string | null;
+  strategySummary: string | null;
+  pillars: string[];
+  channels: string[];
+  startDate: string | null;
+  endDate: string | null;
+  projectId: string;
+  clientId: string | null;
+  client?: { id: string; tradeName: string } | null;
+  createdBy?: { id: string; name: string } | null;
+  items: CampaignPlanItem[];
+  createdAt: string;
+}
+
+export const PLAN_SCOPE_OPTIONS: {
+  value: CampaignPlanScope;
+  label: string;
+  defaultDays: number;
+  defaultCount: number;
+}[] = [
+  {
+    value: 'MONTHLY',
+    label: 'Planejamento Mensal (30 dias)',
+    defaultDays: 30,
+    defaultCount: 12,
+  },
+  {
+    value: 'QUARTERLY',
+    label: 'Planejamento Trimestral (90 dias)',
+    defaultDays: 90,
+    defaultCount: 24,
+  },
+  {
+    value: 'SALES_CAMPAIGN',
+    label: 'Campanha de Vendas / Lançamento',
+    defaultDays: 14,
+    defaultCount: 10,
+  },
+  {
+    value: 'CUSTOM',
+    label: 'Personalizado',
+    defaultDays: 30,
+    defaultCount: 10,
+  },
+];
+
+export const DEFAULT_PLAN_CHANNELS = [
+  'Instagram Reels',
+  'Carrossel Instagram',
+  'Post Estático',
+  'Stories',
+  'Blog SEO',
+  'E-mail Marketing',
+  'Anúncios Meta/Google',
+];
+
+export const generateCampaignPlan = (
+  projectId: string,
+  payload: {
+    scope: CampaignPlanScope;
+    title?: string;
+    objective: string;
+    startDate: string;
+    endDate?: string;
+    channels: string[];
+    itemCount?: number;
+    extraInstructions?: string;
+    modelTier?: AiModelTier;
+  },
+) =>
+  api.post<{ plan: CampaignPlanDetail; model: string }>(
+    `/admin/ai-studio/planner/projects/${projectId}/generate`,
+    payload,
+  );
+
+export const updateCampaignPlanItem = (
+  itemId: string,
+  payload: Partial<{
+    scheduledDate: string | null;
+    channel: string;
+    funnelStage: string | null;
+    pillar: string | null;
+    title: string;
+    hook: string | null;
+    briefing: string | null;
+    copyDraft: string | null;
+    cta: string | null;
+    priority: TaskPriority;
+  }>,
+) =>
+  api.patch<CampaignPlanItem>(
+    `/admin/ai-studio/planner/items/${itemId}`,
+    payload,
+  );
+
+export const deleteCampaignPlanItem = (itemId: string) =>
+  api.delete<{ deleted: boolean }>(`/admin/ai-studio/planner/items/${itemId}`);
+
+export const deleteCampaignPlan = (planId: string) =>
+  api.delete<{ deleted: boolean }>(`/admin/ai-studio/planner/${planId}`);
+
+export const publishCampaignPlan = (
+  planId: string,
+  payload: {
+    stageId?: string;
+    assignedToId?: string | null;
+    itemIds?: string[];
+  },
+) =>
+  api.post<{
+    createdCount: number;
+    tasks: Task[];
+    plan: CampaignPlanDetail;
+  }>(`/admin/ai-studio/planner/${planId}/publish`, payload);

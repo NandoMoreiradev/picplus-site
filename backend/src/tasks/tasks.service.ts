@@ -21,11 +21,19 @@ const PERSON = {
 } as const;
 
 /** Tudo que a listagem, o Kanban e o detalhe precisam de uma tarefa. */
-const TASK_INCLUDE = {
+export const TASK_INCLUDE = {
   assignedTo: PERSON,
   createdBy: PERSON,
   coAssignees: { include: { user: PERSON } },
-  project: { select: { id: true, name: true, color: true } },
+  project: {
+    select: {
+      id: true,
+      name: true,
+      color: true,
+      clientId: true,
+      client: { select: { id: true, tradeName: true, corporateName: true } },
+    },
+  },
   stage: { select: { id: true, name: true, color: true, isCompleted: true } },
   tags: { orderBy: { name: 'asc' } },
   parentTask: { select: { id: true, title: true } },
