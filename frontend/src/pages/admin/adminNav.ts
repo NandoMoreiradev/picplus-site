@@ -5,6 +5,7 @@ import {
   Building2,
   Bot,
   FileSpreadsheet,
+  Globe,
   GraduationCap,
   Inbox,
   LineChart,
@@ -66,6 +67,7 @@ export const NAV_GROUPS: NavGroupDef[] = [
     label: 'Gestão',
     items: [
       { to: '/admin/tarefas', label: 'Gestão de Tarefas', icon: ClipboardList, perm: 'tasks.view' },
+      { to: '/admin/landing-pages', label: 'Landing Pages (IA)', icon: Globe, perm: 'ai_studio.view' },
       { to: '/admin/academy', label: 'PicPlus Academy', icon: GraduationCap, perm: 'academy.view' },
     ],
   },

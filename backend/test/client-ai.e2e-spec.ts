@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import type { AiChatbotService } from '../src/ai-chatbot/ai-chatbot.service';
 import { CampaignPlannerService } from '../src/client-ai/campaign-planner.service';
 import { ClientAiService } from '../src/client-ai/client-ai.service';
+import { LandingPagesService } from '../src/client-ai/landing-pages.service';
 import type { PrismaService } from '../src/prisma/prisma.service';
 
 describe('Estúdio IA de Clientes e Tarefas (integração, PGlite)', () => {
@@ -13,6 +14,7 @@ describe('Estúdio IA de Clientes e Tarefas (integração, PGlite)', () => {
   let prisma: PrismaClient;
   let service: ClientAiService;
   let planner: CampaignPlannerService;
+  let landingPages: LandingPagesService;
 
   const generateContentMock = jest.fn();
   const fakeAiChatbot = {
@@ -50,6 +52,10 @@ describe('Estúdio IA de Clientes e Tarefas (integração, PGlite)', () => {
       fakeAiChatbot,
     );
     planner = new CampaignPlannerService(
+      prisma as unknown as PrismaService,
+      service,
+    );
+    landingPages = new LandingPagesService(
       prisma as unknown as PrismaService,
       service,
     );
@@ -289,5 +295,66 @@ describe('Estúdio IA de Clientes e Tarefas (integração, PGlite)', () => {
       where: { projectId, deletedAt: null },
     });
     expect(persistedTasks.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('gera, itera, publica com domínio próprio, captura leads e exporta ZIP de Landing Page', async () => {
+    generateContentMock.mockResolvedValueOnce({
+      text: '```html\n<!DOCTYPE html><html><head><title>Sorriso</title></head><body><h1>Lentes Naturais</h1><form data-picplus-lead-form><input name="name"/><input name="email"/><p data-picplus-form-status></p><button type="submit">Enviar</button></form></body></html>\n```',
+    });
+
+    const { landingPage } = await landingPages.generate(
+      {
+        projectId,
+        title: 'LP Lentes Naturais',
+        objective: 'Captar pacientes para avaliação 3D',
+        visualStyle: 'MODERN_DARK',
+      },
+      userId,
+    );
+
+    expect(landingPage.slug).toBe('lp-lentes-naturais');
+    expect(landingPage.clientId).toBe(clientId);
+    expect(landingPage.htmlContent).toContain('<!DOCTYPE html>');
+
+    generateContentMock.mockResolvedValueOnce({
+      text: '<!DOCTYPE html><html><head><title>Sorriso</title></head><body><h1>Lentes 3D sem dor</h1><form data-picplus-lead-form><input name="name"/><p data-picplus-form-status></p></form></body></html>',
+    });
+
+    const iterated = await landingPages.iterate(
+      landingPage.id,
+      { instruction: 'Trocar título para Lentes 3D sem dor' },
+      userId,
+    );
+    expect(iterated.landingPage.htmlContent).toContain('Lentes 3D sem dor');
+
+    await landingPages.update(landingPage.id, {
+      status: 'PUBLISHED',
+      customDomain: 'https://LP.SorrisoReal.com.br/',
+    });
+
+    const hostHtml = await landingPages.findPublishedForHostHtml(
+      'www.lp.sorrisoreal.com.br',
+    );
+    expect(hostHtml).toContain('Lentes 3D sem dor');
+    expect(hostHtml).toContain(
+      '/api/public/landing-pages/lp-lentes-naturais/leads',
+    );
+
+    const leadRes = await landingPages.captureLead(landingPage.slug, {
+      name: 'Maria Clara',
+      email: 'maria@exemplo.com',
+      utmSource: 'instagram',
+    });
+    expect(leadRes.ok).toBe(true);
+
+    const refreshed = await landingPages.getOne(landingPage.id);
+    expect(refreshed._count.leads).toBe(1);
+    expect(refreshed.customDomain).toBe('lp.sorrisoreal.com.br');
+
+    const zip = landingPages.exportZip(refreshed, 'https://api.picplus.com.br');
+    expect(
+      zip.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04])),
+    ).toBe(true);
+    expect(zip.toString('utf8')).toContain('index.html');
   });
 });

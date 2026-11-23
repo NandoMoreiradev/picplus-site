@@ -29,6 +29,7 @@ import { Users } from './Users';
 
 // A gestão de tarefas traz calendário e editor de texto: só baixa quando alguém abre a tela.
 const Tasks = lazy(() => import('./Tasks'));
+const LandingPages = lazy(() => import('./LandingPages'));
 const Inbox = lazy(() => import('./Inbox'));
 const WhatsappSettings = lazy(() => import('./WhatsappSettings'));
 
@@ -68,6 +69,15 @@ export default function AdminRoutes() {
         <Route index element={<Home />} />
         <Route path="clientes" element={guard('clients.view', <Clients />)} />
         <Route path="clientes/:id" element={guard('clients.view', <ClientDetail />)} />
+        <Route
+          path="landing-pages"
+          element={guard(
+            'ai_studio.view',
+            <Suspense fallback={<PageLoader label="Carregando Landing Pages…" />}>
+              <LandingPages />
+            </Suspense>,
+          )}
+        />
         <Route
           path="financeiro"
           element={guard(

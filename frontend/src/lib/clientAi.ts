@@ -1,4 +1,4 @@
-import { api } from './api';
+import { API_URL, api, tokenStore } from './api';
 import type { Task, TaskPriority } from './tasks';
 
 export type CopyFormat =
@@ -394,3 +394,137 @@ export const publishCampaignPlan = (
     tasks: Task[];
     plan: CampaignPlanDetail;
   }>(`/admin/ai-studio/planner/${planId}/publish`, payload);
+
+/* ── Landing Pages (Fase 3) ──────────────────────────── */
+
+export type LandingPageStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+export type LpVisualStyle =
+  | 'MODERN_DARK'
+  | 'EDITORIAL_LIGHT'
+  | 'CORPORATE_CLEAN'
+  | 'HIGH_CONVERSION';
+
+export interface LandingPageLead {
+  id: string;
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  message: string | null;
+  utmSource: string | null;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  createdAt: string;
+}
+
+export interface LandingPageSummary {
+  id: string;
+  title: string;
+  slug: string;
+  status: LandingPageStatus;
+  visualStyle: string | null;
+  customDomain: string | null;
+  domainVerified: boolean;
+  viewsCount: number;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  clientId: string | null;
+  projectId: string | null;
+  client?: { id: string; tradeName: string } | null;
+  project?: { id: string; name: string } | null;
+  _count: { leads: number };
+}
+
+export interface LandingPageDetail extends LandingPageSummary {
+  objective: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  htmlContent: string;
+  domainVerificationError: string | null;
+  leads: LandingPageLead[];
+}
+
+export const LP_VISUAL_STYLE_OPTIONS: { value: LpVisualStyle; label: string }[] = [
+  { value: 'MODERN_DARK', label: 'Moderno Escuro (Alto Contraste)' },
+  { value: 'EDITORIAL_LIGHT', label: 'Editorial Claro & Sofisticado' },
+  { value: 'CORPORATE_CLEAN', label: 'Corporativo Clean' },
+  { value: 'HIGH_CONVERSION', label: 'Foco em Conversão Direta' },
+];
+
+export const landingPagePublicUrl = (slug: string) => `${API_URL}/lp/${slug}`;
+
+export const generateLandingPage = (payload: {
+  clientId?: string | null;
+  projectId?: string | null;
+  title?: string;
+  objective: string;
+  offer?: string;
+  ctaText?: string;
+  visualStyle?: LpVisualStyle;
+  extraInstructions?: string;
+  modelTier?: AiModelTier;
+}) =>
+  api.post<{ landingPage: LandingPageDetail; model: string }>(
+    '/admin/ai-studio/landing-pages/generate',
+    payload,
+  );
+
+export const iterateLandingPage = (
+  id: string,
+  payload: { instruction: string; modelTier?: AiModelTier },
+) =>
+  api.post<{ landingPage: LandingPageDetail; model: string }>(
+    `/admin/ai-studio/landing-pages/${id}/iterate`,
+    payload,
+  );
+
+export const updateLandingPage = (
+  id: string,
+  payload: Partial<{
+    title: string;
+    slug: string;
+    status: LandingPageStatus;
+    metaTitle: string | null;
+    metaDescription: string | null;
+    htmlContent: string;
+    customDomain: string | null;
+  }>,
+) =>
+  api.patch<LandingPageDetail>(
+    `/admin/ai-studio/landing-pages/${id}`,
+    payload,
+  );
+
+export const verifyLandingPageDomain = (id: string) =>
+  api.post<{
+    verified: boolean;
+    customDomain: string;
+    expectedTarget: string;
+    resolvedRecords: string[];
+    errorMessage: string | null;
+  }>(`/admin/ai-studio/landing-pages/${id}/verify-domain`);
+
+export const deleteLandingPage = (id: string) =>
+  api.delete<{ deleted: boolean }>(`/admin/ai-studio/landing-pages/${id}`);
+
+export async function downloadLandingPageZip(id: string, slug: string) {
+  const token = tokenStore.get();
+  const res = await fetch(
+    `${API_URL}/api/admin/ai-studio/landing-pages/${id}/export`,
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    },
+  );
+  if (!res.ok) {
+    throw new Error('Não foi possível exportar o pacote ZIP.');
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `landing-${slug}.zip`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
