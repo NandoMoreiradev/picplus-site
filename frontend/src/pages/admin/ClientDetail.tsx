@@ -35,6 +35,7 @@ import { WhatsAppIcon } from '../../components/ui/icons';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/Toast';
 import { ClientIntelligenceTab } from '../../components/clients/ClientIntelligenceTab';
+import { ClientResearchTab } from '../../components/clients/ClientResearchTab';
 import { useAuth } from '../../context/auth-context';
 import { useFetch } from '../../hooks/useFetch';
 import { api } from '../../lib/api';
@@ -56,7 +57,7 @@ import type {
 } from '../../lib/types';
 import { errorMessage } from '../../lib/validation';
 
-type TabKey = 'OVERVIEW' | 'INTELLIGENCE' | 'PROJECTS' | 'FINANCIAL' | 'NOTES';
+type TabKey = 'OVERVIEW' | 'INTELLIGENCE' | 'RESEARCH' | 'PROJECTS' | 'FINANCIAL' | 'NOTES';
 
 const STATUS_CONFIG: Record<ClientStatus, { label: string; tone: Tone }> = {
   ACTIVE: { label: 'Ativo', tone: 'success' },
@@ -738,6 +739,7 @@ export function ClientDetail() {
         tabs={[
           { key: 'OVERVIEW', label: 'Visão Geral & Contatos' },
           ...(canAiView ? [{ key: 'INTELLIGENCE' as const, label: 'Inteligência & Marca (IA)' }] : []),
+          ...(canAiView ? [{ key: 'RESEARCH' as const, label: 'Pesquisa, Virais & Extensão' }] : []),
           { key: 'PROJECTS', label: `Projetos & Tarefas (${client.projects?.length ?? 0})` },
           { key: 'FINANCIAL', label: `Financeiro & Asaas (${client.charges?.length ?? 0})` },
           { key: 'NOTES', label: `Notas & Atas (${client.notes?.length ?? 0})` },
@@ -746,6 +748,10 @@ export function ClientDetail() {
 
       {activeTab === 'INTELLIGENCE' && canAiView && (
         <ClientIntelligenceTab clientId={client.id} canManage={canAiManage} />
+      )}
+
+      {activeTab === 'RESEARCH' && canAiView && (
+        <ClientResearchTab clientId={client.id} canManage={canAiManage} />
       )}
 
       {/* ABA 1: VISÃO GERAL */}

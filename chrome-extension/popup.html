@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PicPlus AI Capture</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="top">
+        <div>
+          <h1>PicPlus AI Capture</h1>
+          <p id="user-badge" class="sub">Desconectado</p>
+        </div>
+        <button id="toggle-settings" type="button" class="ghost">Configurar</button>
+      </header>
+
+      <section id="settings-panel" class="card hidden">
+        <label>
+          URL da API PicPlus
+          <input id="api-url" type="url" placeholder="http://localhost:3000" />
+        </label>
+        <label>
+          Token da Extensão (picext_...)
+          <input id="api-token" type="password" placeholder="Cole seu token gerado no painel" />
+        </label>
+        <button id="save-settings" type="button" class="primary">Salvar e Conectar</button>
+      </section>
+
+      <section id="capture-panel" class="card">
+        <div class="row-2">
+          <label>
+            Cliente
+            <select id="client-select"></select>
+          </label>
+          <label>
+            Concorrente (opcional)
+            <select id="competitor-select">
+              <option value="">Nenhum específico</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row-2">
+          <label>
+            Plataforma
+            <select id="platform">
+              <option value="INSTAGRAM">Instagram</option>
+              <option value="TIKTOK">TikTok</option>
+              <option value="YOUTUBE">YouTube</option>
+              <option value="WEB">Site / Página Web</option>
+              <option value="OTHER">Outro</option>
+            </select>
+          </label>
+          <label>
+            Perfil / @Autor
+            <input id="author-handle" type="text" placeholder="@concorrente" />
+          </label>
+        </div>
+
+        <label>
+          URL de origem
+          <input id="source-url" type="url" />
+        </label>
+
+        <label>
+          Legenda / Copy / Texto da página
+          <textarea id="caption" rows="4" placeholder="Texto capturado automaticamente da aba..."></textarea>
+        </label>
+
+        <div class="media-box">
+          <div class="media-head">
+            <span>Mídias detectadas na aba (<span id="media-count">0</span>)</span>
+            <button id="rescan-btn" type="button" class="ghost">Reescanear aba</button>
+          </div>
+          <div id="media-list" class="media-list"></div>
+          <label class="file-label">
+            Ou anexar arquivo local (vídeo, áudio, imagem)
+            <input id="extra-files" type="file" multiple accept="image/*,video/*,audio/*" />
+          </label>
+        </div>
+
+        <div class="checks">
+          <label class="check">
+            <input id="is-viral" type="checkbox" />
+            Marcar como Post Viral / Alta Performance
+          </label>
+          <select id="model-tier">
+            <option value="fast">Análise Rápida (Flash)</option>
+            <option value="pro">Análise Profunda (Gemini Pro)</option>
+          </select>
+        </div>
+
+        <button id="send-btn" type="button" class="primary">
+          Enviar e Analisar com Gemini
+        </button>
+
+        <div id="status" class="status"></div>
+        <div id="result-box" class="result hidden"></div>
+      </section>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -7,7 +7,9 @@ import type { AiChatbotService } from '../src/ai-chatbot/ai-chatbot.service';
 import { CampaignPlannerService } from '../src/client-ai/campaign-planner.service';
 import { ClientAiService } from '../src/client-ai/client-ai.service';
 import { LandingPagesService } from '../src/client-ai/landing-pages.service';
+import { ResearchService } from '../src/client-ai/research.service';
 import type { PrismaService } from '../src/prisma/prisma.service';
+import type { StorageService } from '../src/storage/storage.service';
 
 describe('Estúdio IA de Clientes e Tarefas (integração, PGlite)', () => {
   let db: PGlite;
@@ -15,6 +17,17 @@ describe('Estúdio IA de Clientes e Tarefas (integração, PGlite)', () => {
   let service: ClientAiService;
   let planner: CampaignPlannerService;
   let landingPages: LandingPagesService;
+  let research: ResearchService;
+
+  const fakeStorage = {
+    saveAny: jest.fn((file: { originalname?: string; mimetype?: string }) =>
+      Promise.resolve({
+        url: `/uploads/${file.originalname || 'media.png'}`,
+        mime: file.mimetype || 'image/png',
+      }),
+    ),
+    remove: jest.fn(() => Promise.resolve(undefined)),
+  } as unknown as StorageService;
 
   const generateContentMock = jest.fn();
   const fakeAiChatbot = {
@@ -59,12 +72,25 @@ describe('Estúdio IA de Clientes e Tarefas (integração, PGlite)', () => {
       prisma as unknown as PrismaService,
       service,
     );
+    research = new ResearchService(
+      prisma as unknown as PrismaService,
+      fakeStorage,
+      service,
+    );
+
+    const role = await prisma.role.create({
+      data: {
+        name: 'Estrategista IA',
+        permissions: ['ai_studio.view', 'ai_studio.manage'],
+      },
+    });
 
     const user = await prisma.user.create({
       data: {
         email: 'estrategista@picplus.com',
         password: 'hash',
         name: 'Estrategista',
+        roleId: role.id,
       },
     });
     userId = user.id;
@@ -356,5 +382,107 @@ describe('Estúdio IA de Clientes e Tarefas (integração, PGlite)', () => {
       zip.subarray(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04])),
     ).toBe(true);
     expect(zip.toString('utf8')).toContain('index.html');
+  });
+
+  it('autentica token da extensão, ingere mídia multimodal, gera relatório de trends e alimenta o contexto de copy', async () => {
+    const { token, rawToken } = await research.createToken(userId, {
+      name: 'Chrome Teste',
+    });
+    expect(rawToken.startsWith('picext_')).toBe(true);
+
+    const authUser = await research.authenticateExtensionToken(rawToken);
+    expect(authUser.id).toBe(userId);
+
+    generateContentMock.mockResolvedValueOnce({
+      text: JSON.stringify({
+        summary:
+          'Reel de alto impacto usando quebra de objeção nos 3 primeiros segundos.',
+        extractedHooks: ['Você NÃO precisa desgastar seu dente'],
+        adaptedAngles: 'Adaptar mostrando o scanner 3D da clínica.',
+        suggestedTags: ['reels', 'odontologia'],
+      }),
+    });
+
+    const fakeImage = {
+      fieldname: 'media',
+      originalname: 'post.png',
+      encoding: '7bit',
+      mimetype: 'image/png',
+      buffer: Buffer.from('fake-png-bytes'),
+      size: 14,
+    } as Express.Multer.File;
+
+    const ref = await research.ingestReference(
+      clientId,
+      {
+        platform: 'INSTAGRAM',
+        authorHandle: '@concorrente_viral',
+        caption: 'Veja como funciona sem dor!',
+        isViral: true,
+        metrics: '{"views": 180000}',
+      },
+      [fakeImage],
+      userId,
+    );
+
+    expect(ref.mediaUrls).toEqual(['/uploads/post.png']);
+    expect(ref.extractedHooks).toEqual([
+      'Você NÃO precisa desgastar seu dente',
+    ]);
+    expect(ref.isViral).toBe(true);
+
+    const partsSent = generateContentMock.mock.calls[0][0].contents[0]
+      .parts as Array<{
+      inlineData?: { mimeType: string };
+    }>;
+    expect(partsSent[0].inlineData?.mimeType).toBe('image/png');
+
+    generateContentMock.mockResolvedValueOnce({
+      text: '## Tendências 2026\n- Vídeos curtos de bastidores',
+      candidates: [
+        {
+          groundingMetadata: {
+            groundingChunks: [
+              {
+                web: {
+                  uri: 'https://exemplo.com/trend',
+                  title: 'Trend Report',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const report = await research.runResearch(
+      clientId,
+      {
+        kind: 'VIRAL_TRENDS',
+        topic: 'Tendências de estética dental',
+      },
+      userId,
+    );
+    expect(report.rawMarkdown).toContain('Tendências 2026');
+    expect(report.sources).toEqual([
+      { url: 'https://exemplo.com/trend', title: 'Trend Report' },
+    ]);
+
+    generateContentMock.mockResolvedValueOnce({
+      text: '## Copy gerada com Swipe File',
+    });
+    await service.generateTaskCopy(
+      taskId,
+      { format: 'INSTAGRAM_POST' },
+      userId,
+    );
+    const copyPrompt = generateContentMock.mock.calls[2][0].contents[0].parts[0]
+      .text as string;
+    expect(copyPrompt).toContain('Você NÃO precisa desgastar seu dente');
+
+    await research.revokeToken(userId, token.id);
+    await expect(
+      research.authenticateExtensionToken(rawToken),
+    ).rejects.toThrow();
   });
 });

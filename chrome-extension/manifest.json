@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "PicPlus AI Capture",
+  "version": "1.0.0",
+  "description": "Captura posts, vídeos, imagens, áudios e páginas da web direto para o Estúdio de IA da PicPlus.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Enviar para PicPlus AI"
+  }
+}

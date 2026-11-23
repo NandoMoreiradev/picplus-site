@@ -528,3 +528,142 @@ export async function downloadLandingPageZip(id: string, slug: string) {
   anchor.remove();
   URL.revokeObjectURL(url);
 }
+
+/* ── Pesquisa de Concorrentes, Virais & Extensão (Fase 4) ── */
+
+export type ReferencePlatform =
+  | 'INSTAGRAM'
+  | 'TIKTOK'
+  | 'YOUTUBE'
+  | 'WEB'
+  | 'OTHER';
+
+export type ResearchReportKind =
+  | 'COMPETITOR_AUDIT'
+  | 'VIRAL_TRENDS'
+  | 'COPY_MINING'
+  | 'WEBSITE_ANALYSIS';
+
+export interface CompetitorReference {
+  id: string;
+  clientId: string;
+  competitorId: string | null;
+  platform: ReferencePlatform;
+  sourceUrl: string | null;
+  authorHandle: string | null;
+  title: string | null;
+  caption: string | null;
+  metrics: Record<string, unknown> | null;
+  mediaUrls: string[];
+  mediaTypes: string[];
+  aiAnalysis: string | null;
+  extractedHooks: string[];
+  adaptedAngles: string | null;
+  isViral: boolean;
+  tags: string[];
+  createdAt: string;
+  competitor?: { id: string; name: string } | null;
+  createdBy?: { id: string; name: string } | null;
+}
+
+export interface ResearchReport {
+  id: string;
+  clientId: string;
+  projectId: string | null;
+  kind: ResearchReportKind;
+  topic: string;
+  model: string;
+  summary: string;
+  rawMarkdown: string;
+  sources: Array<{ title?: string; url: string }> | null;
+  createdAt: string;
+  createdBy?: { id: string; name: string } | null;
+  project?: { id: string; name: string } | null;
+}
+
+export interface ExtensionApiToken {
+  id: string;
+  name: string;
+  prefix: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface ClientResearchData {
+  references: CompetitorReference[];
+  reports: ResearchReport[];
+}
+
+export const REFERENCE_PLATFORM_OPTIONS: {
+  value: ReferencePlatform;
+  label: string;
+}[] = [
+  { value: 'INSTAGRAM', label: 'Instagram' },
+  { value: 'TIKTOK', label: 'TikTok' },
+  { value: 'YOUTUBE', label: 'YouTube' },
+  { value: 'WEB', label: 'Site / Página Web' },
+  { value: 'OTHER', label: 'Outro' },
+];
+
+export const RESEARCH_KIND_OPTIONS: {
+  value: ResearchReportKind;
+  label: string;
+}[] = [
+  { value: 'VIRAL_TRENDS', label: 'Radar de Virais & Trends do Público-Alvo' },
+  { value: 'COMPETITOR_AUDIT', label: 'Auditoria Profunda de Concorrentes' },
+  { value: 'COPY_MINING', label: 'Mineração de Copys & Ganchos que Convertem' },
+  { value: 'WEBSITE_ANALYSIS', label: 'Análise de Site / Página Concorrente' },
+];
+
+export const ingestReferenceForm = (clientId: string, form: FormData) =>
+  api.postForm<CompetitorReference>(
+    `/admin/ai-studio/research/clients/${clientId}/references`,
+    form,
+  );
+
+export const toggleReferenceViral = (id: string, isViral: boolean) =>
+  api.patch<CompetitorReference>(
+    `/admin/ai-studio/research/references/${id}/viral`,
+    { isViral },
+  );
+
+export const reanalyzeReference = (id: string, modelTier: AiModelTier = 'pro') =>
+  api.post<CompetitorReference>(
+    `/admin/ai-studio/research/references/${id}/reanalyze`,
+    { modelTier },
+  );
+
+export const deleteReference = (id: string) =>
+  api.delete<{ deleted: boolean }>(
+    `/admin/ai-studio/research/references/${id}`,
+  );
+
+export const runClientResearch = (
+  clientId: string,
+  payload: {
+    kind: ResearchReportKind;
+    topic: string;
+    targetUrl?: string;
+    projectId?: string;
+    useWebSearch?: boolean;
+    modelTier?: AiModelTier;
+  },
+) =>
+  api.post<ResearchReport>(
+    `/admin/ai-studio/research/clients/${clientId}/reports`,
+    payload,
+  );
+
+export const deleteResearchReport = (id: string) =>
+  api.delete<{ deleted: boolean }>(`/admin/ai-studio/research/reports/${id}`);
+
+export const createExtensionToken = (name: string) =>
+  api.post<{ token: ExtensionApiToken; rawToken: string }>(
+    '/admin/ai-studio/research/extension-tokens',
+    { name },
+  );
+
+export const revokeExtensionToken = (id: string) =>
+  api.delete<{ revoked: boolean }>(
+    `/admin/ai-studio/research/extension-tokens/${id}`,
+  );

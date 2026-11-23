@@ -350,6 +350,7 @@ Seja específico, prático e orientado a marketing digital e conversão. Não in
             client,
             client.brandProfile,
             client.competitors,
+            client.competitorRefs,
           )
         : '=== CONTEXTO DO CLIENTE ===\nProjeto interno sem cliente vinculado.',
       '',
@@ -457,6 +458,7 @@ Seja específico, prático e orientado a marketing digital e conversão. Não in
             client,
             client.brandProfile,
             client.competitors,
+            client.competitorRefs,
           )
         : '=== CONTEXTO DO CLIENTE ===\nProjeto sem cliente vinculado.',
       '',
@@ -528,6 +530,13 @@ Seja específico, prático e orientado a marketing digital e conversão. Não in
     },
     profile: ClientBrandProfile | null,
     competitors: ClientCompetitor[],
+    references?: Array<{
+      platform: string;
+      authorHandle: string | null;
+      extractedHooks: string[];
+      adaptedAngles: string | null;
+      isViral: boolean;
+    }>,
   ): string {
     const parts: string[] = [
       '=== CÉREBRO DO CLIENTE ===',
@@ -579,6 +588,16 @@ Seja específico, prático e orientado a marketing digital e conversão. Não in
       }
     }
 
+    if (references?.length) {
+      parts.push('\nReferências virais e copys vencedoras do Swipe File:');
+      for (const ref of references) {
+        const hooks = ref.extractedHooks.slice(0, 3).join(' | ');
+        parts.push(
+          `- [${ref.platform}${ref.isViral ? ' · VIRAL' : ''}] ${ref.authorHandle || 'Referência'}${hooks ? ` — Hooks: ${hooks}` : ''}${ref.adaptedAngles ? ` — Adaptação: ${ref.adaptedAngles.slice(0, 180)}` : ''}`,
+        );
+      }
+    }
+
     return parts.join('\n');
   }
 
@@ -611,6 +630,10 @@ Seja específico, prático e orientado a marketing digital e conversão. Não in
           include: {
             brandProfile: true,
             competitors: { orderBy: { createdAt: 'asc' } },
+            competitorRefs: {
+              orderBy: [{ isViral: 'desc' }, { createdAt: 'desc' }],
+              take: 5,
+            },
           },
         },
         tasks: {
@@ -654,6 +677,10 @@ Seja específico, prático e orientado a marketing digital e conversão. Não in
               include: {
                 brandProfile: true,
                 competitors: { orderBy: { createdAt: 'asc' } },
+                competitorRefs: {
+                  orderBy: [{ isViral: 'desc' }, { createdAt: 'desc' }],
+                  take: 5,
+                },
               },
             },
           },
@@ -662,6 +689,19 @@ Seja específico, prático e orientado a marketing digital e conversão. Não in
     });
     if (!task) throw new NotFoundException('Tarefa não encontrada.');
     return task;
+  }
+
+  async getGeminiInstance(modelTier: AiModelTier = 'fast') {
+    let client: Awaited<ReturnType<AiChatbotService['getClient']>>;
+    try {
+      client = await this.gemini.getClient();
+    } catch (error) {
+      throw new BadRequestException((error as Error).message);
+    }
+    return {
+      ai: client.ai,
+      model: modelTier === 'pro' ? PRO_MODEL : client.model,
+    };
   }
 
   async callGemini(
@@ -673,16 +713,9 @@ Seja específico, prático e orientado a marketing digital e conversão. Não in
     },
     modelTier: AiModelTier = 'fast',
   ): Promise<{ text: string; model: string }> {
-    let client: Awaited<ReturnType<AiChatbotService['getClient']>>;
+    const { ai, model } = await this.getGeminiInstance(modelTier);
     try {
-      client = await this.gemini.getClient();
-    } catch (error) {
-      throw new BadRequestException((error as Error).message);
-    }
-
-    const model = modelTier === 'pro' ? PRO_MODEL : client.model;
-    try {
-      const response = await client.ai.models.generateContent({
+      const response = await ai.models.generateContent({
         model,
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config,

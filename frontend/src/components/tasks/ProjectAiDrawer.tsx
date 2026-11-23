@@ -9,6 +9,7 @@ import { SelectField, TextArea, TextField } from '../ui/Form';
 import { Modal } from '../ui/Modal';
 import { useToast } from '../ui/Toast';
 import { CampaignPlannerTab } from './CampaignPlannerTab';
+import { ClientResearchTab } from '../clients/ClientResearchTab';
 import { LandingPageStudio } from '../landing-pages/LandingPageStudio';
 import { RichTextView } from './RichText';
 import { api } from '../../lib/api';
@@ -106,7 +107,7 @@ const HistoryItem = styled.button`
   }
 `;
 
-type DrawerTab = 'planner' | 'landing' | 'assistant';
+type DrawerTab = 'planner' | 'landing' | 'research' | 'assistant';
 
 interface Props {
   project: TaskProject;
@@ -239,6 +240,9 @@ export function ProjectAiDrawer({
           tabs={[
             { key: 'planner', label: 'Planejador de Campanhas' },
             { key: 'landing', label: 'Landing Pages' },
+            ...(project.clientId
+              ? [{ key: 'research' as const, label: 'Pesquisa & Virais' }]
+              : []),
             { key: 'assistant', label: 'Assistente Rápido' },
           ]}
         />
@@ -258,6 +262,14 @@ export function ProjectAiDrawer({
           <LandingPageStudio
             fixedProjectId={project.id}
             fixedClientId={project.clientId ?? null}
+            canManage={canManageAi}
+          />
+        )}
+
+        {tab === 'research' && project.clientId && (
+          <ClientResearchTab
+            clientId={project.clientId}
+            projectId={project.id}
             canManage={canManageAi}
           />
         )}

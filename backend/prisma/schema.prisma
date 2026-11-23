@@ -53,6 +53,9 @@ model User {
   aiGenerations                 AiGenerationLog[]      @relation("AiGenerationAuthor")
   campaignPlansCreated          CampaignPlan[]         @relation("CampaignPlanAuthor")
   landingPagesCreated           LandingPage[]          @relation("LandingPageAuthor")
+  competitorReferencesCreated   CompetitorReference[]  @relation("CompetitorRefAuthor")
+  researchReportsCreated        ResearchReport[]       @relation("ResearchReportAuthor")
+  extensionTokens               ExtensionApiToken[]
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
@@ -306,10 +309,11 @@ model TaskProject {
   clientId     String?
   stages        TaskStage[]
   tasks         Task[]
-  aiGenerations AiGenerationLog[]
-  campaignPlans CampaignPlan[]
-  landingPages  LandingPage[]
-  deletedAt     DateTime?
+  aiGenerations   AiGenerationLog[]
+  campaignPlans   CampaignPlan[]
+  landingPages    LandingPage[]
+  researchReports ResearchReport[]
+  deletedAt       DateTime?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -852,11 +856,13 @@ model Client {
   notes             ClientNote[]
   whatsappContacts  WhatsappContact[]
   financialEntries  FinancialEntry[]
-  brandProfile      ClientBrandProfile?
-  competitors       ClientCompetitor[]
-  aiGenerations     AiGenerationLog[]
-  campaignPlans     CampaignPlan[]
-  landingPages      LandingPage[]
+  brandProfile        ClientBrandProfile?
+  competitors         ClientCompetitor[]
+  aiGenerations       AiGenerationLog[]
+  campaignPlans       CampaignPlan[]
+  landingPages        LandingPage[]
+  competitorRefs      CompetitorReference[]
+  researchReports     ResearchReport[]
 
   deletedAt         DateTime?
   createdAt         DateTime        @default(now())
@@ -1292,9 +1298,10 @@ model ClientCompetitor {
   tiktokHandle    String?
   youtubeHandle   String?
   notes           String?  @db.Text
-  strengths       String?  @db.Text
-  weaknesses      String?  @db.Text
-  createdAt       DateTime @default(now())
+  strengths       String?               @db.Text
+  weaknesses      String?               @db.Text
+  references      CompetitorReference[]
+  createdAt       DateTime              @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([clientId])
@@ -1446,6 +1453,88 @@ model LandingPageLead {
 
   @@index([landingPageId, createdAt])
 }
+
+// ─────────────────────────────────────────────────────────────
+// Pesquisa de Concorrentes, Virais, Trends & Extensão Chrome (Fase 4)
+// ─────────────────────────────────────────────────────────────
+
+enum ReferencePlatform {
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  WEB
+  OTHER
+}
+
+enum ResearchReportKind {
+  COMPETITOR_AUDIT
+  VIRAL_TRENDS
+  COPY_MINING
+  WEBSITE_ANALYSIS
+}
+
+model CompetitorReference {
+  id             String            @id @default(uuid())
+  clientId       String
+  client         Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  competitorId   String?
+  competitor     ClientCompetitor? @relation(fields: [competitorId], references: [id], onDelete: SetNull)
+  createdById    String?
+  createdBy      User?             @relation("CompetitorRefAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  platform       ReferencePlatform @default(INSTAGRAM)
+  sourceUrl      String?
+  authorHandle   String?
+  title          String?
+  caption        String?           @db.Text
+  metrics        Json?
+  mediaUrls      String[]          @default([])
+  mediaTypes     String[]          @default([])
+  aiAnalysis     String?           @db.Text
+  extractedHooks String[]          @default([])
+  adaptedAngles  String?           @db.Text
+  isViral        Boolean           @default(false)
+  tags           String[]          @default([])
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([clientId, createdAt])
+  @@index([competitorId])
+}
+
+model ResearchReport {
+  id          String             @id @default(uuid())
+  clientId    String
+  client      Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     TaskProject?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdById String?
+  createdBy   User?              @relation("ResearchReportAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  kind        ResearchReportKind
+  topic       String
+  model       String
+  summary     String             @db.Text
+  rawMarkdown String             @db.Text
+  sources     Json?
+  createdAt   DateTime           @default(now())
+
+  @@index([clientId, createdAt])
+  @@index([projectId, createdAt])
+}
+
+model ExtensionApiToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  tokenHash  String    @unique
+  prefix     String
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, revokedAt])
+}
+
 
 
 
