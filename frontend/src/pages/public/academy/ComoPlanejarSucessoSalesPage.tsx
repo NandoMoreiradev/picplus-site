@@ -15,7 +15,7 @@ const COURSE_PRICE_DISPLAY = '19,90';
 const COURSE_OG_IMAGE =
   'https://assets.picpluscompany.com.br/uploads/80802075-ba6b-4396-a1a3-d5ebf318c6eb.png';
 
-const PALESTRA_WHATSAPP_NUMBER = '5579988390389';
+const PALESTRA_WHATSAPP_NUMBER = '5579991424233';
 const PALESTRA_WHATSAPP_MESSAGE =
   'Olá! Vim pela página do audiobook Como Planejar o Sucesso e gostaria de saber mais sobre contratar uma palestra do Diego da Costa para o meu evento/empresa.';
 const PALESTRA_WHATSAPP_URL = `https://wa.me/${PALESTRA_WHATSAPP_NUMBER}?text=${encodeURIComponent(
